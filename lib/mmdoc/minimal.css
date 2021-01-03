@@ -1,0 +1,18 @@
+body {
+  display: flex;
+}
+
+#search-results ol {
+  padding-bottom: 1em;
+  border-bottom: 1px solid black;
+}
+
+nav {
+  padding: 0em 1em 0em 1em;
+}
+
+section {
+  max-width: 80ch;
+  padding: 0em 1em 20em 1em;
+  text-align: justify;
+}
