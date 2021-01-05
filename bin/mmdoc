@@ -12,7 +12,7 @@ install "$DIR"/../lib/mmdoc/* "$out"
 REWRITES_PRE=(
   #AdmonitionsStart
   's|::: attention|<div class="attention"><h3 class="title">Attention</h3><p>\n|g;'
-  's|::: Caution|<div class="Caution"><h3 class="title">Caution</h3><p>\n|g;'
+  's|::: caution|<div class="caution"><h3 class="title">Caution</h3><p>\n|g;'
   's|::: danger|<div class="danger"><h3 class="title">Danger</h3><p>\n|g;'
   's|::: error|<div class="error"><h3 class="title">Error</h3><p>\n|g;'
   's|::: hint|<div class="hint"><h3 class="title">Hint</h3><p>\n|g;'
