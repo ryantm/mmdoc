@@ -85,7 +85,6 @@ for file in "${MD_FILES[@]}"; do
   </head>
   <body>
     <nav>
-      <h1>Nixpkgs manual</h1>
       <input type="search" id="search" placeholder="Search">
       <div id="search-results">
       </div>
