@@ -47,7 +47,7 @@ done
 ANCHOR_REWRITES_STR="${ANCHOR_REWRITES[*]}"
 
 function cmd () {
-  sed -r "$REWRITES_PRE_STR" "$1" | cmark-gfm --unsafe | sed -r "$ANCHOR_REWRITES_STR"
+  sed -r "$REWRITES_PRE_STR" "$1" | cmark-gfm --unsafe -e table | sed -r "$ANCHOR_REWRITES_STR"
 }
 
 TOC="$(cmd "$src/toc.md")"
