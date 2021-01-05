@@ -5,7 +5,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 src=$1
 out=$2
 
-cp "$DIR"/../lib/mmdoc/* "$out"
+mkdir -p "$out"
+
+install "$DIR"/../lib/mmdoc/* "$out"
 
 REWRITES_PRE=(
   #AdmonitionsStart
@@ -97,13 +99,13 @@ $SECTION
   </body>
 </html>
 EOF
-)
+) &
 
 (
   INDEX_PART_FILE="$TMP/search_index/${file#"$src/"}.json"
   mkdir -p "$(dirname "$INDEX_PART_FILE")"
   cmark-gfm -t plaintext "$file" | jq -aRsc '{url: "'"$LINK_PATH"'", text:.}' >> "$INDEX_PART_FILE"
-)
+) &
 
 done
 
