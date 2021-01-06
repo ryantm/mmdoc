@@ -1,9 +1,66 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: CC0-1.0
+set -Eeuo pipefail
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-src=$1
-out=$2
+PACKAGE="mmdoc"
+
+function show_help () {
+  echo "$PACKAGE - minimal markdown documentation"
+  echo " "
+  echo "$PACKAGE -m SRC OUT"
+  echo ' '
+  echo 'options:'
+  echo '-h, --help                show help'
+  echo '-v, --verbose             verbose output'
+  echo '-w, --website             output multipage website'
+  echo ' '
+  echo 'SRC a directory containing Markdown files; a file called toc.md at the top level'
+  echo 'is required.'
+  echo ' '
+  echo 'OUT a directory where the website is written to'
+}
+
+test $# -eq 0 && (show_help && exit 1)
+
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    -v|--verbose)
+      shift
+      set -x
+      ;;
+    -w|--website)
+      shift
+      if test $# -gt 0; then
+        export src="$1"
+      else
+        echo "no SRC specified"
+        exit 1
+      fi
+      shift
+      if test $# -gt 0; then
+        export out="$1"
+      else
+        echo "no OUT specified"
+        exit 1
+      fi
+      shift
+      ;;
+    *)
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+if [ ! -f "$src/toc.md" ]; then
+    echo "Expected but did not find: $src/toc.md"
+    exit 1
+fi
 
 mkdir -p "$out"
 
