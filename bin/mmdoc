@@ -185,7 +185,7 @@ if [ -n "$SINGLE" ]; then
 fi
 
 MD_FILES=()
-mapfile -t TOC_REFS < <(grep -REo "\(#([^}]*)\)" src/toc.md)
+mapfile -t TOC_REFS < <(grep -REo "\(#([^}]*)\)" "$src/toc.md")
 for toc_ref in "${TOC_REFS[@]}"; do
   toc_ref="${toc_ref%")"}"
   toc_ref="${toc_ref#"("}"
