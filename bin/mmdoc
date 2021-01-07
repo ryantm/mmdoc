@@ -14,6 +14,7 @@ function show_help () {
   echo '-h, --help                show help'
   echo '-v, --verbose             verbose output'
   echo '-w, --website             output multipage website'
+  echo '-s, --single              output single page website'
   echo ' '
   echo 'SRC a directory containing Markdown files; a file called toc.md at the top level'
   echo 'is required.'
@@ -22,6 +23,9 @@ function show_help () {
 }
 
 test $# -eq 0 && (show_help && exit 1)
+
+WEBSITE=
+SINGLE=
 
 while test $# -gt 0; do
   case "$1" in
@@ -34,6 +38,25 @@ while test $# -gt 0; do
       set -x
       ;;
     -w|--website)
+      WEBSITE=1
+      shift
+      if test $# -gt 0; then
+        export src="$1"
+      else
+        echo "no SRC specified"
+        exit 1
+      fi
+      shift
+      if test $# -gt 0; then
+        export out="$1"
+      else
+        echo "no OUT specified"
+        exit 1
+      fi
+      shift
+      ;;
+    -s|--single)
+      SINGLE=1
       shift
       if test $# -gt 0; then
         export src="$1"
@@ -88,7 +111,7 @@ REWRITES_PRE=(
 REWRITES_PRE_STR="${REWRITES_PRE[*]}"
 
 ANCHOR_REWRITES=()
-mapfile -t ANCHOR_DEFS < <(grep -REo "\{#([^}]*)}" "$src")
+mapfile -t ANCHOR_DEFS < <(grep -REo "\{#([^}]*)}" "$src" --include='*.md')
 # TODO look for duplicate anchor definitions here
 for AD in "${ANCHOR_DEFS[@]}"; do
   IFS=':' read -ra PARTS <<< "$AD"
@@ -97,6 +120,9 @@ for AD in "${ANCHOR_DEFS[@]}"; do
   FILE="${FILE%.section}"
   FILE="${FILE%.chapter}"
   FILE="${FILE#"$src/"}/"
+  if [ "${FILE}" == "index/" ]; then
+    FILE="/"
+  fi
   ANCHOR=${PARTS[1]#"{"}
   ANCHOR=${ANCHOR%"}"}
   ANCHOR_REWRITES+=("s|href=\"$ANCHOR|href=\"$FILE$ANCHOR|g;")
@@ -104,69 +130,112 @@ done
 ANCHOR_REWRITES_STR="${ANCHOR_REWRITES[*]}"
 
 function cmd () {
-  sed -r "$REWRITES_PRE_STR" "$1" | cmark-gfm --unsafe -e table | sed -r "$ANCHOR_REWRITES_STR"
+  if [ "$WEBSITE" ]; then
+    sed -r "$REWRITES_PRE_STR" "$1" | cmark-gfm --unsafe -e table | sed -r "$ANCHOR_REWRITES_STR"
+  fi
+  if [ "$SINGLE" ]; then
+    sed -r "$REWRITES_PRE_STR" "$1" | cmark-gfm --unsafe -e table
+  fi
 }
 
 TOC="$(cmd "$src/toc.md")"
 
-mapfile -t MD_FILES < <(find "$src" -type f -name '*.md' ! -name 'toc.md')
-mkdir -p "$TMP/search_index"
-for file in "${MD_FILES[@]}"; do
-  OUTPUT_FILE="${file%.md}"
-  OUTPUT_FILE="${OUTPUT_FILE%.section}"
-  OUTPUT_FILE="${OUTPUT_FILE%.chapter}"
-  FILE_PATH="${OUTPUT_FILE#"$src/"}/index.html"
-  LINK_PATH="${OUTPUT_FILE#"$src/"}/"
-  if [ "${file#"$src/"}" == "index.md" ]; then
-    FILE_PATH="index.html"
-    LINK_PATH=""
-  fi
-
-  OUTPUT_FILE="$out/$FILE_PATH"
-  (
-  mkdir -p "$(dirname "$OUTPUT_FILE")"
-  SECTION="$(cmd "$file")"
-  cat <<-EOF > "$OUTPUT_FILE"
+function cat_head() {
+  cat <<EOF > "$1"
 <!doctype html>
 <html>
   <head>
     <base href="/">
     <meta charset="utf-8">
     <link href="minimal.css" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="highlightjs/mono-blue.css">
-    <script src="highlightjs/highlight.pack.js"></script>
+    <link rel="stylesheet" href="mono-blue.css">
+    <script src="highlight.pack.js"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="fuse.basic.min.js"></script>
-    <script src="search_index.js"></script>
-    <script src="search.js"></script>
+    $([ -n "$WEBSITE" ] && echo '<script src="fuse.basic.min.js"></script><script src="search_index.js"></script><script src="search.js"></script>')
   </head>
   <body>
+EOF
+}
+
+function cat_nav() {
+  cat <<EOF >> "$1"
     <nav>
-      <input type="search" id="search" placeholder="Search">
-      <div id="search-results">
-      </div>
-      <script>
-      </script>
-$TOC
+     $([ -n "$WEBSITE" ] && echo '<input type="search" id="search" placeholder="Search"><div id="search-results"></div>')
+     $2
     </nav>
     <section>
-$SECTION
+EOF
+}
+
+function cat_foot() {
+ cat <<EOF >> "$1"
     </section>
   </body>
 </html>
 EOF
-) &
+}
 
-(
-  INDEX_PART_FILE="$TMP/search_index/${file#"$src/"}.json"
-  mkdir -p "$(dirname "$INDEX_PART_FILE")"
-  cmark-gfm -t plaintext "$file" | jq -aRsc '{url: "'"$LINK_PATH"'", text:.}' >> "$INDEX_PART_FILE"
-) &
+if [ -n "$SINGLE" ]; then
+  OUTPUT_FILE="$out/index.html"
+  FILE_PATH="index.html"
+  LINK_PATH=""
+  mkdir -p "$(dirname "$OUTPUT_FILE")"
+  cat_head "$OUTPUT_FILE"
+  cat_nav "$OUTPUT_FILE" "$TOC"
+fi
 
+MD_FILES=()
+mapfile -t TOC_REFS < <(grep -REo "\(#([^}]*)\)" src/toc.md)
+for toc_ref in "${TOC_REFS[@]}"; do
+  toc_ref="${toc_ref%")"}"
+  toc_ref="${toc_ref#"("}"
+  MD_FILES+=("$(grep -Rl '{'"$toc_ref"'}' "$src" --include='*.md' | head)")
 done
+
+mkdir -p "$TMP/search_index"
+for file in "${MD_FILES[@]}"; do
+  if [ -n "$WEBSITE" ]; then
+    echo "website $file"
+    OUTPUT_FILE="${file%.md}"
+    OUTPUT_FILE="${OUTPUT_FILE%.section}"
+    OUTPUT_FILE="${OUTPUT_FILE%.chapter}"
+    FILE_PATH="${OUTPUT_FILE#"$src/"}/index.html"
+    LINK_PATH="${OUTPUT_FILE#"$src/"}/"
+    if [ "${file#"$src/"}" == "index.md" ]; then
+      FILE_PATH="index.html"
+      LINK_PATH=""
+    fi
+    OUTPUT_FILE="$out/$FILE_PATH"
+
+    (
+      mkdir -p "$(dirname "$OUTPUT_FILE")"
+      SECTION="$(cmd "$file")"
+      cat_head "$OUTPUT_FILE"
+      cat_nav "$OUTPUT_FILE" "$TOC"
+      echo "$SECTION" >> "$OUTPUT_FILE"
+      cat_foot "$OUTPUT_FILE"
+    ) &
+
+    (
+      INDEX_PART_FILE="$TMP/search_index/${file#"$src/"}.json"
+      mkdir -p "$(dirname "$INDEX_PART_FILE")"
+      cmark-gfm -t plaintext "$file" | jq -aRsc '{url: "'"$LINK_PATH"'", text:.}' >> "$INDEX_PART_FILE"
+    ) &
+  fi
+  if [ -n "$SINGLE" ]; then
+    SECTION="$(cmd "$file")"
+    echo "$SECTION" >> "$OUTPUT_FILE"
+  fi
+done
+
+if [ -n "$SINGLE" ]; then
+  cat_foot "$OUTPUT_FILE"
+fi
 
 wait
 
-mapfile -t INDEX_PARTS < <(find "$TMP/search_index" -type f -name '*.json' | sort)
-echo -n "const corpus = " >> "$out/search_index.js"
-jq -s "." "${INDEX_PARTS[@]}" >> "$out/search_index.js"
+if [ -n "$WEBSITE" ]; then
+  mapfile -t INDEX_PARTS < <(find "$TMP/search_index" -type f -name '*.json' | sort)
+  echo -n "const corpus = " >> "$out/search_index.js"
+  jq -s "." "${INDEX_PARTS[@]}" >> "$out/search_index.js"
+fi
