@@ -32,23 +32,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ makeWrapper ];
 
-  installPhase = ''
-    runHook preInstall
-
-    mkdir -p "$out/bin"
-    mkdir -p "$out/lib/mmdoc"
-    install "$src/bin/mmdoc" "$out/bin"
-    install "$src/lib/mmdoc/fuse.basic.min.js" "$out/lib/mmdoc"
-    install "$src/lib/mmdoc/highlight.pack.js" "$out/lib/mmdoc"
-    install "$src/lib/mmdoc/minimal.css" "$out/lib/mmdoc"
-    install "$src/lib/mmdoc/mono-blue.css" "$out/lib/mmdoc"
-    install "$src/lib/mmdoc/search.js" "$out/lib/mmdoc"
-    patchShebangs $out/bin
-
-    runHook postInstall
-  '';
-
-  fixupPhase = ''
+  postFixup = ''
     wrapProgram $out/bin/mmdoc --argv0 mmdoc --prefix PATH ":" "${runtimePath}"
   '';
 
