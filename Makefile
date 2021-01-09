@@ -1,3 +1,11 @@
+CLANG_FORMAT=clang-format
+
+all:
+	gcc -lcmark-gfm src/*.c
+
+format:
+	$(CLANG_FORMAT) -i src/*.c
+
 # This Makefile is currently really only useful in a nix build env
 .PHONY: install
 install:
