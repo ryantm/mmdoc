@@ -19,6 +19,8 @@
           gnumake
           clang-tools
           gcc
+          gdb
+          valgrind
         ];
       };
     });

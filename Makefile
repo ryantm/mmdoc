@@ -1,7 +1,7 @@
 CLANG_FORMAT=clang-format
 
 all:
-	gcc -lcmark-gfm src/*.c
+	gcc -lcmark-gfm -lcmark-gfm-extensions src/*.c
 
 format:
 	$(CLANG_FORMAT) -i src/*.c
