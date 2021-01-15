@@ -52,7 +52,7 @@ void init_array(Array *a, size_t initialSize) {
 void insert_array(Array *a, char *element) {
   if (a->used == a->size) {
     a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof(int));
+    a->array = realloc(a->array, a->size * sizeof(char *));
   }
   a->array[a->used] = malloc(strlen(element));
   strcpy(a->array[a->used], element);
@@ -145,6 +145,38 @@ void mmdoc_refs(Array *md_refs, char *path) {
   fclose(file);
 }
 
+typedef struct {
+  char *file_path;
+  char *anchor;
+} AnchorLocation;
+
+typedef struct {
+  AnchorLocation *array;
+  size_t used;
+  size_t size;
+} AnchorLocationArray;
+
+void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
+  a->array = malloc(initialSize * sizeof(AnchorLocation *));
+  a->used = 0;
+  a->size = initialSize;
+}
+
+void insert_anchor_location_array(AnchorLocationArray *a, AnchorLocation *element) {
+  if (a->used == a->size) {
+    a->size *= 2;
+    a->array = realloc(a->array, a->size * sizeof(AnchorLocation *));
+  }
+  a->array[a->used] = *element;
+  a->used++;
+}
+
+void free_anchor_location_array(AnchorLocationArray *a) {
+  free(a->array);
+  a->array = NULL;
+  a->used = a->size = 0;
+}
+
 void mmdoc_anchors(Array *md_anchors, char *path) {
   char ref[1024];
   int refpos = 0;
@@ -181,6 +213,38 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
     continue;
   }
   fclose(file);
+}
+
+void cmark(char *file_path) {
+  char buffer[4096];
+  size_t bytes;
+
+  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
+
+  cmark_gfm_core_extensions_ensure_registered();
+  cmark_mem *mem = cmark_get_default_mem_allocator();
+
+  cmark_syntax_extension *table_extension =
+    cmark_find_syntax_extension("table");
+
+  FILE *file = fopen(file_path, "rb");
+
+  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
+  cmark_parser_attach_syntax_extension(parser, table_extension);
+  while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+    cmark_parser_feed(parser, buffer, bytes);
+    if (bytes < sizeof(buffer)) {
+      break;
+    }
+  }
+  fclose(file);
+  cmark_node *document = cmark_parser_finish(parser);
+  char *result = cmark_render_html_with_mem(
+                                            document, options, cmark_parser_get_syntax_extensions(parser), mem);
+  cmark_node_free(document);
+  cmark_parser_free(parser);
+  printf("%s", result);
+  mem->free(result);
 }
 
 int main(int argc, char *argv[]) {
@@ -239,48 +303,50 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < toc_refs.used; i++)
     printf("refs: %s\n", toc_refs.array[i]);
 
-  Array toc_anchors;
-  init_array(&toc_anchors, 500);
-  mmdoc_anchors(&toc_anchors, toc_path);
-  for(int i = 0; i < toc_anchors.used; i++)
-    printf("anchor: %s\n", toc_anchors.array[i]);
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 500);
+  for(int i = 0; i < md_files.used; i++) {
+    printf("getting anchors in: %s\n", md_files.array[i]);
+    Array anchors;
+    init_array(&anchors, 500);
+    mmdoc_anchors(&anchors, md_files.array[i]);
+    for(int j = 0; j < anchors.used; j++) {
+      AnchorLocation al;
+      al.file_path = md_files.array[i];
+      al.anchor = anchors.array[j];
+      insert_anchor_location_array(&anchor_locations, &al);
+    }
+  }
+  for(int i = 0; i < anchor_locations.used; i++)
+    printf("anchor_location: file_path: %s anchor: %s\n", anchor_locations.array[i].file_path,anchor_locations.array[i].anchor);
+
+
+  for(int i = 0; i < toc_refs.used; i++) {
+    char *file_path;
+    int found = 0;
+    for(int j = 0; j < anchor_locations.used; j++) {
+      printf("comparing: %s with %s\n", toc_refs.array[i], anchor_locations.array[j].anchor);
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        file_path = anchor_locations.array[j].file_path;
+        found = 1;
+        printf("found\n");
+        break;
+      }
+    }
+    if (!found) {
+      printf("Found anchor reference in toc.md \"%s\" but did not find anchor in any .md file.", toc_refs.array[i]);
+      return 1;
+    }
+    printf("Found anchor reference %s in file %s\n", toc_refs.array[i], file_path);
+    cmark(file_path);
+  }
 
   /* if (0 != mkdir(out, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)) { */
   /*   printf("Couldn't create directory \"%s\": errno %d\n", out, errno); */
   /*   return 1; */
   /* } */
 
-  char buffer[4096];
-  size_t bytes;
 
-  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
-
-  cmark_gfm_core_extensions_ensure_registered();
-  cmark_mem *mem = cmark_get_default_mem_allocator();
-
-  for (int i = 0; i < md_files.used; i++) {
-    cmark_syntax_extension *table_extension =
-      cmark_find_syntax_extension("table");
-    FILE *file = fopen(md_files.array[i], "rb");
-
-    cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
-    cmark_parser_attach_syntax_extension(parser, table_extension);
-    while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-      cmark_parser_feed(parser, buffer, bytes);
-      if (bytes < sizeof(buffer)) {
-        break;
-      }
-    }
-    fclose(file);
-    cmark_node *document = cmark_parser_finish(parser);
-    char *result = cmark_render_html_with_mem(
-                                              document, options, cmark_parser_get_syntax_extensions(parser), mem);
-    cmark_node_free(document);
-    cmark_parser_free(parser);
-    printf("%s", result);
-
-    mem->free(result);
-  }
   free_array(&md_files);
   return 0;
 }
