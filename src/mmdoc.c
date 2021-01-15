@@ -37,6 +37,36 @@ void print_usage() {
   printf("OUT a directory where the website is written to\n");
 }
 
+typedef struct {
+  char **array;
+  size_t used;
+  size_t size;
+} Array;
+
+void init_array(Array *a, size_t initialSize) {
+  a->array = malloc(initialSize * sizeof(char *));
+  a->used = 0;
+  a->size = initialSize;
+}
+
+void insert_array(Array *a, char *element) {
+  if (a->used == a->size) {
+    a->size *= 2;
+    a->array = realloc(a->array, a->size * sizeof(int));
+  }
+  a->array[a->used] = malloc(strlen(element));
+  strcpy(a->array[a->used], element);
+  a->used++;
+}
+
+void free_array(Array *a) {
+  for (int i = 0; i < a->used; i++)
+    free(a->array[i]);
+  free(a->array);
+  a->array = NULL;
+  a->used = a->size = 0;
+}
+
 int ends_with(const char *str, const char *suffix) {
   size_t str_len = strlen(str);
   size_t suffix_len = strlen(suffix);
@@ -45,7 +75,7 @@ int ends_with(const char *str, const char *suffix) {
          (!memcmp(str + str_len - suffix_len, suffix, suffix_len));
 }
 
-void mmdoc_md_files(char * md_files[], char *base_path) {
+void mmdoc_md_files(Array *md_files, char *base_path) {
   char path[2048];
   struct dirent *dp;
   DIR *dir = opendir(base_path);
@@ -55,18 +85,102 @@ void mmdoc_md_files(char * md_files[], char *base_path) {
 
   while ((dp = readdir(dir)) != NULL) {
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      if (ends_with(dp->d_name, ".md")) {
-        printf("%s\n", dp->d_name);
+      if (ends_with(dp->d_name, ".md"))
+      {
+        char *fpath = malloc(strlen(base_path) + 1 + strlen(dp->d_name) + 1);
+        strcpy(fpath, base_path);
+        strcat(fpath, "/");
+        strcat(fpath, dp->d_name);
+        insert_array(md_files, fpath);
+        free(fpath);
       }
       strcpy(path, base_path);
       strcat(path, "/");
       strcat(path, dp->d_name);
-      mmdoc_md_files(NULL, path);
+      mmdoc_md_files(md_files, path);
     }
   }
 
   closedir(dir);
   return;
+}
+
+enum ref_parse_state { NONE, L, REF };
+
+void mmdoc_refs(Array *md_refs, char *path) {
+  char ref[1024];
+  int refpos = 0;
+  FILE *file;
+  file = fopen(path, "r");
+  int c;
+  enum ref_parse_state state = NONE;
+
+  while (1) {
+    c = fgetc(file);
+    if (c == EOF)
+      break;
+    if (state == NONE && c == '(') {
+      state = L;
+      continue;
+    }
+    if (state == L && c == '#') {
+      state = REF;
+      ref[refpos] = c;
+      refpos += 1;
+      continue;
+    }
+    if (state == REF && (c == '\n' || c == '\r')) {
+    } else if (state == REF && c != ')') {
+      ref[refpos] = c;
+      refpos += 1;
+      continue;
+    } else if (state == REF && c == ')') {
+      ref[refpos] = '\0';
+      insert_array(md_refs, ref);
+    }
+    refpos = 0;
+    state = NONE;
+    continue;
+  }
+  fclose(file);
+}
+
+void mmdoc_anchors(Array *md_anchors, char *path) {
+  char ref[1024];
+  int refpos = 0;
+  FILE *file;
+  file = fopen(path, "r");
+  int c;
+  enum ref_parse_state state = NONE;
+
+  while (1) {
+    c = fgetc(file);
+    if (c == EOF)
+      break;
+    if (state == NONE && c == '{') {
+      state = L;
+      continue;
+    }
+    if (state == L && c == '#') {
+      state = REF;
+      ref[refpos] = c;
+      refpos += 1;
+      continue;
+    }
+    if (state == REF && (c == '\n' || c == '\r')) {
+    } else if (state == REF && c != '}') {
+      ref[refpos] = c;
+      refpos += 1;
+      continue;
+    } else if (state == REF && c == '}') {
+      ref[refpos] = '\0';
+      insert_array(md_anchors, ref);
+    }
+    refpos = 0;
+    state = NONE;
+    continue;
+  }
+  fclose(file);
 }
 
 int main(int argc, char *argv[]) {
@@ -112,15 +226,29 @@ int main(int argc, char *argv[]) {
     printf("Expected but did not find: \"%s\"", toc_path);
     return 1;
   }
-  free(toc_path);
 
-  mmdoc_md_files(NULL, src);
+  Array md_files;
+  init_array(&md_files, 100);
+  mmdoc_md_files(&md_files, src);
+  for(int i = 0; i < md_files.used; i++)
+    printf("top level: %s\n", md_files.array[i]);
 
-  if (0 != mkdir(out, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)) {
-    printf("Couldn't create directory \"%s\": errno %d\n", out, errno);
-    return 1;
-  }
+  Array toc_refs;
+  init_array(&toc_refs, 500);
+  mmdoc_refs(&toc_refs, toc_path);
+  for(int i = 0; i < toc_refs.used; i++)
+    printf("refs: %s\n", toc_refs.array[i]);
 
+  Array toc_anchors;
+  init_array(&toc_anchors, 500);
+  mmdoc_anchors(&toc_anchors, toc_path);
+  for(int i = 0; i < toc_anchors.used; i++)
+    printf("anchor: %s\n", toc_anchors.array[i]);
+
+  /* if (0 != mkdir(out, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)) { */
+  /*   printf("Couldn't create directory \"%s\": errno %d\n", out, errno); */
+  /*   return 1; */
+  /* } */
 
   char buffer[4096];
   size_t bytes;
@@ -129,26 +257,30 @@ int main(int argc, char *argv[]) {
 
   cmark_gfm_core_extensions_ensure_registered();
   cmark_mem *mem = cmark_get_default_mem_allocator();
-  cmark_syntax_extension *table_extension =
+
+  for (int i = 0; i < md_files.used; i++) {
+    cmark_syntax_extension *table_extension =
       cmark_find_syntax_extension("table");
-  FILE *file = fopen("test/blah.md", "rb");
+    FILE *file = fopen(md_files.array[i], "rb");
 
-  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
-  cmark_parser_attach_syntax_extension(parser, table_extension);
-  while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-    cmark_parser_feed(parser, buffer, bytes);
-    if (bytes < sizeof(buffer)) {
-      break;
+    cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
+    cmark_parser_attach_syntax_extension(parser, table_extension);
+    while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+      cmark_parser_feed(parser, buffer, bytes);
+      if (bytes < sizeof(buffer)) {
+        break;
+      }
     }
-  }
-  fclose(file);
-  cmark_node *document = cmark_parser_finish(parser);
-  char *result = cmark_render_html_with_mem(
-      document, options, cmark_parser_get_syntax_extensions(parser), mem);
-  cmark_node_free(document);
-  cmark_parser_free(parser);
-  printf("%s", result);
+    fclose(file);
+    cmark_node *document = cmark_parser_finish(parser);
+    char *result = cmark_render_html_with_mem(
+                                              document, options, cmark_parser_get_syntax_extensions(parser), mem);
+    cmark_node_free(document);
+    cmark_parser_free(parser);
+    printf("%s", result);
 
-  mem->free(result);
+    mem->free(result);
+  }
+  free_array(&md_files);
   return 0;
 }
