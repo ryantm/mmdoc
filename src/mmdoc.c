@@ -49,7 +49,7 @@ typedef struct {
 } Array;
 
 void init_array(Array *a, size_t initialSize) {
-  a->array = malloc(initialSize * sizeof(char *));
+  a->array = malloc(initialSize * sizeof *a->array);
   a->used = 0;
   a->size = initialSize;
 }
@@ -57,9 +57,9 @@ void init_array(Array *a, size_t initialSize) {
 void insert_array(Array *a, char *element) {
   if (a->used == a->size) {
     a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof(char **));
+    a->array = realloc(a->array, a->size * sizeof *a->array);
   }
-  a->array[a->used] = malloc(strlen(element));
+  a->array[a->used] = malloc(strlen(element) + 1);
   strcpy(a->array[a->used], element);
   a->used++;
 }
@@ -81,7 +81,6 @@ int ends_with(const char *str, const char *suffix) {
 }
 
 void mmdoc_md_files(Array *md_files, char *base_path) {
-  char path[2048];
   struct dirent *dp;
   DIR *dir = opendir(base_path);
 
@@ -90,21 +89,17 @@ void mmdoc_md_files(Array *md_files, char *base_path) {
 
   while ((dp = readdir(dir)) != NULL) {
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      if (ends_with(dp->d_name, ".md")) {
-        char *fpath = malloc(strlen(base_path) + 1 + strlen(dp->d_name) + 1);
-        strcpy(fpath, base_path);
-        strcat(fpath, "/");
-        strcat(fpath, dp->d_name);
-        insert_array(md_files, fpath);
-        free(fpath);
-      }
+      size_t size = strlen(base_path) + 1 + strlen(dp->d_name) + 1;
+      char *path = malloc(size);
       strcpy(path, base_path);
       strcat(path, "/");
       strcat(path, dp->d_name);
+      if (ends_with(dp->d_name, ".md"))
+        insert_array(md_files, path);
       mmdoc_md_files(md_files, path);
+      free(path);
     }
   }
-
   closedir(dir);
   return;
 }
@@ -161,7 +156,7 @@ typedef struct {
 } AnchorLocationArray;
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
-  a->array = malloc(initialSize * sizeof(AnchorLocation *));
+  a->array = malloc(initialSize * sizeof(a->array));
   a->used = 0;
   a->size = initialSize;
 }
@@ -170,7 +165,7 @@ void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element) {
   if (a->used == a->size) {
     a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof(AnchorLocation *));
+    a->array = realloc(a->array, a->size * sizeof a->array);
   }
   a->array[a->used] = *element;
   a->used++;
@@ -306,15 +301,16 @@ int main(int argc, char *argv[]) {
 
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 500);
+
   for (int i = 0; i < md_files.used; i++) {
     Array anchors;
     init_array(&anchors, 500);
     mmdoc_anchors(&anchors, md_files.array[i]);
     for (int j = 0; j < anchors.used; j++) {
-      AnchorLocation al;
-      al.file_path = md_files.array[i];
-      al.anchor = anchors.array[j];
-      insert_anchor_location_array(&anchor_locations, &al);
+      AnchorLocation *al = malloc(sizeof *al);
+      al->file_path = md_files.array[i];
+      al->anchor = anchors.array[j];
+      insert_anchor_location_array(&anchor_locations, al);
     }
   }
 
