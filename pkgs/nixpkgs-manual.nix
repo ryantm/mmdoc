@@ -1,15 +1,14 @@
 { stdenv,
 nixpkgs,
+writeScript,
 mmdoc,
-gdb
+gdb,
 } :
-
-with pkgs;
 
 stdenv.mkDerivation rec {
   name = "nixpkgs-manual";
 
-  src = builtins.filterSource (path: type: type == "directory" || builtins.match ".*\.md" path == []) "${nixpkgs}/doc";
+  src = "${nixpkgs}/doc";
 
   buildInputs = [gdb mmdoc];
 
