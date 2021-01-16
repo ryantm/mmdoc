@@ -57,7 +57,7 @@ void init_array(Array *a, size_t initialSize) {
 void insert_array(Array *a, char *element) {
   if (a->used == a->size) {
     a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof(char *));
+    a->array = realloc(a->array, a->size * sizeof(char **));
   }
   a->array[a->used] = malloc(strlen(element));
   strcpy(a->array[a->used], element);
