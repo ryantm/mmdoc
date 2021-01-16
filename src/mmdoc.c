@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "asset.search.js.h"
 
 #define MMDOC_VERSION "0.0.8"
 
@@ -340,6 +341,8 @@ int main(int argc, char *argv[]) {
     printf("Found anchor reference %s in file %s\n", toc_refs.array[i], file_path);
     cmark(file_path);
   }
+
+  printf("%s", asset_search_js);
 
   /* if (0 != mkdir(out, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)) { */
   /*   printf("Couldn't create directory \"%s\": errno %d\n", out, errno); */

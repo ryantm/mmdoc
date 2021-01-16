@@ -1,7 +1,10 @@
 CLANG_FORMAT=clang-format
 
-all:
+all: src/asset.fuse.basic.min.js.h src/asset.highlight.pack.js.h src/asset.minimal.css.h src/asset.mono-blue.css.h  src/asset.search.js.h
 	gcc -lcmark-gfm -lcmark-gfm-extensions src/*.c
+
+src/asset.%.h: asset/%
+	xxd -i $< $@
 
 format:
 	$(CLANG_FORMAT) -i src/*.c
