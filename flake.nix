@@ -21,6 +21,7 @@
           gcc
           gdb
           valgrind
+          xxd
         ];
       };
     });
