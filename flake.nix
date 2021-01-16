@@ -25,6 +25,7 @@
           gdb
           valgrind
           xxd
+          jq.dev
         ];
       };
     });

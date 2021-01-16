@@ -3,9 +3,10 @@
 #include "asset.minimal.css.h"
 #include "asset.mono-blue.css.h"
 #include "asset.search.js.h"
-#include "cmark-gfm-core-extensions.h"
-#include "cmark-gfm-extension_api.h"
-#include "cmark-gfm.h"
+#include <jq.h>
+#include <cmark-gfm-core-extensions.h>
+#include <cmark-gfm-extension_api.h>
+#include <cmark-gfm.h>
 #include <dirent.h>
 #include <errno.h>
 #include <regex.h>

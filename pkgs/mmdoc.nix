@@ -1,7 +1,8 @@
 {stdenv,
 cmark-gfm,
 xxd,
-self
+jq,
+self,
 } :
 
 stdenv.mkDerivation rec {
@@ -10,7 +11,7 @@ stdenv.mkDerivation rec {
 
   src = self;
 
-  buildInputs = [ cmark-gfm xxd ];
+  buildInputs = [ cmark-gfm jq.dev xxd ];
 
   meta = with stdenv.lib; {
     description = "Minimal Markdown Documentation";
