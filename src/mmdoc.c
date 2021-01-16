@@ -1,3 +1,8 @@
+#include "asset.fuse.basic.min.js.h"
+#include "asset.highlight.pack.js.h"
+#include "asset.minimal.css.h"
+#include "asset.mono-blue.css.h"
+#include "asset.search.js.h"
 #include "cmark-gfm-core-extensions.h"
 #include "cmark-gfm-extension_api.h"
 #include "cmark-gfm.h"
@@ -8,7 +13,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "asset.search.js.h"
 
 #define MMDOC_VERSION "0.0.8"
 
@@ -86,8 +90,7 @@ void mmdoc_md_files(Array *md_files, char *base_path) {
 
   while ((dp = readdir(dir)) != NULL) {
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      if (ends_with(dp->d_name, ".md"))
-      {
+      if (ends_with(dp->d_name, ".md")) {
         char *fpath = malloc(strlen(base_path) + 1 + strlen(dp->d_name) + 1);
         strcpy(fpath, base_path);
         strcat(fpath, "/");
@@ -163,7 +166,8 @@ void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
   a->size = initialSize;
 }
 
-void insert_anchor_location_array(AnchorLocationArray *a, AnchorLocation *element) {
+void insert_anchor_location_array(AnchorLocationArray *a,
+                                  AnchorLocation *element) {
   if (a->used == a->size) {
     a->size *= 2;
     a->array = realloc(a->array, a->size * sizeof(AnchorLocation *));
@@ -216,7 +220,7 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
   fclose(file);
 }
 
-void cmark(char *file_path) {
+void cmark(char *file_path, FILE *output_file) {
   char buffer[4096];
   size_t bytes;
 
@@ -226,7 +230,7 @@ void cmark(char *file_path) {
   cmark_mem *mem = cmark_get_default_mem_allocator();
 
   cmark_syntax_extension *table_extension =
-    cmark_find_syntax_extension("table");
+      cmark_find_syntax_extension("table");
 
   FILE *file = fopen(file_path, "rb");
 
@@ -241,10 +245,10 @@ void cmark(char *file_path) {
   fclose(file);
   cmark_node *document = cmark_parser_finish(parser);
   char *result = cmark_render_html_with_mem(
-                                            document, options, cmark_parser_get_syntax_extensions(parser), mem);
+      document, options, cmark_parser_get_syntax_extensions(parser), mem);
   cmark_node_free(document);
   cmark_parser_free(parser);
-  printf("%s", result);
+  fputs(result, output_file);
   mem->free(result);
 }
 
@@ -295,60 +299,117 @@ int main(int argc, char *argv[]) {
   Array md_files;
   init_array(&md_files, 100);
   mmdoc_md_files(&md_files, src);
-  for(int i = 0; i < md_files.used; i++)
-    printf("top level: %s\n", md_files.array[i]);
 
   Array toc_refs;
   init_array(&toc_refs, 500);
   mmdoc_refs(&toc_refs, toc_path);
-  for(int i = 0; i < toc_refs.used; i++)
-    printf("refs: %s\n", toc_refs.array[i]);
 
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 500);
-  for(int i = 0; i < md_files.used; i++) {
-    printf("getting anchors in: %s\n", md_files.array[i]);
+  for (int i = 0; i < md_files.used; i++) {
     Array anchors;
     init_array(&anchors, 500);
     mmdoc_anchors(&anchors, md_files.array[i]);
-    for(int j = 0; j < anchors.used; j++) {
+    for (int j = 0; j < anchors.used; j++) {
       AnchorLocation al;
       al.file_path = md_files.array[i];
       al.anchor = anchors.array[j];
       insert_anchor_location_array(&anchor_locations, &al);
     }
   }
-  for(int i = 0; i < anchor_locations.used; i++)
-    printf("anchor_location: file_path: %s anchor: %s\n", anchor_locations.array[i].file_path,anchor_locations.array[i].anchor);
 
+  if (0 != mkdir(out, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
+                          S_IXGRP | S_IROTH | S_IXOTH)) {
 
-  for(int i = 0; i < toc_refs.used; i++) {
+    printf("Couldn't create directory \"%s\": errno %d\n", out, errno);
+    return 1;
+  }
+
+  char asset_path[2048];
+  FILE *asset_file;
+  strcpy(asset_path, out);
+  strcat(asset_path, "/search.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < asset_search_js_len; i++) {
+    fputc(asset_search_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/fuse.basic.min.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < asset_fuse_basic_min_js_len; i++) {
+    fputc(asset_fuse_basic_min_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/highlight.pack.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < asset_highlight_pack_js_len; i++) {
+    fputc(asset_highlight_pack_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/minimal.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < asset_minimal_css_len; i++) {
+    fputc(asset_minimal_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/mono-blue.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < asset_mono_blue_css_len; i++) {
+    fputc(asset_mono_blue_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  char index_path[2048];
+  FILE *index_file;
+  strcpy(index_path, out);
+  strcat(index_path, "/index.html");
+  index_file = fopen(index_path, "w");
+
+  char *html_head =
+      "<!doctype html>"
+      "<html>"
+      "  <head>"
+      "    <base href='/'>"
+      "    <meta charset='utf-8'>"
+      "    <link href='minimal.css' rel='stylesheet' type='text/css'>"
+      "    <link rel='stylesheet' href='mono-blue.css'>"
+      "    <script src='highlight.pack.js'></script>"
+      "    <script>hljs.initHighlightingOnLoad();</script>"
+      "  </head>"
+      "  <body>"
+      "    <nav>";
+  fputs(html_head, index_file);
+  cmark(toc_path, index_file);
+  fputs("</nav><section>", index_file);
+
+  for (int i = 0; i < toc_refs.used; i++) {
     char *file_path;
     int found = 0;
-    for(int j = 0; j < anchor_locations.used; j++) {
-      printf("comparing: %s with %s\n", toc_refs.array[i], anchor_locations.array[j].anchor);
+    for (int j = 0; j < anchor_locations.used; j++) {
       if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
         file_path = anchor_locations.array[j].file_path;
         found = 1;
-        printf("found\n");
         break;
       }
     }
     if (!found) {
-      printf("Found anchor reference in toc.md \"%s\" but did not find anchor in any .md file.", toc_refs.array[i]);
+      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
+             "in any .md file.",
+             toc_refs.array[i]);
       return 1;
     }
-    printf("Found anchor reference %s in file %s\n", toc_refs.array[i], file_path);
-    cmark(file_path);
+    cmark(file_path, index_file);
   }
-
-  printf("%s", asset_search_js);
-
-  /* if (0 != mkdir(out, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)) { */
-  /*   printf("Couldn't create directory \"%s\": errno %d\n", out, errno); */
-  /*   return 1; */
-  /* } */
-
+  fputs("</section></body></html>", index_file);
+  fclose(index_file);
 
   free_array(&md_files);
   return 0;
