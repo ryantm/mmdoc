@@ -1,4 +1,4 @@
 # Section 3 {#section-three}
 
-* []{#anchor} listy list
-* listy list2
+* []{#anchor} list item 1
+* list item 2

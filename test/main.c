@@ -4,42 +4,47 @@
 #include <string.h>
 #include <stdlib.h>
 
-enum bracket_parse_state { NONE, SPACE, L, BRKT };
+enum parse_heading_bracketed_span_state {
+  HEADING_NONE,
+  HEADING_SPACE,
+  HEADING_L,
+  HEADING_ID
+};
 
 int heading_bracketed_span_id(const char * text, char * id) {
   if (text == NULL)
     return -1;
   int id_pos = 0;
-  int i = 0;
   int bracket_found = 0;
   int bracket_start = 0;
-  enum bracket_parse_state state = NONE;
 
-  for (int i = 1; text[i] != '\0'; i++) {
-    if (state == NONE && text[i] == ' ') {
-      state = SPACE;
+  enum parse_heading_bracketed_span_state state = HEADING_NONE;
+
+  for (int i = 0; text[i] != '\0'; i++) {
+    if (state == HEADING_NONE && text[i] == ' ') {
+      state = HEADING_SPACE;
       bracket_start = i;
       continue;
     }
-    if (state == SPACE && text[i] == '{') {
-      state = L;
+    if (state == HEADING_SPACE && text[i] == '{') {
+      state = HEADING_L;
       continue;
     }
-    if (state == L && text[i] == '#') {
-      state = BRKT;
+    if (state == HEADING_L && text[i] == '#') {
+      state = HEADING_ID;
       continue;
     }
-    if (state == BRKT && text[i] != '}') {
+    if (state == HEADING_ID && text[i] != '}') {
       id[id_pos] = text[i];
       id_pos++;
       continue;
-    } else if (state == BRKT && text[i] == '}') {
+    } else if (state == HEADING_ID && text[i] == '}') {
       id[id_pos] = '\0';
       bracket_found = 1;
       break;
     }
     id_pos = 0;
-    state = NONE;
+    state = HEADING_NONE;
     continue;
   }
 
@@ -48,6 +53,71 @@ int heading_bracketed_span_id(const char * text, char * id) {
   else
     return -1;
 }
+
+enum parse_link_bracketed_span_state {
+  LINK_NONE,
+  LINK_TEXT,
+  LINK_R_SQUARE,
+  LINK_L,
+  LINK_ID };
+
+int link_bracketed_span_id(const char * text, char * span_text, char * id) {
+  if (text == NULL)
+    return -1;
+
+  printf("checking for: %s\n", text);
+
+  int text_pos = 0;
+  int id_pos = 0;
+  int bracket_found = 0;
+  int bracket_start = 0;
+  enum parse_link_bracketed_span_state state = LINK_NONE;
+
+  for (int i = 0; text[i] != '\0'; i++) {
+    if (state == LINK_NONE && text[i] == '[') {
+      state = LINK_TEXT;
+      bracket_start = i;
+      continue;
+    }
+    if (state == LINK_TEXT && text[i] != ']') {
+      span_text[text_pos] = text[i];
+      text_pos++;
+      continue;
+    }
+    if (state == LINK_TEXT && text[i] == ']') {
+      span_text[text_pos] = '\0';
+      state = LINK_R_SQUARE;
+      continue;
+    }
+    if (state == LINK_R_SQUARE && text[i] == '{') {
+      state = LINK_L;
+      continue;
+    }
+    if (state == LINK_L && text[i] == '#') {
+      state = LINK_ID;
+      continue;
+    }
+    if (state == LINK_ID && text[i] != '}') {
+      id[id_pos] = text[i];
+      id_pos++;
+      continue;
+    } else if (state == LINK_ID && text[i] == '}') {
+      id[id_pos] = '\0';
+      bracket_found = 1;
+      break;
+    }
+    text_pos = 0;
+    id_pos = 0;
+    state = LINK_NONE;
+    continue;
+  }
+
+  if (bracket_found == 1)
+    return bracket_start;
+  else
+    return -1;
+}
+
 
 int main(int argc, char *argv[]) {
   char buffer[4096];
@@ -96,7 +166,9 @@ int main(int argc, char *argv[]) {
           if (-1 == pos)
             continue;
           char *new_lit = malloc(strlen(lit) + 1);
-          for(int i = 0; i < pos; i++) { new_lit[i] = lit[i]; }
+          int i;
+          for(i = 0; i < pos; i++) { new_lit[i] = lit[i]; }
+          new_lit[i] = '\0';
           char first_span[2500] = "<span id='";
           strcat(first_span, id);
           strcat(first_span, "'>");
@@ -112,6 +184,51 @@ int main(int argc, char *argv[]) {
           cmark_node_replace(node, new_node);
           cmark_node_free(node);
         }
+
+        if (prev_node_type == CMARK_NODE_PARAGRAPH && type == CMARK_NODE_TEXT) {
+
+          const char * lit = cmark_node_get_literal(node);
+          char id[2048];
+          char span_text[2048];
+          int pos = link_bracketed_span_id(lit, span_text, id);
+          if (-1 == pos)
+            continue;
+          char *new_l_lit = malloc(strlen(lit) + 1);
+          int i;
+          for(i = 0; i < pos; i++) { new_l_lit[i] = lit[i]; }
+          new_l_lit[i] = '\0';
+          new_node = cmark_node_new(CMARK_NODE_TEXT);
+          cmark_node_set_literal(new_node, new_l_lit);
+          cmark_node_insert_before(node, new_node);
+
+          char first_span[2500] = "<span id='";
+          strcat(first_span, id);
+          strcat(first_span, "'>");
+          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
+          cmark_node_set_literal(new_node, first_span);
+          cmark_node_insert_before(node, new_node);
+
+          new_node = cmark_node_new(CMARK_NODE_TEXT);
+          cmark_node_set_literal(new_node, span_text);
+          cmark_node_insert_before(node, new_node);
+
+          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
+          cmark_node_set_literal(new_node, "</span>");
+          cmark_node_insert_before(node, new_node);
+
+          char *new_r_lit = malloc(strlen(lit) + 1);
+          int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 2;
+          for(i = end_of_span; lit[i] != '\0'; i++) { new_r_lit[i-end_of_span] = lit[i]; }
+          new_r_lit[i-end_of_span] = '\0';
+          new_node = cmark_node_new(CMARK_NODE_TEXT);
+          cmark_node_set_literal(new_node, new_r_lit);
+          cmark_node_insert_before(node, new_node);
+
+          cmark_node_unlink(node);
+          cmark_node_free(node);
+        }
+
+
         break;
       }
       if (CMARK_EVENT_DONE == event)
