@@ -118,32 +118,8 @@ int link_bracketed_span_id(const char * text, char * span_text, char * id) {
     return -1;
 }
 
-
-int main(int argc, char *argv[]) {
-  char buffer[4096];
-  size_t bytes;
-
-  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
-
-  cmark_gfm_core_extensions_ensure_registered();
-  cmark_mem *mem = cmark_get_default_mem_allocator();
-
-  cmark_syntax_extension *table_extension =
-      cmark_find_syntax_extension("table");
-
-  FILE *file = fopen("test/section3.md", "rb");
-
-  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
-  cmark_parser_attach_syntax_extension(parser, table_extension);
-  while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-    cmark_parser_feed(parser, buffer, bytes);
-    if (bytes < sizeof(buffer)) {
-      break;
-    }
-  }
-  fclose(file);
-  cmark_node *document = cmark_parser_finish(parser);
-
+void rewrite_cmark_nodes(cmark_node *document)
+{
   cmark_iter *iter = cmark_iter_new(document);
 
   cmark_event_type event;
@@ -161,7 +137,7 @@ int main(int argc, char *argv[]) {
         if (prev_node_type == CMARK_NODE_HEADING && type == CMARK_NODE_TEXT) {
 
           const char * lit = cmark_node_get_literal(node);
-          char id[2048];
+          char * id = malloc(strlen(lit) + 1);
           int pos = heading_bracketed_span_id(lit, id);
           if (-1 == pos)
             continue;
@@ -169,7 +145,8 @@ int main(int argc, char *argv[]) {
           int i;
           for(i = 0; i < pos; i++) { new_lit[i] = lit[i]; }
           new_lit[i] = '\0';
-          char first_span[2500] = "<span id='";
+          char * first_span = malloc(strlen(lit) + 1);
+          strcpy(first_span, "<span id='");
           strcat(first_span, id);
           strcat(first_span, "'>");
           new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
@@ -186,10 +163,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (prev_node_type == CMARK_NODE_PARAGRAPH && type == CMARK_NODE_TEXT) {
-
           const char * lit = cmark_node_get_literal(node);
-          char id[2048];
-          char span_text[2048];
+          char *id = malloc(strlen(lit) + 1);
+          char *span_text = malloc(strlen(lit) + 1);
           int pos = link_bracketed_span_id(lit, span_text, id);
           if (-1 == pos)
             continue;
@@ -201,7 +177,8 @@ int main(int argc, char *argv[]) {
           cmark_node_set_literal(new_node, new_l_lit);
           cmark_node_insert_before(node, new_node);
 
-          char first_span[2500] = "<span id='";
+          char *first_span = malloc(strlen(lit) + 1);
+          strcpy(first_span, "<span id='");
           strcat(first_span, id);
           strcat(first_span, "'>");
           new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
@@ -227,8 +204,6 @@ int main(int argc, char *argv[]) {
           cmark_node_unlink(node);
           cmark_node_free(node);
         }
-
-
         break;
       }
       if (CMARK_EVENT_DONE == event)
@@ -258,6 +233,35 @@ int main(int argc, char *argv[]) {
   }
 
   cmark_iter_free(iter);
+}
+
+
+int main(int argc, char *argv[]) {
+  char buffer[4096];
+  size_t bytes;
+
+  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
+
+  cmark_gfm_core_extensions_ensure_registered();
+  cmark_mem *mem = cmark_get_default_mem_allocator();
+
+  cmark_syntax_extension *table_extension =
+      cmark_find_syntax_extension("table");
+
+  FILE *file = fopen("test/section3.md", "rb");
+
+  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
+  cmark_parser_attach_syntax_extension(parser, table_extension);
+  while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+    cmark_parser_feed(parser, buffer, bytes);
+    if (bytes < sizeof(buffer)) {
+      break;
+    }
+  }
+  fclose(file);
+  cmark_node *document = cmark_parser_finish(parser);
+  rewrite_cmark_nodes(document);
+
   char *result = cmark_render_html_with_mem(
       document, options, cmark_parser_get_syntax_extensions(parser), mem);
   printf("HTML\n");
