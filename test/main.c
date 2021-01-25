@@ -1,279 +1,106 @@
-#include <cmark-gfm-core-extensions.h>
-#include <cmark-gfm-extension_api.h>
-#include <cmark-gfm.h>
-#include <string.h>
+#include "../src/render.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-enum parse_heading_bracketed_span_state {
-  HEADING_NONE,
-  HEADING_SPACE,
-  HEADING_L,
-  HEADING_ID
-};
-
-int heading_bracketed_span_id(const char * text, char * id) {
-  if (text == NULL)
-    return -1;
-  int id_pos = 0;
-  int bracket_found = 0;
-  int bracket_start = 0;
-
-  enum parse_heading_bracketed_span_state state = HEADING_NONE;
-
-  for (int i = 0; text[i] != '\0'; i++) {
-    if (state == HEADING_NONE && text[i] == ' ') {
-      state = HEADING_SPACE;
-      bracket_start = i;
-      continue;
-    }
-    if (state == HEADING_SPACE && text[i] == '{') {
-      state = HEADING_L;
-      continue;
-    }
-    if (state == HEADING_L && text[i] == '#') {
-      state = HEADING_ID;
-      continue;
-    }
-    if (state == HEADING_ID && text[i] != '}') {
-      id[id_pos] = text[i];
-      id_pos++;
-      continue;
-    } else if (state == HEADING_ID && text[i] == '}') {
-      id[id_pos] = '\0';
-      bracket_found = 1;
-      break;
-    }
-    id_pos = 0;
-    state = HEADING_NONE;
-    continue;
-  }
-
-  if (bracket_found == 1)
-    return bracket_start;
-  else
-    return -1;
-}
-
-enum parse_link_bracketed_span_state {
-  LINK_NONE,
-  LINK_TEXT,
-  LINK_R_SQUARE,
-  LINK_L,
-  LINK_ID };
-
-int link_bracketed_span_id(const char * text, char * span_text, char * id) {
-  if (text == NULL)
-    return -1;
-
-  printf("checking for: %s\n", text);
-
-  int text_pos = 0;
-  int id_pos = 0;
-  int bracket_found = 0;
-  int bracket_start = 0;
-  enum parse_link_bracketed_span_state state = LINK_NONE;
-
-  for (int i = 0; text[i] != '\0'; i++) {
-    if (state == LINK_NONE && text[i] == '[') {
-      state = LINK_TEXT;
-      bracket_start = i;
-      continue;
-    }
-    if (state == LINK_TEXT && text[i] != ']') {
-      span_text[text_pos] = text[i];
-      text_pos++;
-      continue;
-    }
-    if (state == LINK_TEXT && text[i] == ']') {
-      span_text[text_pos] = '\0';
-      state = LINK_R_SQUARE;
-      continue;
-    }
-    if (state == LINK_R_SQUARE && text[i] == '{') {
-      state = LINK_L;
-      continue;
-    }
-    if (state == LINK_L && text[i] == '#') {
-      state = LINK_ID;
-      continue;
-    }
-    if (state == LINK_ID && text[i] != '}') {
-      id[id_pos] = text[i];
-      id_pos++;
-      continue;
-    } else if (state == LINK_ID && text[i] == '}') {
-      id[id_pos] = '\0';
-      bracket_found = 1;
-      break;
-    }
-    text_pos = 0;
-    id_pos = 0;
-    state = LINK_NONE;
-    continue;
-  }
-
-  if (bracket_found == 1)
-    return bracket_start;
-  else
-    return -1;
-}
-
-void rewrite_cmark_nodes(cmark_node *document)
+int test_files_match(char *example_name, char *expected_file_path, char *got_file_path)
 {
-  cmark_iter *iter = cmark_iter_new(document);
+  char expected_line[4096];
+  char got_line[4096];
+  int ret_val = 0;
+  int first_col_diff = -1;
+  char expected;
+  char got;
 
-  cmark_event_type event;
-  cmark_node *node;
-  cmark_node *new_node;
-  cmark_node_type type;
-  cmark_node_type prev_node_type;
+  FILE *got_file = fopen(got_file_path, "r");
+  FILE *expected_file = fopen(expected_file_path, "r");
 
-  while (event = cmark_iter_next(iter)) {
-      switch (event) {
-      case CMARK_EVENT_ENTER:
-        node = cmark_iter_get_node(iter);
-        prev_node_type = type;
-        type = cmark_node_get_type(node);
-        if (prev_node_type == CMARK_NODE_HEADING && type == CMARK_NODE_TEXT) {
-
-          const char * lit = cmark_node_get_literal(node);
-          char * id = malloc(strlen(lit) + 1);
-          int pos = heading_bracketed_span_id(lit, id);
-          if (-1 == pos)
-            continue;
-          char *new_lit = malloc(strlen(lit) + 1);
-          int i;
-          for(i = 0; i < pos; i++) { new_lit[i] = lit[i]; }
-          new_lit[i] = '\0';
-          char * first_span = malloc(strlen(lit) + 1);
-          strcpy(first_span, "<span id='");
-          strcat(first_span, id);
-          strcat(first_span, "'>");
-          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-          cmark_node_set_literal(new_node, first_span);
-          cmark_node_insert_before(node, new_node);
-          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-          cmark_node_set_literal(new_node, "</span>");
-          cmark_node_insert_after(node, new_node);
-          new_node = cmark_node_new(CMARK_NODE_TEXT);
-          cmark_node_set_literal(new_node, new_lit);
-          cmark_node_insert_after(node, new_node);
-          cmark_node_replace(node, new_node);
-          cmark_node_free(node);
-        }
-
-        if (prev_node_type == CMARK_NODE_PARAGRAPH && type == CMARK_NODE_TEXT) {
-          const char * lit = cmark_node_get_literal(node);
-          char *id = malloc(strlen(lit) + 1);
-          char *span_text = malloc(strlen(lit) + 1);
-          int pos = link_bracketed_span_id(lit, span_text, id);
-          if (-1 == pos)
-            continue;
-          char *new_l_lit = malloc(strlen(lit) + 1);
-          int i;
-          for(i = 0; i < pos; i++) { new_l_lit[i] = lit[i]; }
-          new_l_lit[i] = '\0';
-          new_node = cmark_node_new(CMARK_NODE_TEXT);
-          cmark_node_set_literal(new_node, new_l_lit);
-          cmark_node_insert_before(node, new_node);
-
-          char *first_span = malloc(strlen(lit) + 1);
-          strcpy(first_span, "<span id='");
-          strcat(first_span, id);
-          strcat(first_span, "'>");
-          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-          cmark_node_set_literal(new_node, first_span);
-          cmark_node_insert_before(node, new_node);
-
-          new_node = cmark_node_new(CMARK_NODE_TEXT);
-          cmark_node_set_literal(new_node, span_text);
-          cmark_node_insert_before(node, new_node);
-
-          new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-          cmark_node_set_literal(new_node, "</span>");
-          cmark_node_insert_before(node, new_node);
-
-          char *new_r_lit = malloc(strlen(lit) + 1);
-          int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 2;
-          for(i = end_of_span; lit[i] != '\0'; i++) { new_r_lit[i-end_of_span] = lit[i]; }
-          new_r_lit[i-end_of_span] = '\0';
-          new_node = cmark_node_new(CMARK_NODE_TEXT);
-          cmark_node_set_literal(new_node, new_r_lit);
-          cmark_node_insert_before(node, new_node);
-
-          cmark_node_unlink(node);
-          cmark_node_free(node);
-        }
+  for (int line = 0; ; line++) {
+    for (int col = 0; ; col++) {
+      expected = fgetc(expected_file);
+      got = fgetc(got_file);
+      if (got == expected == '\n') {
+        expected_line[col] = '\0';
+        got_line[col] = '\0';
         break;
       }
-      if (CMARK_EVENT_DONE == event)
-        break;
-  }
-
-  cmark_iter_reset(iter, document, CMARK_EVENT_ENTER);
-
-  while (event = cmark_iter_next(iter)) {
-      switch (event) {
-      case CMARK_EVENT_NONE:
-        printf("NONE\n");
-        break;
-      case CMARK_EVENT_DONE:
-        printf("DONE\n");
-        break;
-      case CMARK_EVENT_ENTER:
-        node = cmark_iter_get_node(iter);
-        printf("ENTER %s \"%s\"\n", cmark_node_get_type_string(node), cmark_node_get_literal(node));
-        break;
-      case CMARK_EVENT_EXIT:
-        printf("EXIT %s\n", cmark_node_get_type_string(cmark_iter_get_node(iter)));
+      expected_line[col] = expected;
+      got_line[col] = got;
+      if (got == expected && got != EOF)
+        continue;
+      if (expected == EOF || got == EOF) {
+        expected_line[col] = '\0';
+        got_line[col] = '\0';
         break;
       }
-      if (CMARK_EVENT_DONE == event)
-        break;
+      if (first_col_diff == -1)
+        first_col_diff = col;
+    }
+
+    if (first_col_diff != -1) {
+      printf("%s: %s differed from %s at %d:%d\n    expected: %s\n         got: %s\n",
+             example_name, got_file_path, expected_file_path, line, first_col_diff, expected_line, got_line);
+      for (int i = 0; i < first_col_diff + 14; i++) printf(" ");
+      printf("^\n");
+      first_col_diff = -1;
+      ret_val = 1;
+    }
+
+    if (expected == EOF && got == EOF)
+      break;
+    if (expected == EOF)
+    {
+      printf("%s: %s is longer than expected %s\n", example_name, got_file_path, expected_file_path);
+      ret_val = 1;
+      break;
+    }
+    if (got == EOF)
+    {
+      printf("%s: %s is shorter than expected %s\n", example_name,  got_file_path, expected_file_path);
+      ret_val = 1;
+      break;
+    }
   }
 
-  cmark_iter_free(iter);
+  if (ret_val == 0) printf("%s passed\n", example_name);
+
+  return ret_val;
 }
 
+int test_render(char *example) {
+  char *example_dir = "test/example/";
+  char *input_filename = "input.md";
+  char *expected_filename = "expected.html";
+  char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 + strlen(input_filename) + 1);
+  char *expected_path = malloc(strlen(example_dir) + strlen(example) + 1 + strlen(expected_filename) + 1);
+
+  strcpy(input_path, example_dir);
+  strcat(input_path, example);
+  strcat(input_path, "/");
+  strcat(input_path, input_filename);
+
+  strcpy(expected_path, example_dir);
+  strcat(expected_path, example);
+  strcat(expected_path, "/");
+  strcat(expected_path, expected_filename);
+
+  char got_file_path[] = "/tmp/mmdocXXXXXX.html";
+  int ret = mkstemp(got_file_path);
+
+  FILE *got_file = fopen(got_file_path, "w");
+  mmdoc_render(input_path, got_file);
+  fclose(got_file);
+
+  return test_files_match(example, expected_path, got_file_path);
+}
 
 int main(int argc, char *argv[]) {
-  char buffer[4096];
-  size_t bytes;
+  uint num_failed = 0;
+  uint num_tests = 0;
+  num_failed += test_render("e001"); num_tests++;
+  num_failed += test_render("e002"); num_tests++;
 
-  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
-
-  cmark_gfm_core_extensions_ensure_registered();
-  cmark_mem *mem = cmark_get_default_mem_allocator();
-
-  cmark_syntax_extension *table_extension =
-      cmark_find_syntax_extension("table");
-
-  FILE *file = fopen("test/section3.md", "rb");
-
-  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
-  cmark_parser_attach_syntax_extension(parser, table_extension);
-  while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-    cmark_parser_feed(parser, buffer, bytes);
-    if (bytes < sizeof(buffer)) {
-      break;
-    }
-  }
-  fclose(file);
-  cmark_node *document = cmark_parser_finish(parser);
-  rewrite_cmark_nodes(document);
-
-  char *result = cmark_render_html_with_mem(
-      document, options, cmark_parser_get_syntax_extensions(parser), mem);
-  printf("HTML\n");
-  printf("%s", result);
-
-  result = cmark_render_man_with_mem(document, options, 120, mem);
-  printf("\nMAN\n");
-  printf("%s", result);
-
-  cmark_node_free(document);
-  cmark_parser_free(parser);
-
-  mem->free(result);
+  printf("%d of %d tests passed.", num_tests - num_failed, num_tests);
+  if (num_failed > 0) return 1;
   return 0;
 }
