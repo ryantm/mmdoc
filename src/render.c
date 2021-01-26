@@ -1,9 +1,9 @@
 #include <cmark-gfm-core-extensions.h>
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 enum parse_heading_bracketed_span_state {
   HEADING_NONE,
@@ -12,7 +12,7 @@ enum parse_heading_bracketed_span_state {
   HEADING_ID
 };
 
-int heading_bracketed_span_id(const char * text, char * id) {
+int heading_bracketed_span_id(const char *text, char *id) {
   if (text == NULL)
     return -1;
   int id_pos = 0;
@@ -60,9 +60,10 @@ enum parse_link_bracketed_span_state {
   LINK_TEXT,
   LINK_R_SQUARE,
   LINK_L,
-  LINK_ID };
+  LINK_ID
+};
 
-int link_bracketed_span_id(const char * text, char * span_text, char * id) {
+int link_bracketed_span_id(const char *text, char *span_text, char *id) {
   if (text == NULL)
     return -1;
 
@@ -118,8 +119,8 @@ int link_bracketed_span_id(const char * text, char * span_text, char * id) {
 }
 
 int replace_bracket_with_span(cmark_node *node) {
-  const char * lit = cmark_node_get_literal(node);
-  char * id = malloc(strlen(lit) + 1);
+  const char *lit = cmark_node_get_literal(node);
+  char *id = malloc(strlen(lit) + 1);
   int pos = heading_bracketed_span_id(lit, id);
   if (-1 == pos) {
     free(id);
@@ -127,9 +128,11 @@ int replace_bracket_with_span(cmark_node *node) {
   }
   char *new_lit = malloc(strlen(lit) + 1);
   int i;
-  for(i = 0; i < pos; i++) { new_lit[i] = lit[i]; }
+  for (i = 0; i < pos; i++) {
+    new_lit[i] = lit[i];
+  }
   new_lit[i] = '\0';
-  char * first_span = malloc(12 + strlen(lit) + 1);
+  char *first_span = malloc(12 + strlen(lit) + 1);
   strcpy(first_span, "<span id='");
   strcat(first_span, id);
   strcat(first_span, "'>");
@@ -151,7 +154,7 @@ int replace_bracket_with_span(cmark_node *node) {
 }
 
 int replace_link_bracket_with_span(cmark_node *node) {
-  const char * lit = cmark_node_get_literal(node);
+  const char *lit = cmark_node_get_literal(node);
   char *id = malloc(strlen(lit) + 1);
   char *span_text = malloc(strlen(lit) + 1);
   int pos = link_bracketed_span_id(lit, span_text, id);
@@ -161,7 +164,9 @@ int replace_link_bracket_with_span(cmark_node *node) {
   }
   char *new_l_lit = malloc(strlen(lit) + 1);
   int i;
-  for(i = 0; i < pos; i++) { new_l_lit[i] = lit[i]; }
+  for (i = 0; i < pos; i++) {
+    new_l_lit[i] = lit[i];
+  }
   new_l_lit[i] = '\0';
   cmark_node *new_node = cmark_node_new(CMARK_NODE_TEXT);
   cmark_node_set_literal(new_node, new_l_lit);
@@ -185,8 +190,10 @@ int replace_link_bracket_with_span(cmark_node *node) {
 
   char *new_r_lit = malloc(strlen(lit) + 1);
   int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 2;
-  for(i = end_of_span; lit[i] != '\0'; i++) { new_r_lit[i-end_of_span] = lit[i]; }
-  new_r_lit[i-end_of_span] = '\0';
+  for (i = end_of_span; lit[i] != '\0'; i++) {
+    new_r_lit[i - end_of_span] = lit[i];
+  }
+  new_r_lit[i - end_of_span] = '\0';
   new_node = cmark_node_new(CMARK_NODE_TEXT);
   cmark_node_set_literal(new_node, new_r_lit);
   cmark_node_insert_before(node, new_node);
@@ -201,8 +208,7 @@ int replace_link_bracket_with_span(cmark_node *node) {
   return 1;
 }
 
-void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem)
-{
+void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem) {
   cmark_iter *iter = cmark_iter_new(document);
 
   cmark_event_type event;
@@ -210,19 +216,19 @@ void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem)
   cmark_node_type type;
 
   while (event = cmark_iter_next(iter)) {
-      switch (event) {
-      case CMARK_EVENT_ENTER:
-        node = cmark_iter_get_node(iter);
-        type = cmark_node_get_type(node);
-        if (type != CMARK_NODE_TEXT)
-          continue;
-        if (replace_link_bracket_with_span(node))
-          continue;
-        if (replace_bracket_with_span(node))
-          continue;
-      }
-      if (CMARK_EVENT_DONE == event)
-        break;
+    switch (event) {
+    case CMARK_EVENT_ENTER:
+      node = cmark_iter_get_node(iter);
+      type = cmark_node_get_type(node);
+      if (type != CMARK_NODE_TEXT)
+        continue;
+      if (replace_link_bracket_with_span(node))
+        continue;
+      if (replace_bracket_with_span(node))
+        continue;
+    }
+    if (CMARK_EVENT_DONE == event)
+      break;
   }
   cmark_iter_free(iter);
 }

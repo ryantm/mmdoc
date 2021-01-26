@@ -4,9 +4,9 @@
 #include "asset/mono-blue.css.h"
 #include "asset/search.js.h"
 #include "render.h"
-#include <jq.h>
 #include <dirent.h>
 #include <errno.h>
+#include <jq.h>
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
@@ -213,7 +213,6 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
   }
   fclose(file);
 }
-
 
 int main(int argc, char *argv[]) {
   int command_options = MMDOC_COMMAND_OPTION_DEFAULT;

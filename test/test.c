@@ -1,10 +1,10 @@
 #include "../src/render.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-int test_files_match(char *example_name, char *expected_file_path, char *got_file_path)
-{
+int test_files_match(char *example_name, char *expected_file_path,
+                     char *got_file_path) {
   char expected_line[4096];
   char got_line[4096];
   int ret_val = 0;
@@ -15,8 +15,8 @@ int test_files_match(char *example_name, char *expected_file_path, char *got_fil
   FILE *got_file = fopen(got_file_path, "r");
   FILE *expected_file = fopen(expected_file_path, "r");
 
-  for (int line = 0; ; line++) {
-    for (int col = 0; ; col++) {
+  for (int line = 0;; line++) {
+    for (int col = 0;; col++) {
       expected = fgetc(expected_file);
       got = fgetc(got_file);
       if (got == expected == '\n') {
@@ -38,9 +38,12 @@ int test_files_match(char *example_name, char *expected_file_path, char *got_fil
     }
 
     if (first_col_diff != -1) {
-      printf("%s: %s differed from %s at %d:%d\n    expected: %s\n         got: %s\n",
-             example_name, got_file_path, expected_file_path, line, first_col_diff, expected_line, got_line);
-      for (int i = 0; i < first_col_diff + 14; i++) printf(" ");
+      printf("%s: %s differed from %s at %d:%d\n    expected: %s\n         "
+             "got: %s\n",
+             example_name, got_file_path, expected_file_path, line,
+             first_col_diff, expected_line, got_line);
+      for (int i = 0; i < first_col_diff + 14; i++)
+        printf(" ");
       printf("^\n");
       first_col_diff = -1;
       ret_val = 1;
@@ -48,21 +51,22 @@ int test_files_match(char *example_name, char *expected_file_path, char *got_fil
 
     if (expected == EOF && got == EOF)
       break;
-    if (expected == EOF)
-    {
-      printf("%s: %s is longer than expected %s\n", example_name, got_file_path, expected_file_path);
+    if (expected == EOF) {
+      printf("%s: %s is longer than expected %s\n", example_name, got_file_path,
+             expected_file_path);
       ret_val = 1;
       break;
     }
-    if (got == EOF)
-    {
-      printf("%s: %s is shorter than expected %s\n", example_name,  got_file_path, expected_file_path);
+    if (got == EOF) {
+      printf("%s: %s is shorter than expected %s\n", example_name,
+             got_file_path, expected_file_path);
       ret_val = 1;
       break;
     }
   }
 
-  if (ret_val == 0) printf("%s passed\n", example_name);
+  if (ret_val == 0)
+    printf("%s passed\n", example_name);
 
   return ret_val;
 }
@@ -71,8 +75,10 @@ int test_render(char *example) {
   char *example_dir = "test/example/";
   char *input_filename = "input.md";
   char *expected_filename = "expected.html";
-  char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 + strlen(input_filename) + 1);
-  char *expected_path = malloc(strlen(example_dir) + strlen(example) + 1 + strlen(expected_filename) + 1);
+  char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 +
+                            strlen(input_filename) + 1);
+  char *expected_path = malloc(strlen(example_dir) + strlen(example) + 1 +
+                               strlen(expected_filename) + 1);
 
   strcpy(input_path, example_dir);
   strcat(input_path, example);
@@ -97,10 +103,13 @@ int test_render(char *example) {
 int main(int argc, char *argv[]) {
   uint num_failed = 0;
   uint num_tests = 0;
-  num_failed += test_render("e001"); num_tests++;
-  num_failed += test_render("e002"); num_tests++;
+  num_failed += test_render("e001");
+  num_tests++;
+  num_failed += test_render("e002");
+  num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);
-  if (num_failed > 0) return 1;
+  if (num_failed > 0)
+    return 1;
   return 0;
 }
