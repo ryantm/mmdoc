@@ -25,14 +25,15 @@ extern int errno;
 void print_usage() {
   printf("mmdoc version %s - minimal markdown documentation\n", MMDOC_VERSION);
   printf("\n");
-  printf("mmdoc -w SRC OUT\n");
-  printf("mmdoc -s SRC OUT\n");
+  printf("mmdoc SRC OUT\n");
+  /* printf("mmdoc -w SRC OUT\n"); */
+  /* printf("mmdoc -s SRC OUT\n"); */
   printf("\n");
   printf("options:\n");
   printf("-h, --help                show help\n");
-  printf("-v, --verbose             verbose output\n");
-  printf("-w, --website             output multipage website\n");
-  printf("-s, --single              output single page website\n");
+  /* printf("-v, --verbose             verbose output\n"); */
+  /* printf("-w, --website             output multipage website\n"); */
+  /* printf("-s, --single              output single page website\n"); */
   printf("\n");
   printf("SRC a directory containing Markdown files; a file called toc.md at "
          "the top level\n");
