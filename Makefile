@@ -11,7 +11,7 @@ src/asset/%.h: src/asset/%
 	xxd -i $< $@
 
 format:
-	$(CLANG_FORMAT) -i src/*.c test/*.c
+	$(CLANG_FORMAT) -i src/*.c src/*.h test/*.c
 
 install: mmdoc
 	install -D mmdoc "$(out)/bin/mmdoc"
