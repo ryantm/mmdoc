@@ -1,2 +1,4 @@
 /src/asset.*.h
 /mmdoc
+/out
+*.out

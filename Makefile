@@ -4,8 +4,8 @@ mmdoc: src/*.c src/asset/fuse.basic.min.js.h src/asset/highlight.pack.js.h src/a
 	gcc -g -O1 -lcmark-gfm -lcmark-gfm-extensions -ljq src/*.c -o mmdoc
 
 test: test/*.* src/*.*
-	gcc -g -O1 -lcmark-gfm -lcmark-gfm-extensions -ljq test/*.c src/render.c -o test.o
-	./test.o
+	gcc -g -O1 -lcmark-gfm -lcmark-gfm-extensions -ljq test/*.c src/render.c -o test.out
+	./test.out
 
 src/asset/%.h: src/asset/%
 	xxd -i $< $@
