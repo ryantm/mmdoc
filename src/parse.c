@@ -128,7 +128,7 @@ int parse_admonition_start(const char *text, char *admonition_type) {
   enum parse_admonition_start_state state = ADMONITION_START_NONE;
 
   for (int i = 0; text[i] != '\0'; i++) {
-    if (state == ADMONITION_START_NONE && (text[i] != ':' || text[i] != ' ')) return -1;
+    if (state == ADMONITION_START_NONE && (text[i] != ':' && text[i] != ' ')) return -1;
     if (state == ADMONITION_START_NONE && text[i] == ' ') continue;
 
     if (state == ADMONITION_START_NONE && text[i] == ':') {
@@ -147,9 +147,8 @@ int parse_admonition_start(const char *text, char *admonition_type) {
       state = ADMONITION_START_TYPE;
       continue;
     }
-    if (state == ADMONITION_START_TYPE && (text[i] == '\n' || text[i] == ' ')) {
-      admonition_type[type_pos] = '\0';
-      return 0;
+    if (state == ADMONITION_START_TYPE && text[i] == ' ') {
+      break;
     }
     if (state == ADMONITION_START_TYPE) {
       admonition_type[type_pos] = text[i];;
@@ -158,6 +157,11 @@ int parse_admonition_start(const char *text, char *admonition_type) {
     }
     return -1;
   }
+  if (state == ADMONITION_START_TYPE) {
+    admonition_type[type_pos] = '\0';
+    return 0;
+  }
+  return -1;
 }
 
 enum parse_admonition_end_state {
@@ -173,7 +177,7 @@ int parse_admonition_end(const char *text) {
   enum parse_admonition_end_state state = ADMONITION_END_NONE;
 
   for (int i = 0; text[i] != '\0'; i++) {
-    if (state == ADMONITION_END_NONE && (text[i] != ':' || text[i] != ' ')) return -1;
+    if (state == ADMONITION_END_NONE && (text[i] != ':' && text[i] != ' ')) return -1;
     if (state == ADMONITION_END_NONE && text[i] == ' ') continue;
 
     if (state == ADMONITION_END_NONE && text[i] == ':') {
