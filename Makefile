@@ -3,7 +3,8 @@ CLANG_FORMAT=clang-format
 mmdoc: src/*.c src/asset/fuse.basic.min.js.h src/asset/highlight.pack.js.h src/asset/minimal.css.h src/asset/mono-blue.css.h  src/asset/search.js.h
 	gcc -g -O1 -lcmark-gfm -lcmark-gfm-extensions -ljq src/*.c -o mmdoc
 
-test: test/*.* src/*.*
+.PHONY: test
+test:
 	gcc -g -O1 -lcmark-gfm -lcmark-gfm-extensions -ljq test/*.c src/render.c -o test.out
 	./test.out
 
