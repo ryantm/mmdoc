@@ -112,3 +112,82 @@ int parse_link_bracketed_span_id(const char *text, char *span_text, char *id) {
   else
     return -1;
 }
+
+enum parse_admonition_start_state {
+  ADMONITION_START_NONE,
+  ADMONITION_START_ONE,
+  ADMONITION_START_TWO,
+  ADMONITION_START_THREE,
+  ADMONITION_START_TYPE,
+};
+
+int parse_admonition_start(const char *text, char *admonition_type) {
+  if (text == NULL)
+    return -1;
+  int type_pos = 0;
+  enum parse_admonition_start_state state = ADMONITION_START_NONE;
+
+  for (int i = 0; text[i] != '\0'; i++) {
+    if (state == ADMONITION_START_NONE && (text[i] != ':' || text[i] != ' ')) return -1;
+    if (state == ADMONITION_START_NONE && text[i] == ' ') continue;
+
+    if (state == ADMONITION_START_NONE && text[i] == ':') {
+      state = ADMONITION_START_ONE;
+      continue;
+    }
+    if (state == ADMONITION_START_ONE && text[i] == ':') {
+      state = ADMONITION_START_TWO;
+      continue;
+    }
+    if (state == ADMONITION_START_TWO && text[i] == ':') {
+      state = ADMONITION_START_THREE;
+      continue;
+    }
+    if (state == ADMONITION_START_THREE && text[i] == ' ') {
+      state = ADMONITION_START_TYPE;
+      continue;
+    }
+    if (state == ADMONITION_START_TYPE && (text[i] == '\n' || text[i] == ' ')) {
+      admonition_type[type_pos] = '\0';
+      return 0;
+    }
+    if (state == ADMONITION_START_TYPE) {
+      admonition_type[type_pos] = text[i];;
+      type_pos++;
+      continue;
+    }
+    return -1;
+  }
+}
+
+enum parse_admonition_end_state {
+  ADMONITION_END_NONE,
+  ADMONITION_END_ONE,
+  ADMONITION_END_TWO,
+  ADMONITION_END_THREE
+};
+
+int parse_admonition_end(const char *text) {
+  if (text == NULL)
+    return -1;
+  enum parse_admonition_end_state state = ADMONITION_END_NONE;
+
+  for (int i = 0; text[i] != '\0'; i++) {
+    if (state == ADMONITION_END_NONE && (text[i] != ':' || text[i] != ' ')) return -1;
+    if (state == ADMONITION_END_NONE && text[i] == ' ') continue;
+
+    if (state == ADMONITION_END_NONE && text[i] == ':') {
+      state = ADMONITION_END_ONE;
+      continue;
+    }
+    if (state == ADMONITION_END_ONE && text[i] == ':') {
+      state = ADMONITION_END_TWO;
+      continue;
+    }
+    if (state == ADMONITION_END_TWO && text[i] == ':') {
+      state = ADMONITION_END_THREE;
+      return 0;
+    }
+    return -1;
+  }
+}
