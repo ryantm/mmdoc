@@ -195,3 +195,33 @@ int parse_admonition_end(const char *text) {
     return -1;
   }
 }
+
+enum parse_dd_state {
+  DD_NONE,
+  DD_COLON,
+  DD_SPACE,
+};
+
+int parse_dd(const char *text) {
+  if (text == NULL)
+    return -1;
+  enum parse_dd_state state = DD_NONE;
+
+  for (int i = 0; text[i] != '\0'; i++) {
+    if (state == DD_NONE && (text[i] != ':' && text[i] != ' ')) return -1;
+    if (state == DD_NONE && text[i] == ' ') continue;
+    if (state == DD_NONE && text[i] == ':') {
+      state = DD_COLON;
+      continue;
+    }
+    if (state == DD_COLON && text[i] == ' ') {
+      state = DD_SPACE;
+      continue;
+    }
+    if (state == DD_SPACE && text[i] != ' ') {
+      return i;
+    }
+    return -1;
+  }
+  return -1;
+}

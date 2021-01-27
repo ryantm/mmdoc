@@ -155,6 +155,76 @@ int replace_admonition_end(cmark_node *node) {
   return 1;
 }
 
+int replace_dd(cmark_node *node) {
+  const char *lit = cmark_node_get_literal(node);
+  int pos = parse_dd(lit);
+  if (-1 == pos) return 0;
+
+  cmark_node *new_node = NULL;
+
+  cmark_node *parent = cmark_node_parent(node);
+  cmark_node *previous = cmark_node_previous(parent);
+  cmark_node *previous_previous = cmark_node_previous(previous);
+  if (previous_previous == NULL) {
+    new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+    cmark_node_set_literal(new_node, "<dl>");
+    cmark_node_insert_before(previous, new_node);
+  } else {
+    const char *prev_prev_lit = cmark_node_get_literal(previous_previous);
+    cmark_node_type prev_prev_type = cmark_node_get_type(previous_previous);
+
+    if (prev_prev_type != CMARK_NODE_HTML_BLOCK && strcmp(prev_prev_lit, "</dd>") != 0) {
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "<dl>");
+      cmark_node_insert_before(previous, new_node);
+    }
+  }
+
+  int make_dl_end = 0;
+  cmark_node *next = parent;
+  for (int i = 0; i < 2; i++) {
+    next = cmark_node_next(next);
+    if (next == NULL) {
+      make_dl_end = 1;
+      break;
+    }
+  }
+  if (make_dl_end == 0 && next != NULL) {
+    cmark_node *child = cmark_node_first_child(next);
+    const char *next_dd_lit = cmark_node_get_literal(child);
+    int pos = parse_dd(next_dd_lit);
+    if (-1 == pos) make_dl_end = 1;
+  }
+
+  if (make_dl_end == 1) {
+    new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+    cmark_node_set_literal(new_node, "</dl>");
+    cmark_node_insert_after(parent, new_node);
+  }
+
+  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(new_node, "<dt>");
+  cmark_node_insert_before(previous, new_node);
+
+  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(new_node, "</dt>");
+  cmark_node_insert_after(previous, new_node);
+
+  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(new_node, "<dd>");
+  cmark_node_insert_before(parent, new_node);
+
+  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(new_node, "</dd>");
+  cmark_node_insert_after(parent, new_node);
+
+  cmark_node_set_literal(node, lit+pos);
+
+  
+
+  return 1;
+}
+
 void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem) {
   cmark_iter *iter = cmark_iter_new(document);
 
@@ -177,6 +247,8 @@ void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem) {
         continue;
       if (replace_admonition_end(node))
         continue;
+      if (replace_dd(node))
+        continue;
     }
     if (CMARK_EVENT_DONE == event)
       break;
@@ -189,19 +261,41 @@ void render_debug_cmark_node(cmark_node *document) {
 
   cmark_event_type event;
   cmark_node *node;
+  int indent = 0;
   while (event = cmark_iter_next(iter)) {
     switch (event) {
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
-      printf("ENTER: %s\n", cmark_node_get_type_string(node));
+      for (int i = 0; i < indent; i++) {
+        printf("  ");
+      }
+      printf("ENTER: %s LITERAL: %s\n", cmark_node_get_type_string(node), cmark_node_get_literal(node));
+
+      switch (cmark_node_get_type(node)) {
+      case CMARK_NODE_HTML_BLOCK:
+      case CMARK_NODE_THEMATIC_BREAK:
+      case CMARK_NODE_CODE_BLOCK:
+      case CMARK_NODE_TEXT:
+      case CMARK_NODE_SOFTBREAK:
+      case CMARK_NODE_LINEBREAK:
+      case CMARK_NODE_CODE:
+      case CMARK_NODE_HTML_INLINE:
+        break;
+      default:
+        indent++;
+      }
       break;
     case CMARK_EVENT_EXIT:
+      indent--;
       node = cmark_iter_get_node(iter);
+      for (int i = 0; i < indent; i++) {
+        printf("  ");
+      }
       printf("EXIT: %s\n", cmark_node_get_type_string(node));
       break;
     }
     if (event == CMARK_EVENT_DONE) {
-      printf("DONE\n");
+      printf("DONE\n\n");
       break;
     }
   }
