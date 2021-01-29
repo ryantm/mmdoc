@@ -103,7 +103,6 @@ int replace_link_bracket_with_span(cmark_node *node) {
   return 1;
 }
 
-
 int replace_admonition_start(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
   char *admonition_type = malloc(strlen(lit) + 1);
@@ -129,16 +128,36 @@ int replace_admonition_start(cmark_node *node) {
 
   cmark_node *parent = cmark_node_parent(node);
   cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  if (strcmp(admonition_type, "attention") == 0) cmark_node_set_literal(new_node, "<div class='attention'><h3 class='title'>Attention</h3>");
-  if (strcmp(admonition_type, "caution") == 0) cmark_node_set_literal(new_node, "<div class='caution'><h3 class='title'>Caution</h3>");
-  if (strcmp(admonition_type, "danger") == 0) cmark_node_set_literal(new_node, "<div class='danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "error") == 0) cmark_node_set_literal(new_node, "<div class='error'><h3 class='title'>Error</h3>");
-  if (strcmp(admonition_type, "hint") == 0) cmark_node_set_literal(new_node, "<div class='hint'><h3 class='title'>Hint</h3>");
-  if (strcmp(admonition_type, "important") == 0) cmark_node_set_literal(new_node, "<div class='important'><h3 class='title'>Important</h3>");
-  if (strcmp(admonition_type, "danger") == 0) cmark_node_set_literal(new_node, "<div class='danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "note") == 0) cmark_node_set_literal(new_node, "<div class='note'><h3 class='title'>Note</h3>");
-  if (strcmp(admonition_type, "tip") == 0) cmark_node_set_literal(new_node, "<div class='tip'><h3 class='title'>Tip</h3>");
-  if (strcmp(admonition_type, "warning") == 0) cmark_node_set_literal(new_node, "<div class='warning'><h3 class='title'>Warning</h3>");
+  if (strcmp(admonition_type, "attention") == 0)
+    cmark_node_set_literal(
+        new_node, "<div class='attention'><h3 class='title'>Attention</h3>");
+  if (strcmp(admonition_type, "caution") == 0)
+    cmark_node_set_literal(
+        new_node, "<div class='caution'><h3 class='title'>Caution</h3>");
+  if (strcmp(admonition_type, "danger") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='danger'><h3 class='title'>Danger</h3>");
+  if (strcmp(admonition_type, "error") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='error'><h3 class='title'>Error</h3>");
+  if (strcmp(admonition_type, "hint") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='hint'><h3 class='title'>Hint</h3>");
+  if (strcmp(admonition_type, "important") == 0)
+    cmark_node_set_literal(
+        new_node, "<div class='important'><h3 class='title'>Important</h3>");
+  if (strcmp(admonition_type, "danger") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='danger'><h3 class='title'>Danger</h3>");
+  if (strcmp(admonition_type, "note") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='note'><h3 class='title'>Note</h3>");
+  if (strcmp(admonition_type, "tip") == 0)
+    cmark_node_set_literal(new_node,
+                           "<div class='tip'><h3 class='title'>Tip</h3>");
+  if (strcmp(admonition_type, "warning") == 0)
+    cmark_node_set_literal(
+        new_node, "<div class='warning'><h3 class='title'>Warning</h3>");
   cmark_node_insert_before(parent, new_node);
 
   free(admonition_type);
@@ -150,7 +169,8 @@ int replace_admonition_start(cmark_node *node) {
 int replace_admonition_end(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
   int pos = parse_admonition_end(lit);
-  if (-1 == pos) return 0;
+  if (-1 == pos)
+    return 0;
 
   cmark_node *parent = cmark_node_parent(node);
   cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
@@ -164,7 +184,8 @@ int replace_admonition_end(cmark_node *node) {
 int replace_dd(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
   int pos = parse_dd(lit);
-  if (-1 == pos) return 0;
+  if (-1 == pos)
+    return 0;
 
   cmark_node *new_node = NULL;
 
@@ -179,7 +200,8 @@ int replace_dd(cmark_node *node) {
     const char *prev_prev_lit = cmark_node_get_literal(previous_previous);
     cmark_node_type prev_prev_type = cmark_node_get_type(previous_previous);
 
-    if (prev_prev_type != CMARK_NODE_HTML_BLOCK && (prev_prev_lit == NULL || strcmp(prev_prev_lit, "</dd>") != 0)) {
+    if (prev_prev_type != CMARK_NODE_HTML_BLOCK &&
+        (prev_prev_lit == NULL || strcmp(prev_prev_lit, "</dd>") != 0)) {
       new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
       cmark_node_set_literal(new_node, "<dl>");
       cmark_node_insert_before(previous, new_node);
@@ -199,7 +221,8 @@ int replace_dd(cmark_node *node) {
     cmark_node *child = cmark_node_first_child(next);
     const char *next_dd_lit = cmark_node_get_literal(child);
     int pos = parse_dd(next_dd_lit);
-    if (-1 == pos) make_dl_end = 1;
+    if (-1 == pos)
+      make_dl_end = 1;
   }
 
   if (make_dl_end == 1) {
@@ -224,7 +247,7 @@ int replace_dd(cmark_node *node) {
   cmark_node_set_literal(new_node, "</dd>");
   cmark_node_insert_after(parent, new_node);
 
-  cmark_node_set_literal(node, lit+pos);
+  cmark_node_set_literal(node, lit + pos);
 
   return 1;
 }
@@ -273,7 +296,8 @@ void render_debug_cmark_node(cmark_node *document) {
       for (int i = 0; i < indent; i++) {
         printf("  ");
       }
-      printf("ENTER: %s LITERAL: %s\n", cmark_node_get_type_string(node), cmark_node_get_literal(node));
+      printf("ENTER: %s LITERAL: %s\n", cmark_node_get_type_string(node),
+             cmark_node_get_literal(node));
 
       switch (cmark_node_get_type(node)) {
       case CMARK_NODE_HTML_BLOCK:
@@ -347,7 +371,120 @@ void mmdoc_render_part(char *file_path, FILE *output_file) {
   mem->free(result);
 }
 
-int mmdoc_render_single(char *out, char *toc_path, Array toc_refs, AnchorLocationArray anchor_locations) {
+int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
+                        AnchorLocationArray anchor_locations) {
+  char asset_path[2048];
+  FILE *asset_file;
+  strcpy(asset_path, out);
+  strcat(asset_path, "/highlight.pack.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_highlight_pack_js_len; i++) {
+    fputc(src_asset_highlight_pack_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/minimal.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_minimal_css_len; i++) {
+    fputc(src_asset_minimal_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/mono-blue.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_mono_blue_css_len; i++) {
+    fputc(src_asset_mono_blue_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  char index_path[2048];
+  FILE *index_file;
+  strcpy(index_path, out);
+  strcat(index_path, "/index.html");
+  index_file = fopen(index_path, "w");
+
+  char *html_head =
+      "<!doctype html>\n"
+      "<html>\n"
+      "  <head>\n"
+      "    <base href='/'>\n"
+      "    <meta charset='utf-8'>\n"
+      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
+      "    <link rel='stylesheet' href='mono-blue.css'>\n"
+      "    <script src='highlight.pack.js'></script>\n"
+      "    <script>hljs.initHighlightingOnLoad();</script>\n"
+      "  </head>\n"
+      "  <body>\n"
+      "    <nav>\n";
+  fputs(html_head, index_file);
+  mmdoc_render_part(toc_path, index_file);
+  fputs("    </nav>\n", index_file);
+  fputs("    <section>\n", index_file);
+
+  for (int i = 0; i < toc_refs.used; i++) {
+    char *file_path;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        file_path = anchor_locations.array[j].file_path;
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
+             "in any .md file.",
+             toc_refs.array[i]);
+      return 1;
+    }
+    mmdoc_render_part(file_path, index_file);
+  }
+  char *html_foot = "    </section>\n"
+                    "  </body>\n"
+                    "</html>\n";
+  fputs(html_foot, index_file);
+  fclose(index_file);
+  return 0;
+}
+
+int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path)
+{
+  FILE *page_file;
+  page_file = fopen(page_path, "w");
+  char *html_head =
+      "<!doctype html>\n"
+      "<html>\n"
+      "  <head>\n"
+      "    <base href='/'>\n"
+      "    <meta charset='utf-8'>\n"
+      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
+      "    <link rel='stylesheet' href='mono-blue.css'>\n"
+      "    <script src='highlight.pack.js'></script>\n"
+      "    <script>hljs.initHighlightingOnLoad();</script>\n"
+      "    <script src='fuse.basic.min.js'></script>\n"
+      "    <script src='search_index.js'></script>\n"
+      "    <script src='search.js'></script>\n"
+      "  </head>\n"
+      "  <body>\n"
+      "    <nav>\n"
+      "      <input type='search' id='search' placeholder='Search'>\n"
+      "      <div id='search-results'></div>\n";
+  fputs(html_head, page_file);
+  mmdoc_render_part(toc_path, page_file);
+  fputs("    </nav>\n", page_file);
+  fputs("    <section>\n", page_file);
+  mmdoc_render_part(input_path, page_file);
+  char *html_foot = "    </section>\n"
+                    "  </body>\n"
+                    "</html>\n";
+  fputs(html_foot, page_file);
+  fclose(page_file);
+}
+
+int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
+                       AnchorLocationArray anchor_locations) {
   char asset_path[2048];
   FILE *asset_file;
   strcpy(asset_path, out);
@@ -391,27 +528,8 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs, AnchorLocatio
   fclose(asset_file);
 
   char index_path[2048];
-  FILE *index_file;
   strcpy(index_path, out);
   strcat(index_path, "/index.html");
-  index_file = fopen(index_path, "w");
-
-  char *html_head =
-      "<!doctype html>"
-      "<html>"
-      "  <head>"
-      "    <base href='/'>"
-      "    <meta charset='utf-8'>"
-      "    <link href='minimal.css' rel='stylesheet' type='text/css'>"
-      "    <link rel='stylesheet' href='mono-blue.css'>"
-      "    <script src='highlight.pack.js'></script>"
-      "    <script>hljs.initHighlightingOnLoad();</script>"
-      "  </head>"
-      "  <body>"
-      "    <nav>";
-  fputs(html_head, index_file);
-  mmdoc_render_part(toc_path, index_file);
-  fputs("</nav><section>", index_file);
 
   for (int i = 0; i < toc_refs.used; i++) {
     char *file_path;
@@ -429,9 +547,24 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs, AnchorLocatio
              toc_refs.array[i]);
       return 1;
     }
-    mmdoc_render_part(file_path, index_file);
+    char *page_path = malloc(strlen(out) + strlen(file_path));
+    char *src_file_path_end = file_path + strlen(src);
+    strcpy(page_path, out);
+    strcat(page_path, src_file_path_end);
+    char *lastExt = strrchr(page_path, '.');
+    while(lastExt != NULL){
+      *lastExt = '\0';
+      lastExt = strrchr(page_path, '.');
+    }
+    strcat(page_path, ".html");
+
+    /* printf("%s\n", src); */
+    /* printf("%s\n", out); */
+    /* printf("%s\n", file_path); */
+    /* printf("page_path: %s\n", page_path); */
+    mmdoc_render_multi_page(index_path, toc_path, file_path);
+    free(page_path);
   }
-  fputs("</section></body></html>", index_file);
-  fclose(index_file);
+
   return 0;
 }

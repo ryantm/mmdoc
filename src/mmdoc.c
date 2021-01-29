@@ -1,5 +1,5 @@
-#include "types.h"
 #include "render.h"
+#include "types.h"
 #include <dirent.h>
 #include <errno.h>
 #include <jq.h>
@@ -268,9 +268,41 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int ret_val = mmdoc_render_single(out, toc_path, toc_refs, anchor_locations);
+  char *single = "single";
+  char *out_single = malloc(strlen(out) + 1 + strlen(single) + 1);
+  strcpy(out_single, out);
+  strcat(out_single, "/");
+  strcat(out_single, single);
+
+  if (0 != mkdir(out_single, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
+                                 S_IXGRP | S_IROTH | S_IXOTH)) {
+
+    printf("Couldn't create directory \"%s\": errno %d\n", out_single, errno);
+    return 1;
+  }
+
+  if (mmdoc_render_single(out_single, toc_path, toc_refs, anchor_locations) !=
+      0)
+    return 1;
+
+  char *multi = "multi";
+  char *out_multi = malloc(strlen(out) + 1 + strlen(multi) + 1);
+  strcpy(out_multi, out);
+  strcat(out_multi, "/");
+  strcat(out_multi, multi);
+
+  if (0 != mkdir(out_multi, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
+                                S_IXGRP | S_IROTH | S_IXOTH)) {
+
+    printf("Couldn't create directory \"%s\": errno %d\n", out_multi, errno);
+    return 1;
+  }
+
+  if (mmdoc_render_multi(out_multi, src, toc_path, toc_refs, anchor_locations) != 0)
+    return 1;
 
   free_array(&md_files);
+  free_array(&toc_refs);
   free_anchor_location_array(&anchor_locations);
-  return ret_val;
+  return 0;
 }
