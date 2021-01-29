@@ -173,7 +173,7 @@ int replace_dd(cmark_node *node) {
     const char *prev_prev_lit = cmark_node_get_literal(previous_previous);
     cmark_node_type prev_prev_type = cmark_node_get_type(previous_previous);
 
-    if (prev_prev_type != CMARK_NODE_HTML_BLOCK && strcmp(prev_prev_lit, "</dd>") != 0) {
+    if (prev_prev_type != CMARK_NODE_HTML_BLOCK && (prev_prev_lit == NULL || strcmp(prev_prev_lit, "</dd>") != 0)) {
       new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
       cmark_node_set_literal(new_node, "<dl>");
       cmark_node_insert_before(previous, new_node);
