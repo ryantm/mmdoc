@@ -1,8 +1,4 @@
-#include "asset/fuse.basic.min.js.h"
-#include "asset/highlight.pack.js.h"
-#include "asset/minimal.css.h"
-#include "asset/mono-blue.css.h"
-#include "asset/search.js.h"
+#include "types.h"
 #include "render.h"
 #include <dirent.h>
 #include <errno.h>
@@ -41,12 +37,6 @@ void print_usage() {
   printf("\n");
   printf("OUT a directory where the website is written to\n");
 }
-
-typedef struct {
-  char **array;
-  size_t used;
-  size_t size;
-} Array;
 
 void init_array(Array *a, size_t initialSize) {
   a->array = malloc(initialSize * sizeof *a->array);
@@ -143,17 +133,6 @@ void mmdoc_refs(Array *md_refs, char *path) {
   }
   fclose(file);
 }
-
-typedef struct {
-  char *file_path;
-  char *anchor;
-} AnchorLocation;
-
-typedef struct {
-  AnchorLocation *array;
-  size_t used;
-  size_t size;
-} AnchorLocationArray;
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
   a->array = malloc(initialSize * sizeof(a->array));
@@ -289,92 +268,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  char asset_path[2048];
-  FILE *asset_file;
-  strcpy(asset_path, out);
-  strcat(asset_path, "/search.js");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_search_js_len; i++) {
-    fputc(src_asset_search_js[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/fuse.basic.min.js");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_fuse_basic_min_js_len; i++) {
-    fputc(src_asset_fuse_basic_min_js[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/highlight.pack.js");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_highlight_pack_js_len; i++) {
-    fputc(src_asset_highlight_pack_js[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/minimal.css");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_minimal_css_len; i++) {
-    fputc(src_asset_minimal_css[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/mono-blue.css");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_mono_blue_css_len; i++) {
-    fputc(src_asset_mono_blue_css[i], asset_file);
-  }
-  fclose(asset_file);
-
-  char index_path[2048];
-  FILE *index_file;
-  strcpy(index_path, out);
-  strcat(index_path, "/index.html");
-  index_file = fopen(index_path, "w");
-
-  char *html_head =
-      "<!doctype html>"
-      "<html>"
-      "  <head>"
-      "    <base href='/'>"
-      "    <meta charset='utf-8'>"
-      "    <link href='minimal.css' rel='stylesheet' type='text/css'>"
-      "    <link rel='stylesheet' href='mono-blue.css'>"
-      "    <script src='highlight.pack.js'></script>"
-      "    <script>hljs.initHighlightingOnLoad();</script>"
-      "  </head>"
-      "  <body>"
-      "    <nav>";
-  fputs(html_head, index_file);
-  mmdoc_render(toc_path, index_file);
-  fputs("</nav><section>", index_file);
-
-  for (int i = 0; i < toc_refs.used; i++) {
-    char *file_path;
-    int found = 0;
-    for (int j = 0; j < anchor_locations.used; j++) {
-      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
-        file_path = anchor_locations.array[j].file_path;
-        found = 1;
-        break;
-      }
-    }
-    if (!found) {
-      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
-             "in any .md file.",
-             toc_refs.array[i]);
-      return 1;
-    }
-    mmdoc_render(file_path, index_file);
-  }
-  fputs("</section></body></html>", index_file);
-  fclose(index_file);
+  int ret_val = mmdoc_render_single(out, toc_path, toc_refs, anchor_locations);
 
   free_array(&md_files);
-  return 0;
+  free_anchor_location_array(&anchor_locations);
+  return ret_val;
 }

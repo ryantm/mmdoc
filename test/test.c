@@ -94,7 +94,7 @@ int test_render(char *example) {
   int ret = mkstemp(got_file_path);
 
   FILE *got_file = fopen(got_file_path, "w");
-  mmdoc_render(input_path, got_file);
+  mmdoc_render_part(input_path, got_file);
   fclose(got_file);
 
   return test_files_match(example, expected_path, got_file_path);

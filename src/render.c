@@ -1,4 +1,10 @@
+#include "asset/fuse.basic.min.js.h"
+#include "asset/highlight.pack.js.h"
+#include "asset/minimal.css.h"
+#include "asset/mono-blue.css.h"
+#include "asset/search.js.h"
 #include "parse.h"
+#include "types.h"
 #include <cmark-gfm-core-extensions.h>
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm.h>
@@ -220,8 +226,6 @@ int replace_dd(cmark_node *node) {
 
   cmark_node_set_literal(node, lit+pos);
 
-  
-
   return 1;
 }
 
@@ -302,7 +306,7 @@ void render_debug_cmark_node(cmark_node *document) {
   cmark_iter_free(iter);
 }
 
-void mmdoc_render(char *file_path, FILE *output_file) {
+void mmdoc_render_part(char *file_path, FILE *output_file) {
   char buffer[4096];
   size_t bytes;
 
@@ -341,4 +345,93 @@ void mmdoc_render(char *file_path, FILE *output_file) {
   cmark_parser_free(parser);
   fputs(result, output_file);
   mem->free(result);
+}
+
+int mmdoc_render_single(char *out, char *toc_path, Array toc_refs, AnchorLocationArray anchor_locations) {
+  char asset_path[2048];
+  FILE *asset_file;
+  strcpy(asset_path, out);
+  strcat(asset_path, "/search.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_search_js_len; i++) {
+    fputc(src_asset_search_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/fuse.basic.min.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_fuse_basic_min_js_len; i++) {
+    fputc(src_asset_fuse_basic_min_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/highlight.pack.js");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_highlight_pack_js_len; i++) {
+    fputc(src_asset_highlight_pack_js[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/minimal.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_minimal_css_len; i++) {
+    fputc(src_asset_minimal_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  strcpy(asset_path, out);
+  strcat(asset_path, "/mono-blue.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_mono_blue_css_len; i++) {
+    fputc(src_asset_mono_blue_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  char index_path[2048];
+  FILE *index_file;
+  strcpy(index_path, out);
+  strcat(index_path, "/index.html");
+  index_file = fopen(index_path, "w");
+
+  char *html_head =
+      "<!doctype html>"
+      "<html>"
+      "  <head>"
+      "    <base href='/'>"
+      "    <meta charset='utf-8'>"
+      "    <link href='minimal.css' rel='stylesheet' type='text/css'>"
+      "    <link rel='stylesheet' href='mono-blue.css'>"
+      "    <script src='highlight.pack.js'></script>"
+      "    <script>hljs.initHighlightingOnLoad();</script>"
+      "  </head>"
+      "  <body>"
+      "    <nav>";
+  fputs(html_head, index_file);
+  mmdoc_render_part(toc_path, index_file);
+  fputs("</nav><section>", index_file);
+
+  for (int i = 0; i < toc_refs.used; i++) {
+    char *file_path;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        file_path = anchor_locations.array[j].file_path;
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
+             "in any .md file.",
+             toc_refs.array[i]);
+      return 1;
+    }
+    mmdoc_render_part(file_path, index_file);
+  }
+  fputs("</section></body></html>", index_file);
+  fclose(index_file);
+  return 0;
 }
