@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "render.h"
 #include "asset/fuse.basic.min.js.h"
 #include "asset/highlight.pack.js.h"
 #include "asset/minimal.css.h"
@@ -9,9 +10,12 @@
 #include <cmark-gfm-core-extensions.h>
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 int replace_bracket_with_span(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
@@ -253,7 +257,40 @@ int replace_dd(cmark_node *node) {
   return 1;
 }
 
-void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem) {
+void replace_link(cmark_node *node, char *input_file_path,
+                  AnchorLocationArray anchor_locations) {
+  const char *url = cmark_node_get_url(node);
+  if (strlen(url) < 2)
+    return;
+  if (url[0] != '#')
+    return;
+  const char *anchor = url;
+
+  AnchorLocation anchor_location;
+  int found = 0;
+  for (int i = 0; i < anchor_locations.used; i++) {
+    if (strcmp(anchor, anchor_locations.array[i].anchor) == 0) {
+      anchor_location = anchor_locations.array[i];
+      found = 1;
+      break;
+    }
+  }
+  if (!found) {
+    printf("Anchor \"%s\" referenced in %s not found.\n", anchor,
+           input_file_path);
+    return;
+  }
+  char *new_url =
+      malloc(strlen(anchor_location.multipage_url) + strlen(url) + 1);
+  strcpy(new_url, anchor_location.multipage_url);
+  strcat(new_url, url);
+  cmark_node_set_url(node, new_url);
+  free(new_url);
+}
+
+void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
+                   render_type render_type,
+                   AnchorLocationArray anchor_locations) {
   cmark_iter *iter = cmark_iter_new(document);
 
   cmark_event_type event;
@@ -265,6 +302,10 @@ void cmark_rewrite_anchors(cmark_node *document, cmark_mem *mem) {
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
       type = cmark_node_get_type(node);
+      if (type == CMARK_NODE_LINK && render_type == RENDER_TYPE_MULTIPAGE) {
+        replace_link(node, input_file_path, anchor_locations);
+        continue;
+      }
       if (type != CMARK_NODE_TEXT)
         continue;
       if (replace_link_bracket_with_span(node))
@@ -331,7 +372,9 @@ void render_debug_cmark_node(cmark_node *document) {
   cmark_iter_free(iter);
 }
 
-void mmdoc_render_part(char *file_path, FILE *output_file) {
+void mmdoc_render_part(char *file_path, FILE *output_file,
+                       render_type render_type,
+                       AnchorLocationArray anchor_locations) {
   char buffer[4096];
   size_t bytes;
 
@@ -359,7 +402,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file) {
   /* printf("BEFORE\n"); */
   /* render_debug_cmark_node(document); */
 
-  cmark_rewrite_anchors(document, mem);
+  cmark_rewrite(document, mem, file_path, render_type, anchor_locations);
 
   /* printf("AFTER\n"); */
   /* render_debug_cmark_node(document); */
@@ -420,7 +463,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
       "  <body>\n"
       "    <nav>\n";
   fputs(html_head, index_file);
-  mmdoc_render_part(toc_path, index_file);
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
 
@@ -435,12 +478,15 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
       }
     }
     if (!found) {
-      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
-             "in any .md file.",
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
              toc_refs.array[i]);
       return 1;
     }
-    mmdoc_render_part(file_path, index_file);
+    AnchorLocationArray empty_anchor_locations;
+    init_anchor_location_array(&empty_anchor_locations, 0);
+    mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
+                      empty_anchor_locations);
+    free_anchor_location_array(&empty_anchor_locations);
   }
   char *html_foot = "    </section>\n"
                     "  </body>\n"
@@ -450,8 +496,8 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   return 0;
 }
 
-int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path)
-{
+int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
+                            AnchorLocationArray anchor_locations) {
   FILE *page_file;
   page_file = fopen(page_path, "w");
   char *html_head =
@@ -473,10 +519,12 @@ int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path)
       "      <input type='search' id='search' placeholder='Search'>\n"
       "      <div id='search-results'></div>\n";
   fputs(html_head, page_file);
-  mmdoc_render_part(toc_path, page_file);
+  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE,
+                    anchor_locations);
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
-  mmdoc_render_part(input_path, page_file);
+  mmdoc_render_part(input_path, page_file, RENDER_TYPE_MULTIPAGE,
+                    anchor_locations);
   char *html_foot = "    </section>\n"
                     "  </body>\n"
                     "</html>\n";
@@ -533,38 +581,23 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
   strcat(index_path, "/index.html");
 
   for (int i = 0; i < toc_refs.used; i++) {
-    char *file_path;
+    AnchorLocation anchor_location;
     int found = 0;
     for (int j = 0; j < anchor_locations.used; j++) {
       if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
-        file_path = anchor_locations.array[j].file_path;
+        anchor_location = anchor_locations.array[j];
         found = 1;
         break;
       }
     }
     if (!found) {
-      printf("Found anchor reference in toc.md \"%s\" but did not find anchor "
-             "in any .md file.",
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
              toc_refs.array[i]);
       return 1;
     }
-    char *page_path = malloc(strlen(out) + strlen(file_path));
-    char *src_file_path_end = file_path + strlen(src);
-    strcpy(page_path, out);
-    strcat(page_path, src_file_path_end);
-    char *lastExt = strrchr(page_path, '.');
-    while(lastExt != NULL){
-      *lastExt = '\0';
-      lastExt = strrchr(page_path, '.');
-    }
-    strcat(page_path, ".html");
-
-    /* printf("%s\n", src); */
-    /* printf("%s\n", out); */
-    /* printf("%s\n", file_path); */
-    /* printf("page_path: %s\n", page_path); */
-    mmdoc_render_multi_page(index_path, toc_path, file_path);
-    free(page_path);
+    mmdoc_render_multi_page(anchor_location.multipage_output_file_path,
+                            toc_path, anchor_location.file_path,
+                            anchor_locations);
   }
 
   return 0;

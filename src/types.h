@@ -10,6 +10,9 @@ typedef struct {
 
 typedef struct {
   char *file_path;
+  char *multipage_output_file_path;
+  char *multipage_output_directory_path;
+  char *multipage_url;
   char *anchor;
 } AnchorLocation;
 
@@ -18,3 +21,11 @@ typedef struct {
   size_t used;
   size_t size;
 } AnchorLocationArray;
+
+void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize);
+void insert_anchor_location_array(AnchorLocationArray *a,
+                                  AnchorLocation *element);
+void free_anchor_location_array(AnchorLocationArray *a);
+void init_array(Array *a, size_t initialSize);
+void insert_array(Array *a, char *element);
+void free_array(Array *a);

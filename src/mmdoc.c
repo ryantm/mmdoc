@@ -39,28 +39,38 @@ void print_usage() {
   printf("OUT a directory where the website is written to\n");
 }
 
-void init_array(Array *a, size_t initialSize) {
-  a->array = malloc(initialSize * sizeof *a->array);
-  a->used = 0;
-  a->size = initialSize;
-}
+int mkdir_p(const char *path) {
+  const size_t len = strlen(path);
+  char _path[PATH_MAX];
+  char *p;
 
-void insert_array(Array *a, char *element) {
-  if (a->used == a->size) {
-    a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof *a->array);
+  errno = 0;
+
+  if (len > sizeof(_path) - 1) {
+    errno = ENAMETOOLONG;
+    return -1;
   }
-  a->array[a->used] = malloc(strlen(element) + 1);
-  strcpy(a->array[a->used], element);
-  a->used++;
-}
+  strcpy(_path, path);
 
-void free_array(Array *a) {
-  for (int i = 0; i < a->used; i++)
-    free(a->array[i]);
-  free(a->array);
-  a->array = NULL;
-  a->used = a->size = 0;
+  for (p = _path + 1; *p; p++) {
+    if (*p == '/') {
+      *p = '\0';
+
+      if (mkdir(_path, S_IRWXU) != 0) {
+        if (errno != EEXIST)
+          return -1;
+      }
+
+      *p = '/';
+    }
+  }
+
+  if (mkdir(_path, S_IRWXU) != 0) {
+    if (errno != EEXIST)
+      return -1;
+  }
+
+  return 0;
 }
 
 int ends_with(const char *str, const char *suffix) {
@@ -133,28 +143,6 @@ void mmdoc_refs(Array *md_refs, char *path) {
     continue;
   }
   fclose(file);
-}
-
-void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
-  a->array = malloc(initialSize * sizeof(a->array));
-  a->used = 0;
-  a->size = initialSize;
-}
-
-void insert_anchor_location_array(AnchorLocationArray *a,
-                                  AnchorLocation *element) {
-  if (a->used == a->size) {
-    a->size *= 2;
-    a->array = realloc(a->array, a->size * sizeof a->array);
-  }
-  a->array[a->used] = *element;
-  a->used++;
-}
-
-void free_anchor_location_array(AnchorLocationArray *a) {
-  free(a->array);
-  a->array = NULL;
-  a->used = a->size = 0;
 }
 
 void mmdoc_anchors(Array *md_anchors, char *path) {
@@ -239,6 +227,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  char *multi = "multi";
+  char *out_multi = malloc(strlen(out) + 1 + strlen(multi) + 1);
+  strcpy(out_multi, out);
+  strcat(out_multi, "/");
+  strcat(out_multi, multi);
+
   Array md_files;
   init_array(&md_files, 100);
   mmdoc_md_files(&md_files, src);
@@ -250,6 +244,7 @@ int main(int argc, char *argv[]) {
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 500);
 
+  int count = 0;
   for (int i = 0; i < md_files.used; i++) {
     Array anchors;
     init_array(&anchors, 500);
@@ -257,16 +252,31 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < anchors.used; j++) {
       AnchorLocation *al = malloc(sizeof *al);
       al->file_path = md_files.array[i];
+
+      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path));
+      strcpy(page_path, out_multi);
+      strcat(page_path, al->file_path + strlen(src));
+      char *lastExt = strrchr(page_path, '.');
+      while (lastExt != NULL) {
+        *lastExt = '\0';
+        lastExt = strrchr(page_path, '.');
+      }
+      strcat(page_path, "/");
+      char *page_dir_path = malloc(strlen(page_path) + 1);
+      strcpy(page_dir_path, page_path);
+      strcat(page_path, "index.html");
+      if (mkdir_p(page_dir_path) != 0) {
+        printf("Error recursively making directory %s", page_dir_path);
+        return -1;
+      }
+
+      al->multipage_output_file_path = page_path;
+      al->multipage_output_directory_path = page_dir_path;
+      al->multipage_url = page_path + strlen(out_multi);
       al->anchor = anchors.array[j];
       insert_anchor_location_array(&anchor_locations, al);
+      count++;
     }
-  }
-
-  if (0 != mkdir(out, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
-                          S_IXGRP | S_IROTH | S_IXOTH)) {
-
-    printf("Couldn't create directory \"%s\": errno %d\n", out, errno);
-    return 1;
   }
 
   char *single = "single";
@@ -286,20 +296,8 @@ int main(int argc, char *argv[]) {
       0)
     return 1;
 
-  char *multi = "multi";
-  char *out_multi = malloc(strlen(out) + 1 + strlen(multi) + 1);
-  strcpy(out_multi, out);
-  strcat(out_multi, "/");
-  strcat(out_multi, multi);
-
-  if (0 != mkdir(out_multi, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
-                                S_IXGRP | S_IROTH | S_IXOTH)) {
-
-    printf("Couldn't create directory \"%s\": errno %d\n", out_multi, errno);
-    return 1;
-  }
-
-  if (mmdoc_render_multi(out_multi, src, toc_path, toc_refs, anchor_locations) != 0)
+  if (mmdoc_render_multi(out_multi, src, toc_path, toc_refs,
+                         anchor_locations) != 0)
     return 1;
 
   free_array(&md_files);

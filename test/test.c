@@ -95,10 +95,58 @@ int test_render(char *example) {
   int ret = mkstemp(got_file_path);
 
   FILE *got_file = fopen(got_file_path, "w");
-  mmdoc_render_part(input_path, got_file);
+  AnchorLocationArray empty_anchor_locations;
+  init_anchor_location_array(&empty_anchor_locations, 0);
+  mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE,
+                    empty_anchor_locations);
+  free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
   return test_files_match(example, expected_path, got_file_path);
+}
+
+int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
+  char *example_dir = "test/example/";
+  char *input_filename = "input.md";
+  char *expected_filename = "expected.html";
+  char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 +
+                            strlen(input_filename) + 1);
+  char *expected_path = malloc(strlen(example_dir) + strlen(example) + 1 +
+                               strlen(expected_filename) + 1);
+
+  strcpy(input_path, example_dir);
+  strcat(input_path, example);
+  strcat(input_path, "/");
+  strcat(input_path, input_filename);
+
+  strcpy(expected_path, example_dir);
+  strcat(expected_path, example);
+  strcat(expected_path, "/");
+  strcat(expected_path, expected_filename);
+
+  char got_file_path[] = "/tmp/mmdocXXXXXX.html";
+  int ret = mkstemp(got_file_path);
+
+  FILE *got_file = fopen(got_file_path, "w");
+  mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
+                    anchor_locations);
+  fclose(got_file);
+
+  return test_files_match(example, expected_path, got_file_path);
+}
+
+int test_e007() {
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 1);
+  AnchorLocation *al = malloc(sizeof *al);
+  al->anchor = "first_section";
+  al->multipage_url = "url";
+  al->multipage_output_directory_path = "output_path/";
+  al->multipage_output_file_path = "output_path/index.html";
+  insert_anchor_location_array(&anchor_locations, al);
+  int retval = test_multipage_render("e007", anchor_locations);
+  free_anchor_location_array(&anchor_locations);
+  return retval;
 }
 
 int main(int argc, char *argv[]) {
@@ -113,6 +161,10 @@ int main(int argc, char *argv[]) {
   num_failed += test_render("e004");
   num_tests++;
   num_failed += test_render("e005");
+  num_tests++;
+  num_failed += test_render("e006");
+  num_tests++;
+  num_failed += test_e007();
   num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);
