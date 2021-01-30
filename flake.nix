@@ -26,6 +26,7 @@
           valgrind
           xxd
           jq.dev
+          cppcheck
         ];
       };
     });
