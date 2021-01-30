@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: CC0-1.0 */
 #include <stdio.h>
 
 enum parse_heading_bracketed_span_state {

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: CC0-1.0 */
 #include "asset/fuse.basic.min.js.h"
 #include "asset/highlight.pack.js.h"
 #include "asset/minimal.css.h"

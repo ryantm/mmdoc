@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: CC0-1.0 */
 #pragma once
 
 int parse_heading_bracketed_span_id(const char *text, char *id);

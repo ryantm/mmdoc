@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: CC0-1.0 */
 #include "render.h"
 #include "types.h"
 #include <dirent.h>
