@@ -11,6 +11,7 @@
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm.h>
 #include <errno.h>
+#include <libfastjson/json_object.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -288,6 +289,16 @@ void replace_link(cmark_node *node, char *input_file_path,
   free(new_url);
 }
 
+void insert_search_index(FILE *search_index_path, const char *text, const char *multipage_url) {
+  fjson_object *obj = fjson_object_new_object();
+  fjson_object *obj_url = fjson_object_new_string(multipage_url);
+  fjson_object *obj_text = fjson_object_new_string(text);
+  fjson_object_object_add(obj, "url", obj_url);
+  fjson_object_object_add(obj, "text", obj_text);
+  fputs(fjson_object_to_json_string(obj), search_index_path);
+  fputs("\n,", search_index_path);
+}
+
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
                    render_type render_type,
                    AnchorLocationArray anchor_locations) {
@@ -374,7 +385,7 @@ void render_debug_cmark_node(cmark_node *document) {
 
 void mmdoc_render_part(char *file_path, FILE *output_file,
                        render_type render_type,
-                       AnchorLocationArray anchor_locations) {
+                       AnchorLocationArray anchor_locations, char *multipage_url,  FILE *search_index_path ) {
   char buffer[4096];
   size_t bytes;
 
@@ -409,6 +420,14 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
   char *result = cmark_render_html_with_mem(
       document, options, cmark_parser_get_syntax_extensions(parser), mem);
+
+
+  if (search_index_path != NULL) {
+    char *plaintext_result = cmark_render_plaintext_with_mem(document, options, 120, mem);
+    insert_search_index(search_index_path, plaintext_result, multipage_url);
+    mem->free(plaintext_result);
+  }
+
   cmark_node_free(document);
   cmark_parser_free(parser);
   fputs(result, output_file);
@@ -463,7 +482,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
       "  <body>\n"
       "    <nav>\n";
   fputs(html_head, index_file);
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations);
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations, NULL, NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
 
@@ -485,7 +504,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
     mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
-                      empty_anchor_locations);
+                      empty_anchor_locations, NULL, NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
   char *html_foot = "    </section>\n"
@@ -497,7 +516,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
 }
 
 int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
-                            AnchorLocationArray anchor_locations) {
+                            AnchorLocationArray anchor_locations, char *multipage_url, FILE *search_index_file) {
   FILE *page_file;
   page_file = fopen(page_path, "w");
   char *html_head =
@@ -520,11 +539,11 @@ int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
       "      <div id='search-results'></div>\n";
   fputs(html_head, page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_locations);
+                    anchor_locations, NULL, NULL);
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
   mmdoc_render_part(input_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_locations);
+                    anchor_locations, multipage_url, search_index_file);
   char *html_foot = "    </section>\n"
                     "  </body>\n"
                     "</html>\n";
@@ -576,10 +595,11 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
   }
   fclose(asset_file);
 
-  char index_path[2048];
-  strcpy(index_path, out);
-  strcat(index_path, "/index.html");
-
+  char search_index_path[2048];
+  strcpy(search_index_path, out);
+  strcat(search_index_path, "/search_index.js");
+  FILE *search_index_file = fopen(search_index_path, "w");
+  fputs("const corpus = [", search_index_file);
   for (int i = 0; i < toc_refs.used; i++) {
     AnchorLocation anchor_location;
     int found = 0;
@@ -597,8 +617,10 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
     }
     mmdoc_render_multi_page(anchor_location.multipage_output_file_path,
                             toc_path, anchor_location.file_path,
-                            anchor_locations);
+                            anchor_locations, anchor_location.multipage_url, search_index_file);
   }
+  fseek(search_index_file, -1, SEEK_CUR);
+  fputs("]", search_index_file);
 
   return 0;
 }

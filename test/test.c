@@ -98,7 +98,7 @@ int test_render(char *example) {
   AnchorLocationArray empty_anchor_locations;
   init_anchor_location_array(&empty_anchor_locations, 0);
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE,
-                    empty_anchor_locations);
+                    empty_anchor_locations, NULL, NULL);
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
@@ -129,7 +129,7 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
 
   FILE *got_file = fopen(got_file_path, "w");
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_locations);
+                    anchor_locations, NULL, NULL);
   fclose(got_file);
 
   return test_files_match(example, expected_path, got_file_path);
@@ -139,7 +139,7 @@ int test_e007() {
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 1);
   AnchorLocation *al = malloc(sizeof *al);
-  al->anchor = "first_section";
+  al->anchor = "#first_section";
   al->multipage_url = "url";
   al->multipage_output_directory_path = "output_path/";
   al->multipage_output_file_path = "output_path/index.html";

@@ -25,7 +25,7 @@
           gdb
           valgrind
           xxd
-          jq.dev
+          fastJson
           cppcheck
         ];
       };

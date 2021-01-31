@@ -3,7 +3,6 @@
 #include "types.h"
 #include <dirent.h>
 #include <errno.h>
-#include <jq.h>
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
@@ -272,7 +271,7 @@ int main(int argc, char *argv[]) {
 
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
-      al->multipage_url = page_path + strlen(out_multi);
+      al->multipage_url = page_dir_path + strlen(out_multi);
       al->anchor = anchors.array[j];
       insert_anchor_location_array(&anchor_locations, al);
       count++;
