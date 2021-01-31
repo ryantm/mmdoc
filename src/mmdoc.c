@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define MMDOC_VERSION "0.1.0"
+#define MMDOC_VERSION "0.1.1"
 
 extern int errno;
 
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
   strcat(out_man, man);
   if (mkdir_p(out_man) != 0) {
     printf("Error recursively making directory %s", out_man);
-    return -1;
+    return 1;
   }
 
   Array md_files;
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
       strcat(page_path, "index.html");
       if (mkdir_p(page_dir_path) != 0) {
         printf("Error recursively making directory %s", page_dir_path);
-        return -1;
+        return 1;
       }
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
@@ -309,11 +309,8 @@ int main(int argc, char *argv[]) {
   strcpy(out_single, out);
   strcat(out_single, "/");
   strcat(out_single, single);
-
-  if (0 != mkdir(out_single, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
-                                 S_IXGRP | S_IROTH | S_IXOTH)) {
-
-    printf("Couldn't create directory \"%s\": errno %d\n", out_single, errno);
+  if (mkdir_p(out_single) != 0) {
+    printf("Error recursively making directory %s", out_single);
     return 1;
   }
 
@@ -330,6 +327,18 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   if (mmdoc_render_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
+    return 1;
+
+  char *epub = "epub";
+  char *out_epub = malloc(strlen(out) + 1 + strlen(epub) + 1);
+  strcpy(out_epub, out);
+  strcat(out_epub, "/");
+  strcat(out_epub, epub);
+  if (mkdir_p(out_epub) != 0) {
+    printf("Error recursively making directory %s", out_epub);
+    return 1;
+  }
+  if (mmdoc_render_epub(out_epub, project_name, toc_path, toc_refs, anchor_locations) != 0)
     return 1;
 
   free_array(&md_files);

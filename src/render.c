@@ -524,6 +524,79 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   return 0;
 }
 
+int mmdoc_render_epub(char *out, char *project_name, char *toc_path, Array toc_refs,
+                        AnchorLocationArray anchor_locations) {
+  char *index_path = malloc(strlen(out) + 1 + strlen(project_name) + 5 + 1);
+  strcpy(index_path, out);
+  strcat(index_path, "/");
+  strcat(index_path, project_name);
+  strcat(index_path, ".epub");
+
+  FILE *asset_file;
+  char asset_path[2048];
+  strcpy(asset_path, out);
+  strcat(asset_path, "/minimal.css");
+  asset_file = fopen(asset_path, "w");
+  for (int i = 0; i < src_asset_minimal_css_len; i++) {
+    fputc(src_asset_minimal_css[i], asset_file);
+  }
+  fclose(asset_file);
+
+  FILE *index_file;
+
+
+
+  index_file = fopen(index_path, "w");
+
+  char *html_head =
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
+    "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">\n"
+    "  <head>\n"
+    "    <meta http-equiv=\"Content-Type\" content=\"application/xhtml+xml; charset=utf-8\" />\n"
+    "    <title>";
+  fputs(html_head, index_file);
+  fputs(project_name, index_file);
+  char *html_head_rest =
+    "</title>\n"
+    "    <link rel=\"stylesheet\" href=\"minimal.css\" type=\"text/css\" />\n"
+    "  </head>\n"
+    "  <body>\n"
+    "    <nav>\n";
+  fputs(html_head_rest, index_file);
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
+                    NULL, NULL);
+  fputs("    </nav>\n", index_file);
+  fputs("    <section>\n", index_file);
+  for (int i = 0; i < toc_refs.used; i++) {
+    char *file_path;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        file_path = anchor_locations.array[j].file_path;
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
+             toc_refs.array[i]);
+      return 1;
+    }
+    AnchorLocationArray empty_anchor_locations;
+    init_anchor_location_array(&empty_anchor_locations, 0);
+    mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
+                      empty_anchor_locations, NULL, NULL);
+    free_anchor_location_array(&empty_anchor_locations);
+  }
+  char *html_foot = "    </section>\n"
+                    "  </body>\n"
+                    "</html>\n";
+  fputs(html_foot, index_file);
+  fclose(index_file);
+  return 0;
+}
+
 int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
                             AnchorLocationArray anchor_locations,
                             char *multipage_url, FILE *search_index_file) {

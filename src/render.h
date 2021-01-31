@@ -6,11 +6,14 @@
 typedef enum {
   RENDER_TYPE_SINGLE,
   RENDER_TYPE_MULTIPAGE,
-  RENDER_TYPE_MAN
+  RENDER_TYPE_MAN,
+  RENDER_TYPE_EPUB
 } render_type;
 
 int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
                         AnchorLocationArray anchor_locations);
+int mmdoc_render_epub(char *out, char *project_name, char *toc_path, Array toc_refs,
+                     AnchorLocationArray anchor_locations);
 int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
                        AnchorLocationArray anchor_locations);
 int mmdoc_render_man(char *out, char *src, char *toc_path, Array toc_refs,
