@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: CC0-1.0 */
 #include "types.h"
 #include <stdlib.h>
 #include <string.h>

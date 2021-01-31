@@ -9,27 +9,20 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define MMDOC_VERSION "0.0.8"
-
-#define MMDOC_COMMAND_OPTION_DEFAULT 0
-#define MMDOC_COMMAND_OPTION_WEBSITE (1 << 1)
-#define MMDOC_COMMAND_OPTION_SINGLE (1 << 2)
-#define MMDOC_COMMAND_OPTION_VERBOSE (1 << 3)
+#define MMDOC_VERSION "0.1.0"
 
 extern int errno;
 
 void print_usage() {
   printf("mmdoc version %s - minimal markdown documentation\n", MMDOC_VERSION);
   printf("\n");
-  printf("mmdoc SRC OUT\n");
-  /* printf("mmdoc -w SRC OUT\n"); */
-  /* printf("mmdoc -s SRC OUT\n"); */
+  printf("mmdoc PROJECT_NAME SRC OUT\n");
   printf("\n");
   printf("options:\n");
   printf("-h, --help                show help\n");
-  /* printf("-v, --verbose             verbose output\n"); */
-  /* printf("-w, --website             output multipage website\n"); */
-  /* printf("-s, --single              output single page website\n"); */
+  printf("\n");
+  printf("PROJECT_NAME is the name of the project the documentation is being "
+         "generated for.\n");
   printf("\n");
   printf("SRC a directory containing Markdown files; a file called toc.md at "
          "the top level\n");
@@ -183,35 +176,16 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
 }
 
 int main(int argc, char *argv[]) {
-  int command_options = MMDOC_COMMAND_OPTION_DEFAULT;
+  char *project_name = NULL;
   char *src = NULL;
   char *out = NULL;
-  for (int i = 1; i < argc; i++) {
-    if ((strcmp(argv[i], "-h")) == 0 || (strcmp(argv[i], "--help") == 0)) {
-      print_usage();
-      return 0;
-    } else if ((strcmp(argv[i], "-w")) == 0 ||
-               (strcmp(argv[i], "--website") == 0)) {
-      command_options |= MMDOC_COMMAND_OPTION_WEBSITE;
-    } else if ((strcmp(argv[i], "-s")) == 0 ||
-               (strcmp(argv[i], "--single") == 0)) {
-      command_options |= MMDOC_COMMAND_OPTION_SINGLE;
-    } else if ((strcmp(argv[i], "-v")) == 0 ||
-               (strcmp(argv[i], "--verbose") == 0)) {
-      command_options |= MMDOC_COMMAND_OPTION_VERBOSE;
-    } else if (i == (argc - 2)) {
-      src = argv[i];
-      out = argv[i + 1];
-      break;
-    } else {
-      print_usage();
-      return 1;
-    }
-  }
-  if (src == NULL || out == NULL) {
+  if (argc != 4) {
     print_usage();
     return 1;
   }
+  project_name = argv[1];
+  src = argv[2];
+  out = argv[3];
 
   char *src_relative_toc_path = "/toc.md";
   char *toc_path = malloc(strlen(src) + strlen(src_relative_toc_path) + 1);
@@ -231,6 +205,15 @@ int main(int argc, char *argv[]) {
   strcpy(out_multi, out);
   strcat(out_multi, "/");
   strcat(out_multi, multi);
+
+  char *man = "/man/man1";
+  char *out_man = malloc(strlen(out) + 1 + strlen(man) + 1);
+  strcpy(out_man, out);
+  strcat(out_man, man);
+  if (mkdir_p(out_man) != 0) {
+    printf("Error recursively making directory %s", out_man);
+    return -1;
+  }
 
   Array md_files;
   init_array(&md_files, 100);
@@ -268,10 +251,53 @@ int main(int argc, char *argv[]) {
         printf("Error recursively making directory %s", page_dir_path);
         return -1;
       }
-
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
       al->multipage_url = page_dir_path + strlen(out_multi);
+
+      char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +
+                              strlen(al->file_path) + 2);
+      char *man_page_name = malloc(strlen(project_name) + strlen(al->file_path) + 1);
+      man_page_name[0] = '\0';
+      strcpy(man_path, out_man);
+      strcat(man_path, "/");
+      strcat(man_path, project_name);
+      strcpy(man_page_name, project_name);
+      for (int k = 0; *(al->file_path + strlen(src) + k) != '\0'; k++) {
+        char *c = al->file_path + strlen(src) + k;
+        if (c[0] == '/') {
+          strcat(man_path, "-");
+          strcat(man_page_name, "\\-");
+        }
+        else if (c[0] == '-') {
+          strncat(man_path, c, 1);
+          strcat(man_page_name, "\\-");
+        } else {
+          strncat(man_path, c, 1);
+          strncat(man_page_name, c, 1);
+        }
+      }
+      lastExt = strrchr(man_path, '.');
+      while (lastExt != NULL) {
+        *lastExt = '\0';
+        lastExt = strrchr(man_path, '.');
+      }
+      lastExt = strrchr(man_page_name, '.');
+      while (lastExt != NULL) {
+        *lastExt = '\0';
+        lastExt = strrchr(man_page_name, '.');
+      }
+      strcat(man_path, ".1");
+      al->man_output_file_path = man_path;
+      char *man_page_header = malloc(19 + strlen(man_path) * 2 + strlen(project_name) + 1);
+      strcpy(man_page_header, ".TH \"");
+      strcat(man_page_header, man_page_name);
+      strcat(man_page_header, "\" \"1\" \"\" \"");
+      strcat(man_page_header, project_name);
+      strcat(man_page_header, "\" \"");
+      strcat(man_page_header, man_page_name);
+      strcat(man_page_header, "\"");
+      al->man_header = man_page_header;
       al->anchor = anchors.array[j];
       insert_anchor_location_array(&anchor_locations, al);
       count++;
@@ -297,6 +323,13 @@ int main(int argc, char *argv[]) {
 
   if (mmdoc_render_multi(out_multi, src, toc_path, toc_refs,
                          anchor_locations) != 0)
+    return 1;
+
+  if (mkdir_p(out_man) != 0) {
+    printf("Error recursively making directory %s", out_man);
+    return -1;
+  }
+  if (mmdoc_render_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
     return 1;
 
   free_array(&md_files);

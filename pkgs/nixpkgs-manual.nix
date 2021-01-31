@@ -12,5 +12,5 @@ stdenv.mkDerivation rec {
 
   buildInputs = [gdb mmdoc];
 
-  builder = writeScript "${name}-builder" "echo $src && ${mmdoc}/bin/mmdoc -s $src $out";
+  builder = writeScript "${name}-builder" "echo $src && ${mmdoc}/bin/mmdoc nixpkgs $src $out";
 }

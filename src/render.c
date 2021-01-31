@@ -289,7 +289,8 @@ void replace_link(cmark_node *node, char *input_file_path,
   free(new_url);
 }
 
-void insert_search_index(FILE *search_index_path, const char *text, const char *multipage_url) {
+void insert_search_index(FILE *search_index_path, const char *text,
+                         const char *multipage_url) {
   fjson_object *obj = fjson_object_new_object();
   fjson_object *obj_url = fjson_object_new_string(multipage_url);
   fjson_object *obj_text = fjson_object_new_string(text);
@@ -385,7 +386,8 @@ void render_debug_cmark_node(cmark_node *document) {
 
 void mmdoc_render_part(char *file_path, FILE *output_file,
                        render_type render_type,
-                       AnchorLocationArray anchor_locations, char *multipage_url,  FILE *search_index_path ) {
+                       AnchorLocationArray anchor_locations,
+                       char *multipage_url, FILE *search_index_path) {
   char buffer[4096];
   size_t bytes;
 
@@ -418,20 +420,26 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   /* printf("AFTER\n"); */
   /* render_debug_cmark_node(document); */
 
-  char *result = cmark_render_html_with_mem(
-      document, options, cmark_parser_get_syntax_extensions(parser), mem);
+  if (render_type != RENDER_TYPE_MAN) {
+    char *result = cmark_render_html_with_mem(
+                                              document, options, cmark_parser_get_syntax_extensions(parser), mem);
 
-
-  if (search_index_path != NULL) {
-    char *plaintext_result = cmark_render_plaintext_with_mem(document, options, 120, mem);
-    insert_search_index(search_index_path, plaintext_result, multipage_url);
-    mem->free(plaintext_result);
+    if (search_index_path != NULL) {
+      char *plaintext_result =
+        cmark_render_plaintext_with_mem(document, options, 120, mem);
+      insert_search_index(search_index_path, plaintext_result, multipage_url);
+      mem->free(plaintext_result);
+    }
+    fputs(result, output_file);
+    mem->free(result);
   }
-
+  else {
+    char *result = cmark_render_man_with_mem(document, options, 240, mem);
+    fputs(result, output_file);
+    mem->free(result);
+  }
   cmark_node_free(document);
   cmark_parser_free(parser);
-  fputs(result, output_file);
-  mem->free(result);
 }
 
 int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
@@ -482,7 +490,8 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
       "  <body>\n"
       "    <nav>\n";
   fputs(html_head, index_file);
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations, NULL, NULL);
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
+                    NULL, NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
 
@@ -516,7 +525,8 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
 }
 
 int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
-                            AnchorLocationArray anchor_locations, char *multipage_url, FILE *search_index_file) {
+                            AnchorLocationArray anchor_locations,
+                            char *multipage_url, FILE *search_index_file) {
   FILE *page_file;
   page_file = fopen(page_path, "w");
   char *html_head =
@@ -617,10 +627,38 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
     }
     mmdoc_render_multi_page(anchor_location.multipage_output_file_path,
                             toc_path, anchor_location.file_path,
-                            anchor_locations, anchor_location.multipage_url, search_index_file);
+                            anchor_locations, anchor_location.multipage_url,
+                            search_index_file);
   }
   fseek(search_index_file, -1, SEEK_CUR);
   fputs("]", search_index_file);
+  fclose(search_index_file);
+  return 0;
+}
+
+int mmdoc_render_man(char *out, char *src, char *toc_path, Array toc_refs,
+                     AnchorLocationArray anchor_locations) {
+  for (int i = 0; i < toc_refs.used; i++) {
+    AnchorLocation anchor_location;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        anchor_location = anchor_locations.array[j];
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
+             toc_refs.array[i]);
+      return 1;
+    }
+    FILE *output_file;
+    output_file = fopen(anchor_location.man_output_file_path, "w");
+    fputs(anchor_location.man_header, output_file);
+    mmdoc_render_part(anchor_location.file_path, output_file, RENDER_TYPE_MAN, anchor_locations, NULL, NULL);
+    fclose(output_file);
+  }
 
   return 0;
 }
