@@ -3,6 +3,7 @@
 #include "asset/fuse.basic.min.js.h"
 #include "asset/highlight.pack.js.h"
 #include "asset/minimal.css.h"
+#include "asset/epub.css.h"
 #include "asset/mono-blue.css.h"
 #include "asset/search.js.h"
 #include "parse.h"
@@ -535,7 +536,7 @@ int mmdoc_render_epub(char *out, char *project_name, char *toc_path, Array toc_r
   FILE *asset_file;
   char asset_path[2048];
   strcpy(asset_path, out);
-  strcat(asset_path, "/minimal.css");
+  strcat(asset_path, "/epub.css");
   asset_file = fopen(asset_path, "w");
   for (int i = 0; i < src_asset_minimal_css_len; i++) {
     fputc(src_asset_minimal_css[i], asset_file);
@@ -559,7 +560,7 @@ int mmdoc_render_epub(char *out, char *project_name, char *toc_path, Array toc_r
   fputs(project_name, index_file);
   char *html_head_rest =
     "</title>\n"
-    "    <link rel=\"stylesheet\" href=\"minimal.css\" type=\"text/css\" />\n"
+    "    <link rel=\"stylesheet\" href=\"epub.css\" type=\"text/css\" />\n"
     "  </head>\n"
     "  <body>\n"
     "    <nav>\n";
