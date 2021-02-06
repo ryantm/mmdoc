@@ -21,14 +21,13 @@ void print_usage() {
   printf("options:\n");
   printf("-h, --help                show help\n");
   printf("\n");
-  printf("PROJECT_NAME is the name of the project the documentation is being "
-         "generated for.\n");
+  printf("PROJECT_NAME is the name of the project the documentation is generated for.\n");
   printf("\n");
   printf("SRC a directory containing Markdown files; a file called toc.md at "
          "the top level\n");
   printf("is required.\n");
   printf("\n");
-  printf("OUT a directory where the website is written to\n");
+  printf("OUT a directory where the documentation is written to.\n");
 }
 
 int mkdir_p(const char *path) {
