@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define MMDOC_VERSION "0.1.1"
+#define MMDOC_VERSION "0.1.2"
 
 extern int errno;
 
@@ -329,16 +329,13 @@ int main(int argc, char *argv[]) {
   if (mmdoc_render_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
     return 1;
 
-  char *epub = "epub";
-  char *out_epub = malloc(strlen(out) + 1 + strlen(epub) + 1);
+  char *epub = ".epub";
+  char *out_epub = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub) + 1);
   strcpy(out_epub, out);
   strcat(out_epub, "/");
+  strcat(out_epub, project_name);
   strcat(out_epub, epub);
-  if (mkdir_p(out_epub) != 0) {
-    printf("Error recursively making directory %s", out_epub);
-    return 1;
-  }
-  if (mmdoc_render_epub(out_epub, project_name, toc_path, toc_refs, anchor_locations) != 0)
+  if (mmdoc_render_epub(out_epub, out_single, project_name) != 0)
     return 1;
 
   free_array(&md_files);

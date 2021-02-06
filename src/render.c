@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <zip.h>
+
 
 int replace_bracket_with_span(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
@@ -525,76 +527,57 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   return 0;
 }
 
-int mmdoc_render_epub(char *out, char *project_name, char *toc_path, Array toc_refs,
-                        AnchorLocationArray anchor_locations) {
-  char *index_path = malloc(strlen(out) + 1 + strlen(project_name) + 5 + 1);
-  strcpy(index_path, out);
-  strcat(index_path, "/");
-  strcat(index_path, project_name);
-  strcat(index_path, ".epub");
-
-  FILE *asset_file;
-  char asset_path[2048];
-  strcpy(asset_path, out);
-  strcat(asset_path, "/epub.css");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_minimal_css_len; i++) {
-    fputc(src_asset_minimal_css[i], asset_file);
+int mmdoc_render_epub(char *out, char *out_single, char *project_name) {
+  int *errorp;
+  zip_t *zip = zip_open(out, ZIP_CREATE | ZIP_TRUNCATE, errorp);
+  if (errorp != 0) {
+    printf("Error making zip file at %s\n", out);
+    return 1;
   }
-  fclose(asset_file);
+  const char *mimetype = "application/epub+zip";
+  zip_source_t *source_mimetype = zip_source_buffer(zip, mimetype, strlen(mimetype), 0);
+  zip_file_add(zip, "mimetype", source_mimetype, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8);
 
-  FILE *index_file;
+  char *container =
+    "<?xml version='1.0' encoding='UTF-8' ?>\n"
+    "<container version='1.0' xmlns='urn:oasis:names:tc:opendocument:xmlns:container'>\n"
+    "  <rootfiles>\n"
+    "    <rootfile full-path='OEBPS/content.opf' media-type='application/oebps-package+xml'/>\n"
+    "  </rootfiles>\n"
+    "</container>";
+  zip_source_t *source_container = zip_source_buffer(zip, container, strlen(container), 0);
+  zip_file_add(zip, "META-INF/container.xml", source_container, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8);
 
+  char *content_before_title =
+    "<?xml version='1.0'?>\n"
+    "<package version='2.0' xmlns='http://www.idpf.org/2007/opf' unique-identifier='BookId'>\n"
+    "  <metadata xmlns:dc='http://purl.org/dc/elements/1.1/' xmlns:opf='http://www.idpf.org/2007/opf'>\n"
+    "    <dc:title>";
+  char *content_after_title = "</dc:title>\n"
+    "    <dc:language>en</dc:language>\n"
+    "  </metadata>\n"
+    "  <manifest>\n"
+    "    <item id='index' href='index.html' media-type='application/xhtml+xml'/>\n"
+    "  </manifest>\n"
+    "  <spine toc='ncx'>\n"
+    "    <itemref idref='index' />\n"
+    "  </spine>\n"
+    "</package>\n";
+  char *content = malloc(strlen(content_before_title) + strlen(project_name) + strlen(content_after_title) + 1);
+  strcpy(content, content_before_title);
+  strcat(content, project_name);
+  strcat(content, content_after_title);
+  zip_source_t *source_content = zip_source_buffer(zip, content, strlen(content), 0);
+  zip_file_add(zip, "OEBPS/content.opf", source_content, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8);
 
+  const char *index = "/index.html";
+  char *out_single_index = malloc(strlen(out_single) + strlen(index) + 1);
+  strcpy(out_single_index, out_single);
+  strcat(out_single_index, index);
 
-  index_file = fopen(index_path, "w");
-
-  char *html_head =
-    "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
-    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
-    "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">\n"
-    "  <head>\n"
-    "    <meta http-equiv=\"Content-Type\" content=\"application/xhtml+xml; charset=utf-8\" />\n"
-    "    <title>";
-  fputs(html_head, index_file);
-  fputs(project_name, index_file);
-  char *html_head_rest =
-    "</title>\n"
-    "    <link rel=\"stylesheet\" href=\"epub.css\" type=\"text/css\" />\n"
-    "  </head>\n"
-    "  <body>\n"
-    "    <nav>\n";
-  fputs(html_head_rest, index_file);
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
-                    NULL, NULL);
-  fputs("    </nav>\n", index_file);
-  fputs("    <section>\n", index_file);
-  for (int i = 0; i < toc_refs.used; i++) {
-    char *file_path;
-    int found = 0;
-    for (int j = 0; j < anchor_locations.used; j++) {
-      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
-        file_path = anchor_locations.array[j].file_path;
-        found = 1;
-        break;
-      }
-    }
-    if (!found) {
-      printf("Anchor \"%s\" referenced in toc.md not found.\n",
-             toc_refs.array[i]);
-      return 1;
-    }
-    AnchorLocationArray empty_anchor_locations;
-    init_anchor_location_array(&empty_anchor_locations, 0);
-    mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
-                      empty_anchor_locations, NULL, NULL);
-    free_anchor_location_array(&empty_anchor_locations);
-  }
-  char *html_foot = "    </section>\n"
-                    "  </body>\n"
-                    "</html>\n";
-  fputs(html_foot, index_file);
-  fclose(index_file);
+  zip_source_t *source_index = zip_source_file(zip, out_single_index, 0, 0);
+  zip_file_add(zip, "OEBPS/index.html", source_index, ZIP_FL_ENC_UTF_8);
+  zip_close(zip);
   return 0;
 }
 

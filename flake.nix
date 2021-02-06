@@ -27,6 +27,7 @@
           xxd
           fastJson
           cppcheck
+          libzip.dev
         ];
       };
     });
