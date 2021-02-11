@@ -54,7 +54,7 @@ Here are some features:
 * The HTML documents have syntax highlighting via [highlight.js](https://highlightjs.org/).
 * The multi-page HTML documents have full-text search via [fuse.js](https://fusejs.io/).
 
-# Extensions beyond CommonMark
+## Extensions beyond CommonMark
 
 In order to be useful for Documentation, it uses several CommonMark extensions available in GitHub-flavored MarkDown and [Pandoc](https://pandoc.org/).
 
@@ -93,11 +93,11 @@ In order to be useful for Documentation, it uses several CommonMark extensions a
   defintion 2
   ```
 
-# toc.md
+## toc.md
 
 `toc.md` is a special file for `mmdoc`. The order of the cross references in `toc.md` control the order the sections appear in the single-page HTML and ePub outputs. If a section is not referenced in `toc.md` it does not get included in any of the outputs.
 
-# Development
+## Development
 
 For easily development, `nix` with flake support is recommended. Start a development environment with:
 
@@ -105,7 +105,7 @@ For easily development, `nix` with flake support is recommended. Start a develop
 nix develop
 ```
 
-## tests
+### tests
 
 Compile and run the test suite with:
 
@@ -113,7 +113,7 @@ Compile and run the test suite with:
 make test
 ```
 
-## additional test: compile the nixpkgs manual
+### additional test: compile the nixpkgs manual
 
 This is a temporary test that is in place while mmdoc is developed in tandem with the conversion of the nixpkgs manual to use Markdown. You can build my branch of nixpkgs-manual with:
 
