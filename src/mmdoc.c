@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define MMDOC_VERSION "0.1.2"
+#define MMDOC_VERSION "0.1.3"
 
 extern int errno;
 

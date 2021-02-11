@@ -8,7 +8,7 @@ self,
 
 stdenv.mkDerivation rec {
   pname = "mmdoc";
-  version = "0.1.2";
+  version = "0.1.3";
 
   src = self;
 
