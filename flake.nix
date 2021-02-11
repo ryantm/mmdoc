@@ -19,15 +19,18 @@
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
           cmark-gfm
-          gnumake
+          fastJson
+          libzip.dev
+        ];
+        nativeBuildInputs = with pkgs; [
+          pkgconfig
+          meson
+          ninja
+          xxd
           clang-tools
-          gcc
           gdb
           valgrind
-          xxd
-          fastJson
           cppcheck
-          libzip.dev
         ];
       };
     });

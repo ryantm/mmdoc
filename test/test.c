@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <testconfig.h>
+
 int test_files_match(char *example_name, char *expected_file_path,
                      char *got_file_path) {
   char expected_line[4096];
@@ -73,7 +75,7 @@ int test_files_match(char *example_name, char *expected_file_path,
 }
 
 int test_render(char *example) {
-  char *example_dir = "test/example/";
+  char *example_dir = TEST_EXAMPLE_DIR;
   char *input_filename = "input.md";
   char *expected_filename = "expected.html";
   char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 +
@@ -106,7 +108,7 @@ int test_render(char *example) {
 }
 
 int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
-  char *example_dir = "test/example/";
+  char *example_dir = TEST_EXAMPLE_DIR;
   char *input_filename = "input.md";
   char *expected_filename = "expected.html";
   char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 +

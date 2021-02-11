@@ -4,6 +4,9 @@ xxd,
 fastJson,
 libzip,
 self,
+ninja,
+meson,
+pkg-config
 } :
 
 stdenv.mkDerivation rec {
@@ -11,6 +14,8 @@ stdenv.mkDerivation rec {
   version = "0.1.3";
 
   src = self;
+
+  nativeBuildInputs = [ ninja meson pkg-config ];
 
   buildInputs = [ cmark-gfm fastJson xxd libzip.dev ];
 
@@ -21,5 +26,4 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ ryantm ];
     platforms = platforms.unix;
   };
-
 }
