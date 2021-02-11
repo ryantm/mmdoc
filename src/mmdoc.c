@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "mkdir_p.h"
 #include "render.h"
 #include "types.h"
 #include <dirent.h>
@@ -28,40 +29,6 @@ void print_usage() {
   printf("is required.\n");
   printf("\n");
   printf("OUT a directory where the documentation is written to.\n");
-}
-
-int mkdir_p(const char *path) {
-  const size_t len = strlen(path);
-  char _path[PATH_MAX];
-  char *p;
-
-  errno = 0;
-
-  if (len > sizeof(_path) - 1) {
-    errno = ENAMETOOLONG;
-    return -1;
-  }
-  strcpy(_path, path);
-
-  for (p = _path + 1; *p; p++) {
-    if (*p == '/') {
-      *p = '\0';
-
-      if (mkdir(_path, S_IRWXU) != 0) {
-        if (errno != EEXIST)
-          return -1;
-      }
-
-      *p = '/';
-    }
-  }
-
-  if (mkdir(_path, S_IRWXU) != 0) {
-    if (errno != EEXIST)
-      return -1;
-  }
-
-  return 0;
 }
 
 int ends_with(const char *str, const char *suffix) {
@@ -328,13 +295,19 @@ int main(int argc, char *argv[]) {
   if (mmdoc_render_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
     return 1;
 
-  char *epub = ".epub";
-  char *out_epub = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub) + 1);
-  strcpy(out_epub, out);
-  strcat(out_epub, "/");
-  strcat(out_epub, project_name);
-  strcat(out_epub, epub);
-  if (mmdoc_render_epub(out_epub, out_single, project_name) != 0)
+  char *epub = "epub";
+  char *out_epub = malloc(strlen(out) + 1 + strlen(epub) + 1);
+  sprintf(out_epub, "%s/%s", out, epub);
+  if (mkdir_p(out_epub) != 0) {
+    printf("Error recursively making directory %s", out_epub);
+    return 1;
+  }
+
+  char *epub_ext = ".epub";
+  char *out_epub_file = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub_ext) + 1);
+  sprintf(out_epub_file, "%s/%s%s", out, project_name, epub_ext);
+
+  if (mmdoc_render_epub(out_epub, out_epub_file, toc_path, toc_refs, anchor_locations, project_name) != 0)
     return 1;
 
   free_array(&md_files);

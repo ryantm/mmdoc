@@ -5,7 +5,7 @@ mmdoc: src/*.c src/*.h src/asset/fuse.basic.min.js.h src/asset/highlight.pack.js
 
 .PHONY: test
 test:
-	gcc -g -O1 -lzip -lcmark-gfm -lcmark-gfm-extensions -lfastjson test/*.c src/types.c src/render.c src/parse.c -o test.out
+	gcc -g -O1 -lzip -lcmark-gfm -lcmark-gfm-extensions -lfastjson test/*.c src/mkdir_p.c src/types.c src/render.c src/parse.c -o test.out
 	./test.out
 
 src/asset/%.h: src/asset/%

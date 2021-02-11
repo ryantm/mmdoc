@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "mkdir_p.h"
 #include "render.h"
 #include "asset/fuse.basic.min.js.h"
 #include "asset/highlight.pack.js.h"
@@ -472,7 +473,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   fclose(asset_file);
 
   strcpy(asset_path, out);
-  strcat(asset_path, "/minimal.css");
+  strcat(asset_path, "/style.css");
   asset_file = fopen(asset_path, "w");
   for (int i = 0; i < src_asset_minimal_css_len; i++) {
     fputc(src_asset_minimal_css[i], asset_file);
@@ -499,7 +500,7 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
       "  <head>\n"
       "    <base href='/'>\n"
       "    <meta charset='utf-8'>\n"
-      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
+      "    <link href='style.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.initHighlightingOnLoad();</script>\n"
@@ -541,11 +542,65 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   return 0;
 }
 
-int mmdoc_render_epub(char *out, char *out_single, char *project_name) {
+int mmdoc_render_epub(char *out, char *out_epub_file, char *toc_path, Array toc_refs,
+                      AnchorLocationArray anchor_locations, char *project_name) {
+
+  const char *oebps = "OEBPS";
+  char *oebps_dir_path = malloc(strlen(out) + 1 + strlen(oebps) + 1);
+  sprintf(oebps_dir_path, "%s/%s", out, oebps);
+  if (mkdir_p(oebps_dir_path) != 0) {
+    printf("Error recursively making directory %s", oebps_dir_path);
+    return 1;
+  }
+
+  const char *index = "index.xhtml";
+  char *index_path = malloc(strlen(oebps_dir_path) + 1 + strlen(index) + 1);
+  sprintf(index_path, "%s/%s", oebps_dir_path, index);
+  FILE *index_file;
+  index_file = fopen(index_path, "w");
+
+  char *xhtml_head =
+    "<?xml version='1.0' encoding='UTF-8' ?>\n"
+    "<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.1//EN' 'http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd'>\n"
+    "<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en'>\n"
+    "  <head>\n"
+    "    <meta http-equiv='Content-Type' content='application/xhtml+xml; charset=utf-8' />\n"
+    "    <link href='style.css' rel='stylesheet' type='text/css'>\n"
+    "  </head>\n"
+    "  <body>\n";
+  fputs(xhtml_head, index_file);
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
+                    NULL, NULL);
+  for (int i = 0; i < toc_refs.used; i++) {
+    char *file_path;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
+        file_path = anchor_locations.array[j].file_path;
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
+             toc_refs.array[i]);
+      return 1;
+    }
+    AnchorLocationArray empty_anchor_locations;
+    init_anchor_location_array(&empty_anchor_locations, 0);
+    mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
+                      empty_anchor_locations, NULL, NULL);
+    free_anchor_location_array(&empty_anchor_locations);
+  }
+  char *html_foot = "  </body>\n"
+                    "</html>\n";
+  fputs(html_foot, index_file);
+  fclose(index_file);
+
   int *errorp;
-  zip_t *zip = zip_open(out, ZIP_CREATE | ZIP_TRUNCATE, errorp);
+  zip_t *zip = zip_open(out_epub_file, ZIP_CREATE | ZIP_TRUNCATE, errorp);
   if (errorp != 0) {
-    printf("Error making zip file at %s\n", out);
+    printf("Error making zip file at %s\n", out_epub_file);
     return 1;
   }
   const char *mimetype = "application/epub+zip";
@@ -571,7 +626,8 @@ int mmdoc_render_epub(char *out, char *out_single, char *project_name) {
     "    <dc:language>en</dc:language>\n"
     "  </metadata>\n"
     "  <manifest>\n"
-    "    <item id='index' href='index.html' media-type='application/xhtml+xml'/>\n"
+    "    <item id='index' href='index.xhtml' media-type='application/xhtml+xml'/>\n"
+    "    <item id='stylesheet' href='style.css' media-type='text/css'/>\n"
     "  </manifest>\n"
     "  <spine toc='ncx'>\n"
     "    <itemref idref='index' />\n"
@@ -584,13 +640,12 @@ int mmdoc_render_epub(char *out, char *out_single, char *project_name) {
   zip_source_t *source_content = zip_source_buffer(zip, content, strlen(content), 0);
   zip_file_add(zip, "OEBPS/content.opf", source_content, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8);
 
-  const char *index = "/index.html";
-  char *out_single_index = malloc(strlen(out_single) + strlen(index) + 1);
-  strcpy(out_single_index, out_single);
-  strcat(out_single_index, index);
+  zip_source_t *source_index = zip_source_file(zip, index_path, 0, 0);
+  zip_file_add(zip, "OEBPS/index.xhtml", source_index, ZIP_FL_ENC_UTF_8);
 
-  zip_source_t *source_index = zip_source_file(zip, out_single_index, 0, 0);
-  zip_file_add(zip, "OEBPS/index.html", source_index, ZIP_FL_ENC_UTF_8);
+  zip_source_t *source_css = zip_source_buffer(zip, src_asset_epub_css, src_asset_epub_css_len, 0);
+  zip_file_add(zip, "OEBPS/style.css", source_css, ZIP_FL_ENC_UTF_8);
+
   zip_close(zip);
   return 0;
 }
@@ -606,7 +661,7 @@ int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
       "  <head>\n"
       "    <base href='/'>\n"
       "    <meta charset='utf-8'>\n"
-      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
+      "    <link href='style.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.initHighlightingOnLoad();</script>\n"
@@ -661,7 +716,7 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
   fclose(asset_file);
 
   strcpy(asset_path, out);
-  strcat(asset_path, "/minimal.css");
+  strcat(asset_path, "/style.css");
   asset_file = fopen(asset_path, "w");
   for (int i = 0; i < src_asset_minimal_css_len; i++) {
     fputc(src_asset_minimal_css[i], asset_file);
