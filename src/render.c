@@ -196,67 +196,81 @@ int replace_dd(cmark_node *node) {
   if (-1 == pos)
     return 0;
 
-  cmark_node *new_node = NULL;
-
   cmark_node *parent = cmark_node_parent(node);
-  cmark_node *previous = cmark_node_previous(parent);
-  cmark_node *previous_previous = cmark_node_previous(previous);
-  if (previous_previous == NULL) {
-    new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-    cmark_node_set_literal(new_node, "<dl>");
-    cmark_node_insert_before(previous, new_node);
-  } else {
-    const char *prev_prev_lit = cmark_node_get_literal(previous_previous);
-    cmark_node_type prev_prev_type = cmark_node_get_type(previous_previous);
+  parent = cmark_node_previous(parent);
+  if (parent == NULL)
+    return 0;
 
-    if (prev_prev_type != CMARK_NODE_HTML_BLOCK &&
-        (prev_prev_lit == NULL || strcmp(prev_prev_lit, "</dd>") != 0)) {
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "<dl>");
-      cmark_node_insert_before(previous, new_node);
-    }
-  }
-
-  int make_dl_end = 0;
-  cmark_node *next = parent;
-  for (int i = 0; i < 2; i++) {
-    next = cmark_node_next(next);
-    if (next == NULL) {
-      make_dl_end = 1;
-      break;
-    }
-  }
-  if (make_dl_end == 0 && next != NULL) {
-    cmark_node *child = cmark_node_first_child(next);
-    const char *next_dd_lit = cmark_node_get_literal(child);
-    int pos = parse_dd(next_dd_lit);
-    if (-1 == pos)
-      make_dl_end = 1;
-  }
-
-  if (make_dl_end == 1) {
-    new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-    cmark_node_set_literal(new_node, "</dl>");
-    cmark_node_insert_after(parent, new_node);
-  }
+  cmark_node *new_node = NULL;
+  cmark_node *previous = NULL;
 
   new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "<dt>");
-  cmark_node_insert_before(previous, new_node);
-
-  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "</dt>");
-  cmark_node_insert_after(previous, new_node);
-
-  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "<dd>");
+  cmark_node_set_literal(new_node, "<dl>");
   cmark_node_insert_before(parent, new_node);
 
-  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "</dd>");
-  cmark_node_insert_after(parent, new_node);
+  for(;;) {
+    if (parent == NULL)
+      break;
 
-  cmark_node_set_literal(node, lit + pos);
+    cmark_node *child = cmark_node_first_child(parent);
+    lit = cmark_node_get_literal(child);
+    pos = parse_dd(lit);
+    if (pos != -1) {
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "<dd>");
+      cmark_node_insert_before(parent, new_node);
+
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "</dd>");
+      cmark_node_insert_after(parent, new_node);
+
+      cmark_node_set_literal(child, lit + pos);
+
+      previous = parent;
+      parent = cmark_node_next(parent);
+      previous = parent;
+      parent = cmark_node_next(parent);
+      continue;
+    }
+    previous = parent;
+    parent = cmark_node_next(parent);
+    if (parent == NULL)
+      break;
+
+    child = cmark_node_first_child(parent);
+    lit = cmark_node_get_literal(child);
+    pos = parse_dd(lit);
+    if (pos != -1) {
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "<dt>");
+      cmark_node_insert_before(previous, new_node);
+
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "</dt>");
+      cmark_node_insert_after(previous, new_node);
+
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "<dd>");
+      cmark_node_insert_before(parent, new_node);
+
+      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+      cmark_node_set_literal(new_node, "</dd>");
+      cmark_node_insert_after(parent, new_node);
+
+      cmark_node_set_literal(child, lit + pos);
+
+      previous = parent;
+      parent = cmark_node_next(parent);
+      previous = parent;
+      parent = cmark_node_next(parent);
+      continue;
+    }
+    break;
+  }
+
+  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(new_node, "</dl>");
+  cmark_node_insert_before(previous, new_node);
 
   return 1;
 }

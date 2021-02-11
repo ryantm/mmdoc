@@ -166,6 +166,9 @@ int main(int argc, char *argv[]) {
   num_tests++;
   num_failed += test_e007();
   num_tests++;
+  num_failed += test_render("e008");
+  num_tests++;
+
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);
   if (num_failed > 0)
