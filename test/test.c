@@ -3,8 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <testconfig.h>
+
+extern int errno;
 
 int test_files_match(char *example_name, char *expected_file_path,
                      char *got_file_path) {
@@ -94,9 +97,11 @@ int test_render(char *example) {
   strcat(expected_path, expected_filename);
 
   char got_file_path[] = "/tmp/mmdocXXXXXX.html";
-  int ret = mkstemp(got_file_path);
-  if (ret == -1)
+  int ret = mkstemps(got_file_path, 5);
+  if (ret == -1) {
+    perror("mkstemp failed");
     return 1;
+  }
 
   FILE *got_file = fopen(got_file_path, "w");
   AnchorLocationArray empty_anchor_locations;
@@ -129,9 +134,11 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   strcat(expected_path, expected_filename);
 
   char got_file_path[] = "/tmp/mmdocXXXXXX.html";
-  int ret = mkstemp(got_file_path);
-  if (ret == -1)
+  int ret = mkstemps(got_file_path, 5);
+  if (ret == -1) {
+    perror("mkstemp failed");
     return 1;
+  }
 
   FILE *got_file = fopen(got_file_path, "w");
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
