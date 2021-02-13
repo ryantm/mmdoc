@@ -393,6 +393,8 @@ void render_debug_cmark_node(cmark_node *document) {
       }
       printf("EXIT: %s\n", cmark_node_get_type_string(node));
       break;
+    case CMARK_EVENT_DONE: break;
+    case CMARK_EVENT_NONE: break;
     }
     if (event == CMARK_EVENT_DONE) {
       printf("DONE\n\n");
@@ -685,6 +687,7 @@ int mmdoc_render_multi_page(char *page_path, char *toc_path, char *input_path,
                     "</html>\n";
   fputs(html_foot, page_file);
   fclose(page_file);
+  return 0;
 }
 
 int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,

@@ -22,7 +22,7 @@ int test_files_match(char *example_name, char *expected_file_path,
     for (int col = 0;; col++) {
       expected = fgetc(expected_file);
       got = fgetc(got_file);
-      if (got == expected == '\n') {
+      if (got == '\n' && expected == '\n') {
         expected_line[col] = '\0';
         got_line[col] = '\0';
         break;
@@ -95,6 +95,8 @@ int test_render(char *example) {
 
   char got_file_path[] = "/tmp/mmdocXXXXXX.html";
   int ret = mkstemp(got_file_path);
+  if (ret == -1)
+    return 1;
 
   FILE *got_file = fopen(got_file_path, "w");
   AnchorLocationArray empty_anchor_locations;
@@ -128,6 +130,8 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
 
   char got_file_path[] = "/tmp/mmdocXXXXXX.html";
   int ret = mkstemp(got_file_path);
+  if (ret == -1)
+    return 1;
 
   FILE *got_file = fopen(got_file_path, "w");
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
