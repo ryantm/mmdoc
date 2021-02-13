@@ -1,0 +1,3 @@
+#pragma once
+
+#define TEST_EXAMPLE_DIR @TEST_EXAMPLE_DIR@

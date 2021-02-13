@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "mkdir_p.h"
 #include "render.h"
-#include "asset/fuse.basic.min.js.h"
-#include "asset/highlight.pack.js.h"
-#include "asset/minimal.css.h"
-#include "asset/epub.css.h"
-#include "asset/mono-blue.css.h"
-#include "asset/search.js.h"
+#include "fuse.basic.min.js.h"
+#include "highlight.pack.js.h"
+#include "minimal.css.h"
+#include "epub.css.h"
+#include "mono-blue.css.h"
+#include "search.js.h"
 #include "parse.h"
 #include "types.h"
 #include <cmark-gfm-core-extensions.h>
@@ -467,24 +467,24 @@ int mmdoc_render_single(char *out, char *toc_path, Array toc_refs,
   strcpy(asset_path, out);
   strcat(asset_path, "/highlight.pack.js");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_highlight_pack_js_len; i++) {
-    fputc(src_asset_highlight_pack_js[i], asset_file);
+  for (int i = 0; i < ___src_asset_highlight_pack_js_len; i++) {
+    fputc(___src_asset_highlight_pack_js[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/style.css");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_minimal_css_len; i++) {
-    fputc(src_asset_minimal_css[i], asset_file);
+  for (int i = 0; i < ___src_asset_minimal_css_len; i++) {
+    fputc(___src_asset_minimal_css[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/mono-blue.css");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_mono_blue_css_len; i++) {
-    fputc(src_asset_mono_blue_css[i], asset_file);
+  for (int i = 0; i < ___src_asset_mono_blue_css_len; i++) {
+    fputc(___src_asset_mono_blue_css[i], asset_file);
   }
   fclose(asset_file);
 
@@ -643,7 +643,7 @@ int mmdoc_render_epub(char *out, char *out_epub_file, char *toc_path, Array toc_
   zip_source_t *source_index = zip_source_file(zip, index_path, 0, 0);
   zip_file_add(zip, "OEBPS/index.xhtml", source_index, ZIP_FL_ENC_UTF_8);
 
-  zip_source_t *source_css = zip_source_buffer(zip, src_asset_epub_css, src_asset_epub_css_len, 0);
+  zip_source_t *source_css = zip_source_buffer(zip, ___src_asset_epub_css, ___src_asset_epub_css_len, 0);
   zip_file_add(zip, "OEBPS/style.css", source_css, ZIP_FL_ENC_UTF_8);
 
   zip_close(zip);
@@ -694,40 +694,40 @@ int mmdoc_render_multi(char *out, char *src, char *toc_path, Array toc_refs,
   strcpy(asset_path, out);
   strcat(asset_path, "/search.js");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_search_js_len; i++) {
-    fputc(src_asset_search_js[i], asset_file);
+  for (int i = 0; i < ___src_asset_search_js_len; i++) {
+    fputc(___src_asset_search_js[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/fuse.basic.min.js");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_fuse_basic_min_js_len; i++) {
-    fputc(src_asset_fuse_basic_min_js[i], asset_file);
+  for (int i = 0; i < ___src_asset_fuse_basic_min_js_len; i++) {
+    fputc(___src_asset_fuse_basic_min_js[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/highlight.pack.js");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_highlight_pack_js_len; i++) {
-    fputc(src_asset_highlight_pack_js[i], asset_file);
+  for (int i = 0; i < ___src_asset_highlight_pack_js_len; i++) {
+    fputc(___src_asset_highlight_pack_js[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/style.css");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_minimal_css_len; i++) {
-    fputc(src_asset_minimal_css[i], asset_file);
+  for (int i = 0; i < ___src_asset_minimal_css_len; i++) {
+    fputc(___src_asset_minimal_css[i], asset_file);
   }
   fclose(asset_file);
 
   strcpy(asset_path, out);
   strcat(asset_path, "/mono-blue.css");
   asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < src_asset_mono_blue_css_len; i++) {
-    fputc(src_asset_mono_blue_css[i], asset_file);
+  for (int i = 0; i < ___src_asset_mono_blue_css_len; i++) {
+    fputc(___src_asset_mono_blue_css[i], asset_file);
   }
   fclose(asset_file);
 

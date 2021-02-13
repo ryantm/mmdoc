@@ -110,7 +110,15 @@ nix develop
 Compile and run the test suite with:
 
 ```
-make test
+mkdir build && cd build
+meson ..
+ninja test
+```
+
+### Format
+
+```
+ninja clang-format
 ```
 
 ### additional test: compile the nixpkgs manual
