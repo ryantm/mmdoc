@@ -199,6 +199,7 @@ int parse_admonition_end(const char *text) {
     }
     return -1;
   }
+  return -1;
 }
 
 enum parse_dd_state {

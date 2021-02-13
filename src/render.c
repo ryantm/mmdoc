@@ -327,8 +327,11 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
   cmark_node *node;
   cmark_node_type type;
 
-  while (event = cmark_iter_next(iter)) {
+  while ((event = cmark_iter_next(iter))) {
     switch (event) {
+    case CMARK_EVENT_NONE: break;
+    case CMARK_EVENT_DONE: break;
+    case CMARK_EVENT_EXIT: break;
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
       type = cmark_node_get_type(node);
@@ -361,7 +364,7 @@ void render_debug_cmark_node(cmark_node *document) {
   cmark_event_type event;
   cmark_node *node;
   int indent = 0;
-  while (event = cmark_iter_next(iter)) {
+  while ((event = cmark_iter_next(iter))) {
     switch (event) {
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
@@ -599,7 +602,7 @@ int mmdoc_render_epub(char *out, char *out_epub_file, char *toc_path, Array toc_
   fputs(html_foot, index_file);
   fclose(index_file);
 
-  int *errorp;
+  int *errorp = 0;
   zip_t *zip = zip_open(out_epub_file, ZIP_CREATE | ZIP_TRUNCATE, errorp);
   if (errorp != 0) {
     printf("Error making zip file at %s\n", out_epub_file);
