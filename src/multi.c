@@ -17,23 +17,33 @@ int mmdoc_multi_page(char *page_path, char *toc_path, char *input_path,
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
-      "    <script>hljs.initHighlightingOnLoad();</script>\n"
+      "    <script>hljs.initHighlightingOnLoad()</script>\n"
+      "    <script>\n"
+      "      window.addEventListener('load', (event) => { \n"
+      "        let codeElems = Array.from(document.querySelectorAll('code')).filter(function (elem) {return !elem.parentElement.classList.contains('heade'); });\n"
+      "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
+      "      });\n"
+      "    </script>\n"
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
       "    <script src='search.js'></script>\n"
       "  </head>\n"
       "  <body>\n"
       "    <nav>\n"
-      "      <input type='search' id='search' placeholder='Search'>\n"
-      "      <div id='search-results'></div>\n";
+      "      <div class='sidebar-scrollbox'>\n"
+      "        <input type='search' id='search' placeholder='Search'>\n"
+      "        <div id='search-results'></div>\n";
   fputs(html_head, page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE,
                     anchor_locations, NULL, NULL);
+  fputs("      </div>\n", page_file);
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
+  fputs("      <main>\n", page_file);
   mmdoc_render_part(input_path, page_file, RENDER_TYPE_MULTIPAGE,
                     anchor_locations, multipage_url, search_index_file);
-  char *html_foot = "    </section>\n"
+  char *html_foot = "      </main>\n"
+                    "    </section>\n"
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);

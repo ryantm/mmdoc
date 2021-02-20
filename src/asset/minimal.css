@@ -1,5 +1,10 @@
+:root {
+    --sidebar-width: 300px;
+}
+
 body {
-  display: flex;
+  line-height: 1.45em;
+  font-family: "Open Sans", sans-serif
 }
 
 #search-results ol {
@@ -8,11 +13,103 @@ body {
 }
 
 nav {
-  padding: 0em 1em 0em 1em;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  margin: 0;
+}
+
+nav .sidebar-scrollbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  padding: 10px;
+}
+
+nav ul ul {
+  padding-left: 15px;
+  list-style-type: none;
+}
+
+nav ul {
+  padding-left: 0px;
+  list-style-type: none;
 }
 
 section {
+  box-sizing: border-box;
+  margin-left: var(--sidebar-width);
+}
+
+main {
+  margin-left: auto;
+  margin-right: auto;
   max-width: 80ch;
   padding: 0em 1em 20em 1em;
   text-align: justify;
+}
+
+:root {
+    --gray: gray;
+    --orange: #FF9636;
+    --yellow: #FFCD58;
+    --green: #DAD870;
+    --red: #FF5C4D;
+}
+
+section .admonition {
+  border-radius: 6px;
+  padding: 0.5em 1em 0.5em 1em;
+  margin-bottom: 1em;
+}
+
+section .attention, section .caution, section .warning {
+  background-color: var(--orange);
+}
+
+section .danger, section .errror {
+  background-color: var(--red);
+}
+
+section .hint, section .tip {
+  background-color: var(--green);
+}
+
+section .important, section .note {
+  background-color: var(--yellow);
+}
+
+section table, section th, section td {
+  border: 2px solid var(--gray);
+  border-collapse: collapse;
+}
+
+section th, section td {
+  padding: 0.75em;
+}
+
+main > h1 {
+  font-size: 2.5rem;
+}
+
+main > h1, main > h2, main > h3, main > h4, section > h5, section > h6 {
+  margin-top: 2em;
+}
+
+pre code.hljs {
+  display: block;
+}
+
+code.hljs {
+  display: inline;
+  padding: 0.25em;
+  border-radius: 6px;
+  padding: 5px;
 }

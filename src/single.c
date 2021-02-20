@@ -25,15 +25,24 @@ int mmdoc_single(char *out, char *toc_path, Array toc_refs,
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
-      "    <script>hljs.initHighlightingOnLoad();</script>\n"
+      "    <script>hljs.initHighlightingOnLoad()</script>\n"
+      "    <script>\n"
+      "      window.addEventListener('load', (event) => { \n"
+      "        let codeElems = Array.from(document.querySelectorAll('code')).filter(function (elem) {return !elem.parentElement.classList.contains('heade'); });\n"
+      "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
+      "      });\n"
+      "    </script>\n"
       "  </head>\n"
       "  <body>\n"
-      "    <nav>\n";
+      "    <nav>\n"
+      "      <div class='sidebar-scrollbox'>\n";
   fputs(html_head, index_file);
   mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
                     NULL, NULL);
+  fputs("      </div>\n", index_file);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
+  fputs("      <main>\n", index_file);
 
   for (int i = 0; i < toc_refs.used; i++) {
     char *file_path;
@@ -56,7 +65,8 @@ int mmdoc_single(char *out, char *toc_path, Array toc_refs,
                       empty_anchor_locations, NULL, NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
-  char *html_foot = "    </section>\n"
+  char *html_foot = "      </main>\n"
+                    "    </section>\n"
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, index_file);
