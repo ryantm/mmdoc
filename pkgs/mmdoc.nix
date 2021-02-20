@@ -11,7 +11,7 @@ pkg-config
 
 stdenv.mkDerivation rec {
   pname = "mmdoc";
-  version = "0.1.3";
+  version = "0.1.4";
 
   src = self;
 
