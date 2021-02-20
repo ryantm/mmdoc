@@ -3,6 +3,7 @@
 #include "man.h"
 #include "mkdir_p.h"
 #include "multi.h"
+#include "render.h"
 #include "single.h"
 #include "types.h"
 #include <dirent.h>
@@ -14,7 +15,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "render.h"
 
 extern int errno;
 

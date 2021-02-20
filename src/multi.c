@@ -39,8 +39,8 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
       "        <input type='search' id='search' placeholder='Search'>\n"
       "        <div id='search-results'></div>\n";
   fputs(html_head, page_file);
-  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_location, anchor_locations, NULL, NULL);
+  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
+                    anchor_locations, NULL, NULL);
   fputs("      </div>\n", page_file);
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
