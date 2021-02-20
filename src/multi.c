@@ -2,6 +2,7 @@
 #include "render.h"
 #include "asset.h"
 #include <string.h>
+#include <stdlib.h>
 
 int mmdoc_multi_page(char *page_path, char *toc_path, char *input_path,
                             AnchorLocationArray anchor_locations,
@@ -59,9 +60,9 @@ int mmdoc_multi(char *out, char *src, char *toc_path, Array toc_refs,
   asset_write_to_dir_minimal_css(out);
   asset_write_to_dir_mono_blue_css(out);
 
-  char search_index_path[2048];
-  strcpy(search_index_path, out);
-  strcat(search_index_path, "/search_index.js");
+  char *search_index_js = "search_index.js";
+  char *search_index_path = malloc(strlen(out) + 1 + strlen(search_index_js) + 1);
+  sprintf(search_index_path, "%s/%s", out, search_index_js);
   FILE *search_index_file = fopen(search_index_path, "w");
   fputs("const corpus = [", search_index_file);
   for (int i = 0; i < toc_refs.used; i++) {
@@ -79,6 +80,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path, Array toc_refs,
              toc_refs.array[i]);
       return 1;
     }
+
     mmdoc_multi_page(anchor_location.multipage_output_file_path,
                      toc_path, anchor_location.file_path,
                      anchor_locations, anchor_location.multipage_url,
