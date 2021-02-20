@@ -474,10 +474,51 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   cmark_parser_free(parser);
 }
 
-char *render_get_title_from_file(char *file) {
-  /* cmark_mem *mem = cmark_get_default_mem_allocator(); */
-  /* cmark_parser *parser =
-   * cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem); */
-  /* cmark_node *document = mmdoc_render_cmark_document(file_path, parser); */
+char *mmdoc_render_get_title_from_file(char *file_path) {
+  cmark_mem *mem = cmark_get_default_mem_allocator();
+  cmark_parser *parser = cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
+  cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
+  cmark_iter *iter = cmark_iter_new(document);
+  cmark_event_type event;
+  cmark_node *node;
+  cmark_node_type type;
+  while ((event = cmark_iter_next(iter))) {
+    switch (event) {
+    case CMARK_EVENT_NONE:
+      break;
+    case CMARK_EVENT_DONE:
+      break;
+    case CMARK_EVENT_EXIT:
+      break;
+    case CMARK_EVENT_ENTER:
+      node = cmark_iter_get_node(iter);
+      type = cmark_node_get_type(node);
+      if (type != CMARK_NODE_TEXT)
+        continue;
+      const char *lit = cmark_node_get_literal(node);
+      char *id = malloc(strlen(lit) + 1);
+      int pos = parse_heading_bracketed_span_id(lit, id);
+      if (-1 == pos) {
+        free(id);
+        continue;
+      }
+      char *result = malloc(pos + 1);
+      for (int i = 0; i < pos; i++) {
+        result[i] = lit[i];
+      }
+      free(id);
+      cmark_iter_free(iter);
+      cmark_node_free(document);
+      cmark_parser_free(parser);
+      return result;
+    }
+    if (event == CMARK_EVENT_DONE) {
+      break;
+    }
+  }
+
+  cmark_iter_free(iter);
+  cmark_node_free(document);
+  cmark_parser_free(parser);
   return "";
 }

@@ -162,10 +162,33 @@ int test_e007() {
   return retval;
 }
 
+int test_title(char *example, char *expected_title) {
+  char *example_dir = TEST_EXAMPLE_DIR;
+  char *input_filename = "input.md";
+  char *input_path = malloc(strlen(example_dir) + strlen(example) + 1 +
+                            strlen(input_filename) + 1);
+  sprintf(input_path, "%s%s/%s", example_dir, example, input_filename);
+
+  char *got_title = mmdoc_render_get_title_from_file(input_path);
+
+  if (strcmp(got_title, expected_title) != 0) {
+    printf("%s: title didn't match    expected: %s\n         "
+           "got: %s\n", example, expected_title, got_title);
+    free(input_path);
+    return 1;
+  }
+  printf("%s title test passed\n", example);
+  free(input_path);
+  free(got_title);
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   uint num_failed = 0;
   uint num_tests = 0;
   num_failed += test_render("e001");
+  num_tests++;
+  num_failed += test_title("e001", "Header");
   num_tests++;
   num_failed += test_render("e002");
   num_tests++;

@@ -14,3 +14,5 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
                        render_type render_type,
                        AnchorLocationArray anchor_locations,
                        char *multipage_url, FILE *search_index_path);
+
+char *mmdoc_render_get_title_from_file(char *file_path);
