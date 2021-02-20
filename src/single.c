@@ -4,8 +4,7 @@
 #include "asset.h"
 #include <string.h>
 
-int mmdoc_single(char *out, char *toc_path, Array toc_refs,
-                 AnchorLocationArray anchor_locations) {
+int mmdoc_single(char *out, char *toc_path, AnchorLocationArray toc_anchor_locations) {
   asset_write_to_dir_highlight_pack_js(out);
   asset_write_to_dir_minimal_css(out);
   asset_write_to_dir_mono_blue_css(out);
@@ -37,34 +36,21 @@ int mmdoc_single(char *out, char *toc_path, Array toc_refs,
       "    <nav>\n"
       "      <div class='sidebar-scrollbox'>\n";
   fputs(html_head, index_file);
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, anchor_locations,
+  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, toc_anchor_locations,
                     NULL, NULL);
   fputs("      </div>\n", index_file);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
   fputs("      <main>\n", index_file);
 
-  for (int i = 0; i < toc_refs.used; i++) {
-    char *file_path;
-    int found = 0;
-    for (int j = 0; j < anchor_locations.used; j++) {
-      if (0 == strcmp(toc_refs.array[i], anchor_locations.array[j].anchor)) {
-        file_path = anchor_locations.array[j].file_path;
-        found = 1;
-        break;
-      }
-    }
-    if (!found) {
-      printf("Anchor \"%s\" referenced in toc.md not found.\n",
-             toc_refs.array[i]);
-      return 1;
-    }
+  for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
-    mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE,
+    mmdoc_render_part(toc_anchor_locations.array[i].file_path, index_file, RENDER_TYPE_SINGLE,
                       empty_anchor_locations, NULL, NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
+
   char *html_foot = "      </main>\n"
                     "    </section>\n"
                     "  </body>\n"

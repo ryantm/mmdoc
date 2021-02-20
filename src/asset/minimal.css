@@ -48,6 +48,36 @@ section {
   margin-left: var(--sidebar-width);
 }
 
+section .nav-chapter {
+  height: 100%;
+  font-size: 2.5em;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  max-width: 150px;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
+  text-align: center;
+  text-decoration: none;
+  color: var(--gray);
+}
+
+section .nav-chapter:hover {
+  background-color: var(--light-gray);
+}
+
+section .nav-chapter-previous {
+  float: left;
+}
+
+section .nav-chapter-next {
+  float: right;
+  right: 0;
+}
+
 main {
   margin-left: auto;
   margin-right: auto;
@@ -57,6 +87,7 @@ main {
 }
 
 :root {
+    --light-gray: lightgray;
     --gray: gray;
     --orange: #FF9636;
     --yellow: #FFCD58;
@@ -64,34 +95,34 @@ main {
     --red: #FF5C4D;
 }
 
-section .admonition {
+main .admonition {
   border-radius: 6px;
   padding: 0.5em 1em 0.5em 1em;
   margin-bottom: 1em;
 }
 
-section .attention, section .caution, section .warning {
+main .attention, main .caution, main .warning {
   background-color: var(--orange);
 }
 
-section .danger, section .errror {
+main .danger, main .errror {
   background-color: var(--red);
 }
 
-section .hint, section .tip {
+main .hint, main .tip {
   background-color: var(--green);
 }
 
-section .important, section .note {
+main .important, main .note {
   background-color: var(--yellow);
 }
 
-section table, section th, section td {
+main table, main th, main td {
   border: 2px solid var(--gray);
   border-collapse: collapse;
 }
 
-section th, section td {
+main th, main td {
   padding: 0.75em;
 }
 
@@ -99,7 +130,7 @@ main > h1 {
   font-size: 2.5rem;
 }
 
-main > h1, main > h2, main > h3, main > h4, section > h5, section > h6 {
+main > h1, main > h2, main > h3, main > h4, main > h5, main > h6 {
   margin-top: 2em;
 }
 

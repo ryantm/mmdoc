@@ -188,10 +188,6 @@ int main(int argc, char *argv[]) {
   init_array(&md_files, 100);
   mmdoc_md_files(&md_files, src);
 
-  Array toc_refs;
-  init_array(&toc_refs, 500);
-  mmdoc_refs(&toc_refs, toc_path);
-
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 500);
 
@@ -273,6 +269,32 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  Array toc_refs;
+  init_array(&toc_refs, 500);
+  mmdoc_refs(&toc_refs, toc_path);
+
+  AnchorLocationArray toc_anchor_locations;
+  init_anchor_location_array(&toc_anchor_locations, toc_refs.used);
+
+  for (int i = 0; i < toc_refs.used; i++) {
+    AnchorLocation *anchor_location;
+    int found = 0;
+    for (int j = 0; j < anchor_locations.used; j++) {
+      if (strcmp(toc_refs.array[i], anchor_locations.array[j].anchor) == 0) {
+        anchor_location = &anchor_locations.array[j];
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("Anchor \"%s\" referenced in toc.md not found.\n",
+             toc_refs.array[i]);
+      return 1;
+    }
+    insert_anchor_location_array(&toc_anchor_locations, anchor_location);
+  }
+  free_array(&toc_refs);
+
   char *single = "single";
   char *out_single = malloc(strlen(out) + 1 + strlen(single) + 1);
   strcpy(out_single, out);
@@ -283,19 +305,18 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (mmdoc_single(out_single, toc_path, toc_refs, anchor_locations) !=
+  if (mmdoc_single(out_single, toc_path, toc_anchor_locations) !=
       0)
     return 1;
 
-  if (mmdoc_multi(out_multi, src, toc_path, toc_refs,
-                         anchor_locations) != 0)
+  if (mmdoc_multi(out_multi, src, toc_path, toc_anchor_locations, anchor_locations) != 0)
     return 1;
 
   if (mkdir_p(out_man) != 0) {
     printf("Error recursively making directory %s", out_man);
     return -1;
   }
-  if (mmdoc_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
+  if (mmdoc_man(out_man, src, toc_path, toc_anchor_locations, anchor_locations) != 0)
     return 1;
 
   char *epub = "epub";
@@ -310,11 +331,11 @@ int main(int argc, char *argv[]) {
   char *out_epub_file = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub_ext) + 1);
   sprintf(out_epub_file, "%s/%s%s", out, project_name, epub_ext);
 
-  if (mmdoc_epub(out_epub, out_epub_file, toc_path, toc_refs, anchor_locations, project_name) != 0)
+  if (mmdoc_epub(out_epub, out_epub_file, toc_path, toc_anchor_locations, project_name) != 0)
     return 1;
 
   free_array(&md_files);
-  free_array(&toc_refs);
+  free_anchor_location_array(&toc_anchor_locations);
   free_anchor_location_array(&anchor_locations);
   return 0;
 }

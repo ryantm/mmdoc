@@ -2,5 +2,4 @@
 #include "types.h"
 #include "types.h"
 
-int mmdoc_single(char *out, char *toc_path, Array toc_refs,
-                 AnchorLocationArray anchor_locations);
+int mmdoc_single(char *out, char *toc_path, AnchorLocationArray toc_anchor_locations);
