@@ -6,31 +6,9 @@
 
 int mmdoc_single(char *out, char *toc_path, Array toc_refs,
                  AnchorLocationArray anchor_locations) {
-  char asset_path[2048];
-  FILE *asset_file;
-  strcpy(asset_path, out);
-  strcat(asset_path, "/highlight.pack.js");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < ___src_asset_highlight_pack_js_len; i++) {
-    fputc(___src_asset_highlight_pack_js[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/style.css");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < ___src_asset_minimal_css_len; i++) {
-    fputc(___src_asset_minimal_css[i], asset_file);
-  }
-  fclose(asset_file);
-
-  strcpy(asset_path, out);
-  strcat(asset_path, "/mono-blue.css");
-  asset_file = fopen(asset_path, "w");
-  for (int i = 0; i < ___src_asset_mono_blue_css_len; i++) {
-    fputc(___src_asset_mono_blue_css[i], asset_file);
-  }
-  fclose(asset_file);
+  asset_write_to_dir_highlight_pack_js(out);
+  asset_write_to_dir_minimal_css(out);
+  asset_write_to_dir_mono_blue_css(out);
 
   char index_path[2048];
   FILE *index_file;
@@ -44,7 +22,7 @@ int mmdoc_single(char *out, char *toc_path, Array toc_refs,
       "  <head>\n"
       "    <base href='/'>\n"
       "    <meta charset='utf-8'>\n"
-      "    <link href='style.css' rel='stylesheet' type='text/css'>\n"
+      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.initHighlightingOnLoad();</script>\n"

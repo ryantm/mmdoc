@@ -29,7 +29,7 @@ int mmdoc_epub(char *out, char *out_epub_file, char *toc_path, Array toc_refs,
     "<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en'>\n"
     "  <head>\n"
     "    <meta http-equiv='Content-Type' content='application/xhtml+xml; charset=utf-8' />\n"
-    "    <link href='style.css' rel='stylesheet' type='text/css'>\n"
+    "    <link href='epub.css' rel='stylesheet' type='text/css'>\n"
     "  </head>\n"
     "  <body>\n";
   fputs(xhtml_head, index_file);
@@ -91,7 +91,7 @@ int mmdoc_epub(char *out, char *out_epub_file, char *toc_path, Array toc_refs,
     "  </metadata>\n"
     "  <manifest>\n"
     "    <item id='index' href='index.xhtml' media-type='application/xhtml+xml'/>\n"
-    "    <item id='stylesheet' href='style.css' media-type='text/css'/>\n"
+    "    <item id='stylesheet' href='epub.css' media-type='text/css'/>\n"
     "  </manifest>\n"
     "  <spine toc='ncx'>\n"
     "    <itemref idref='index' />\n"
@@ -108,7 +108,7 @@ int mmdoc_epub(char *out, char *out_epub_file, char *toc_path, Array toc_refs,
   zip_file_add(zip, "OEBPS/index.xhtml", source_index, ZIP_FL_ENC_UTF_8);
 
   zip_source_t *source_css = zip_source_buffer(zip, ___src_asset_epub_css, ___src_asset_epub_css_len, 0);
-  zip_file_add(zip, "OEBPS/style.css", source_css, ZIP_FL_ENC_UTF_8);
+  zip_file_add(zip, "OEBPS/epub.css", source_css, ZIP_FL_ENC_UTF_8);
 
   zip_close(zip);
   return 0;
