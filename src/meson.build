@@ -1,7 +1,12 @@
 src = [
+  'asset.c',
+  'epub.c',
+  'man.c',
   'mkdir_p.c',
+  'multi.c',
   'parse.c',
   'render.c',
+  'single.c',
   'types.c',
 ]
 
