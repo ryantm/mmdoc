@@ -399,24 +399,18 @@ void render_debug_cmark_node(cmark_node *document) {
   cmark_iter_free(iter);
 }
 
-void mmdoc_render_part(char *file_path, FILE *output_file,
-                       render_type render_type,
-                       AnchorLocationArray anchor_locations,
-                       char *multipage_url, FILE *search_index_path) {
+int mmdoc_render_cmark_options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
+cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
   char buffer[4096];
   size_t bytes;
 
-  int options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
-
   cmark_gfm_core_extensions_ensure_registered();
-  cmark_mem *mem = cmark_get_default_mem_allocator();
 
   cmark_syntax_extension *table_extension =
       cmark_find_syntax_extension("table");
 
   FILE *file = fopen(file_path, "rb");
 
-  cmark_parser *parser = cmark_parser_new_with_mem(options, mem);
   cmark_parser_attach_syntax_extension(parser, table_extension);
   while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
     cmark_parser_feed(parser, buffer, bytes);
@@ -425,7 +419,18 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
     }
   }
   fclose(file);
-  cmark_node *document = cmark_parser_finish(parser);
+
+  return cmark_parser_finish(parser);
+}
+
+void mmdoc_render_part(char *file_path, FILE *output_file,
+                       render_type render_type,
+                       AnchorLocationArray anchor_locations,
+                       char *multipage_url, FILE *search_index_path) {
+
+  cmark_mem *mem = cmark_get_default_mem_allocator();
+  cmark_parser *parser = cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
+  cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
 
   /* printf("BEFORE\n"); */
   /* render_debug_cmark_node(document); */
@@ -437,11 +442,11 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
   if (render_type != RENDER_TYPE_MAN) {
     char *result = cmark_render_html_with_mem(
-                                              document, options, cmark_parser_get_syntax_extensions(parser), mem);
+                                              document, mmdoc_render_cmark_options, cmark_parser_get_syntax_extensions(parser), mem);
 
     if (search_index_path != NULL) {
       char *plaintext_result =
-        cmark_render_plaintext_with_mem(document, options, 120, mem);
+        cmark_render_plaintext_with_mem(document, mmdoc_render_cmark_options, 120, mem);
       insert_search_index(search_index_path, plaintext_result, multipage_url);
       mem->free(plaintext_result);
     }
@@ -449,7 +454,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
     mem->free(result);
   }
   else {
-    char *result = cmark_render_man_with_mem(document, options, 240, mem);
+    char *result = cmark_render_man_with_mem(document, mmdoc_render_cmark_options, 240, mem);
     fputs(result, output_file);
     mem->free(result);
   }
@@ -457,3 +462,9 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   cmark_parser_free(parser);
 }
 
+char *render_get_title_from_file(char *file) {
+  /* cmark_mem *mem = cmark_get_default_mem_allocator(); */
+  /* cmark_parser *parser = cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem); */
+  /* cmark_node *document = mmdoc_render_cmark_document(file_path, parser); */
+  return "";
+}
