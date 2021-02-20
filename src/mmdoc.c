@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "mkdir_p.h"
 #include "epub.h"
-#include "single.h"
 #include "man.h"
+#include "mkdir_p.h"
 #include "multi.h"
+#include "single.h"
 #include "types.h"
 #include <dirent.h>
 #include <errno.h>
+#include <mmdocconfig.h>
 #include <regex.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <mmdocconfig.h>
 
 extern int errno;
 
@@ -25,7 +25,8 @@ void print_usage() {
   printf("options:\n");
   printf("-h, --help                show help\n");
   printf("\n");
-  printf("PROJECT_NAME is the name of the project the documentation is generated for.\n");
+  printf("PROJECT_NAME is the name of the project the documentation is "
+         "generated for.\n");
   printf("\n");
   printf("SRC a directory containing Markdown files; a file called toc.md at "
          "the top level\n");
@@ -222,7 +223,8 @@ int main(int argc, char *argv[]) {
 
       char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +
                               strlen(al->file_path) + 2);
-      char *man_page_name = malloc(strlen(project_name) + strlen(al->file_path) + 1);
+      char *man_page_name =
+          malloc(strlen(project_name) + strlen(al->file_path) + 1);
       man_page_name[0] = '\0';
       strcpy(man_path, out_man);
       strcat(man_path, "/");
@@ -233,8 +235,7 @@ int main(int argc, char *argv[]) {
         if (c[0] == '/') {
           strcat(man_path, "-");
           strcat(man_page_name, "\\-");
-        }
-        else if (c[0] == '-') {
+        } else if (c[0] == '-') {
           strncat(man_path, c, 1);
           strcat(man_page_name, "\\-");
         } else {
@@ -254,7 +255,8 @@ int main(int argc, char *argv[]) {
       }
       strcat(man_path, ".1");
       al->man_output_file_path = man_path;
-      char *man_page_header = malloc(19 + strlen(man_path) * 2 + strlen(project_name) + 1);
+      char *man_page_header =
+          malloc(19 + strlen(man_path) * 2 + strlen(project_name) + 1);
       strcpy(man_page_header, ".TH \"");
       strcat(man_page_header, man_page_name);
       strcat(man_page_header, "\" \"1\" \"\" \"");
@@ -305,18 +307,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (mmdoc_single(out_single, toc_path, toc_anchor_locations) !=
-      0)
+  if (mmdoc_single(out_single, toc_path, toc_anchor_locations) != 0)
     return 1;
 
-  if (mmdoc_multi(out_multi, src, toc_path, toc_anchor_locations, anchor_locations) != 0)
+  if (mmdoc_multi(out_multi, src, toc_path, toc_anchor_locations,
+                  anchor_locations) != 0)
     return 1;
 
   if (mkdir_p(out_man) != 0) {
     printf("Error recursively making directory %s", out_man);
     return -1;
   }
-  if (mmdoc_man(out_man, src, toc_path, toc_anchor_locations, anchor_locations) != 0)
+  if (mmdoc_man(out_man, src, toc_path, toc_anchor_locations,
+                anchor_locations) != 0)
     return 1;
 
   char *epub = "epub";
@@ -328,10 +331,12 @@ int main(int argc, char *argv[]) {
   }
 
   char *epub_ext = ".epub";
-  char *out_epub_file = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub_ext) + 1);
+  char *out_epub_file =
+      malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub_ext) + 1);
   sprintf(out_epub_file, "%s/%s%s", out, project_name, epub_ext);
 
-  if (mmdoc_epub(out_epub, out_epub_file, toc_path, toc_anchor_locations, project_name) != 0)
+  if (mmdoc_epub(out_epub, out_epub_file, toc_path, toc_anchor_locations,
+                 project_name) != 0)
     return 1;
 
   free_array(&md_files);

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include <dirent.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 
 int mkdir_p(const char *path) {
   const size_t len = strlen(path);

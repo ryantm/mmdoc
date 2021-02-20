@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "mkdir_p.h"
 #include "render.h"
+#include "mkdir_p.h"
 #include "parse.h"
 #include "types.h"
 #include <cmark-gfm-core-extensions.h>
@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-
 
 int replace_bracket_with_span(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
@@ -132,34 +131,40 @@ int replace_admonition_start(cmark_node *node) {
   cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
   if (strcmp(admonition_type, "attention") == 0)
     cmark_node_set_literal(
-        new_node, "<div class='admonition attention'><h3 class='title'>Attention</h3>");
+        new_node,
+        "<div class='admonition attention'><h3 class='title'>Attention</h3>");
   if (strcmp(admonition_type, "caution") == 0)
     cmark_node_set_literal(
-        new_node, "<div class='admonition caution'><h3 class='title'>Caution</h3>");
+        new_node,
+        "<div class='admonition caution'><h3 class='title'>Caution</h3>");
   if (strcmp(admonition_type, "danger") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition danger'><h3 class='title'>Danger</h3>");
+    cmark_node_set_literal(
+        new_node,
+        "<div class='admonition danger'><h3 class='title'>Danger</h3>");
   if (strcmp(admonition_type, "error") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition error'><h3 class='title'>Error</h3>");
+    cmark_node_set_literal(
+        new_node, "<div class='admonition error'><h3 class='title'>Error</h3>");
   if (strcmp(admonition_type, "hint") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition hint'><h3 class='title'>Hint</h3>");
+    cmark_node_set_literal(
+        new_node, "<div class='admonition hint'><h3 class='title'>Hint</h3>");
   if (strcmp(admonition_type, "important") == 0)
     cmark_node_set_literal(
-        new_node, "<div class='admonition important'><h3 class='title'>Important</h3>");
+        new_node,
+        "<div class='admonition important'><h3 class='title'>Important</h3>");
   if (strcmp(admonition_type, "danger") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition danger'><h3 class='title'>Danger</h3>");
+    cmark_node_set_literal(
+        new_node,
+        "<div class='admonition danger'><h3 class='title'>Danger</h3>");
   if (strcmp(admonition_type, "note") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition note'><h3 class='title'>Note</h3>");
+    cmark_node_set_literal(
+        new_node, "<div class='admonition note'><h3 class='title'>Note</h3>");
   if (strcmp(admonition_type, "tip") == 0)
-    cmark_node_set_literal(new_node,
-                           "<div class='admonition tip'><h3 class='title'>Tip</h3>");
+    cmark_node_set_literal(
+        new_node, "<div class='admonition tip'><h3 class='title'>Tip</h3>");
   if (strcmp(admonition_type, "warning") == 0)
     cmark_node_set_literal(
-        new_node, "<div class='admonition warning'><h3 class='title'>Warning</h3>");
+        new_node,
+        "<div class='admonition warning'><h3 class='title'>Warning</h3>");
   cmark_node_insert_before(parent, new_node);
 
   free(admonition_type);
@@ -201,7 +206,7 @@ int replace_dd(cmark_node *node) {
   cmark_node_set_literal(new_node, "<dl>");
   cmark_node_insert_before(parent, new_node);
 
-  for(;;) {
+  for (;;) {
     if (parent == NULL)
       break;
 
@@ -321,9 +326,12 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
 
   while ((event = cmark_iter_next(iter))) {
     switch (event) {
-    case CMARK_EVENT_NONE: break;
-    case CMARK_EVENT_DONE: break;
-    case CMARK_EVENT_EXIT: break;
+    case CMARK_EVENT_NONE:
+      break;
+    case CMARK_EVENT_DONE:
+      break;
+    case CMARK_EVENT_EXIT:
+      break;
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
       type = cmark_node_get_type(node);
@@ -388,8 +396,10 @@ void render_debug_cmark_node(cmark_node *document) {
       }
       printf("EXIT: %s\n", cmark_node_get_type_string(node));
       break;
-    case CMARK_EVENT_DONE: break;
-    case CMARK_EVENT_NONE: break;
+    case CMARK_EVENT_DONE:
+      break;
+    case CMARK_EVENT_NONE:
+      break;
     }
     if (event == CMARK_EVENT_DONE) {
       printf("DONE\n\n");
@@ -429,7 +439,8 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
                        char *multipage_url, FILE *search_index_path) {
 
   cmark_mem *mem = cmark_get_default_mem_allocator();
-  cmark_parser *parser = cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
+  cmark_parser *parser =
+      cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
   cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
 
   /* printf("BEFORE\n"); */
@@ -442,19 +453,20 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
   if (render_type != RENDER_TYPE_MAN) {
     char *result = cmark_render_html_with_mem(
-                                              document, mmdoc_render_cmark_options, cmark_parser_get_syntax_extensions(parser), mem);
+        document, mmdoc_render_cmark_options,
+        cmark_parser_get_syntax_extensions(parser), mem);
 
     if (search_index_path != NULL) {
-      char *plaintext_result =
-        cmark_render_plaintext_with_mem(document, mmdoc_render_cmark_options, 120, mem);
+      char *plaintext_result = cmark_render_plaintext_with_mem(
+          document, mmdoc_render_cmark_options, 120, mem);
       insert_search_index(search_index_path, plaintext_result, multipage_url);
       mem->free(plaintext_result);
     }
     fputs(result, output_file);
     mem->free(result);
-  }
-  else {
-    char *result = cmark_render_man_with_mem(document, mmdoc_render_cmark_options, 240, mem);
+  } else {
+    char *result = cmark_render_man_with_mem(
+        document, mmdoc_render_cmark_options, 240, mem);
     fputs(result, output_file);
     mem->free(result);
   }
@@ -464,7 +476,8 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
 char *render_get_title_from_file(char *file) {
   /* cmark_mem *mem = cmark_get_default_mem_allocator(); */
-  /* cmark_parser *parser = cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem); */
+  /* cmark_parser *parser =
+   * cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem); */
   /* cmark_node *document = mmdoc_render_cmark_document(file_path, parser); */
   return "";
 }
