@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "mkdir_p.h"
-#include "render.h"
+#include "epub.h"
+#include "single.h"
+#include "man.h"
+#include "multi.h"
 #include "types.h"
 #include <dirent.h>
 #include <errno.h>
 #include <regex.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -279,11 +283,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (mmdoc_render_single(out_single, toc_path, toc_refs, anchor_locations) !=
+  if (mmdoc_single(out_single, toc_path, toc_refs, anchor_locations) !=
       0)
     return 1;
 
-  if (mmdoc_render_multi(out_multi, src, toc_path, toc_refs,
+  if (mmdoc_multi(out_multi, src, toc_path, toc_refs,
                          anchor_locations) != 0)
     return 1;
 
@@ -291,7 +295,7 @@ int main(int argc, char *argv[]) {
     printf("Error recursively making directory %s", out_man);
     return -1;
   }
-  if (mmdoc_render_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
+  if (mmdoc_man(out_man, src, toc_path, toc_refs, anchor_locations) != 0)
     return 1;
 
   char *epub = "epub";
@@ -306,7 +310,7 @@ int main(int argc, char *argv[]) {
   char *out_epub_file = malloc(strlen(out) + 1 + strlen(project_name) + strlen(epub_ext) + 1);
   sprintf(out_epub_file, "%s/%s%s", out, project_name, epub_ext);
 
-  if (mmdoc_render_epub(out_epub, out_epub_file, toc_path, toc_refs, anchor_locations, project_name) != 0)
+  if (mmdoc_epub(out_epub, out_epub_file, toc_path, toc_refs, anchor_locations, project_name) != 0)
     return 1;
 
   free_array(&md_files);
