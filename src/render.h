@@ -12,6 +12,7 @@ typedef enum {
 
 void mmdoc_render_part(char *file_path, FILE *output_file,
                        render_type render_type,
+                       AnchorLocation *anchor_location,
                        AnchorLocationArray anchor_locations,
                        char *multipage_url, FILE *search_index_path);
 

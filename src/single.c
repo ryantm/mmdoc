@@ -39,8 +39,9 @@ int mmdoc_single(char *out, char *toc_path,
       "    <nav>\n"
       "      <div class='sidebar-scrollbox'>\n";
   fputs(html_head, index_file);
+  AnchorLocation al;
   mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE,
-                    toc_anchor_locations, NULL, NULL);
+                    &al, toc_anchor_locations, NULL, NULL);
   fputs("      </div>\n", index_file);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
@@ -50,7 +51,7 @@ int mmdoc_single(char *out, char *toc_path,
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
     mmdoc_render_part(toc_anchor_locations.array[i].file_path, index_file,
-                      RENDER_TYPE_SINGLE, empty_anchor_locations, NULL, NULL);
+                      RENDER_TYPE_SINGLE, &toc_anchor_locations.array[i], empty_anchor_locations, NULL, NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
 

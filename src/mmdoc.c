@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "render.h"
 
 extern int errno;
 
@@ -220,6 +221,8 @@ int main(int argc, char *argv[]) {
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
       al->multipage_url = page_dir_path + strlen(out_multi);
+
+      al->title = mmdoc_render_get_title_from_file(al->file_path);
 
       char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +
                               strlen(al->file_path) + 2);

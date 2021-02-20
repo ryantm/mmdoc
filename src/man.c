@@ -10,7 +10,7 @@ int mmdoc_man(char *out, char *src, char *toc_path,
     FILE *output_file;
     output_file = fopen(anchor_location->man_output_file_path, "w");
     fputs(anchor_location->man_header, output_file);
-    mmdoc_render_part(anchor_location->file_path, output_file, RENDER_TYPE_MAN,
+    mmdoc_render_part(anchor_location->file_path, output_file, RENDER_TYPE_MAN, anchor_location,
                       anchor_locations, NULL, NULL);
     fclose(output_file);
   }

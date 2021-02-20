@@ -304,12 +304,14 @@ void replace_link(cmark_node *node, char *input_file_path,
   free(new_url);
 }
 
-void insert_search_index(FILE *search_index_path, const char *text,
+void insert_search_index(FILE *search_index_path, const char *text, const char *title,
                          const char *multipage_url) {
   fjson_object *obj = fjson_object_new_object();
   fjson_object *obj_url = fjson_object_new_string(multipage_url);
+  fjson_object *obj_title = fjson_object_new_string(title);
   fjson_object *obj_text = fjson_object_new_string(text);
   fjson_object_object_add(obj, "url", obj_url);
+  fjson_object_object_add(obj, "title", obj_title);
   fjson_object_object_add(obj, "text", obj_text);
   fputs(fjson_object_to_json_string(obj), search_index_path);
   fputs("\n,", search_index_path);
@@ -435,6 +437,7 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
 
 void mmdoc_render_part(char *file_path, FILE *output_file,
                        render_type render_type,
+                       AnchorLocation *anchor_location,
                        AnchorLocationArray anchor_locations,
                        char *multipage_url, FILE *search_index_path) {
 
@@ -459,7 +462,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
     if (search_index_path != NULL) {
       char *plaintext_result = cmark_render_plaintext_with_mem(
           document, mmdoc_render_cmark_options, 120, mem);
-      insert_search_index(search_index_path, plaintext_result, multipage_url);
+      insert_search_index(search_index_path, plaintext_result, anchor_location->title, multipage_url);
       mem->free(plaintext_result);
     }
     fputs(result, output_file);
@@ -506,6 +509,7 @@ char *mmdoc_render_get_title_from_file(char *file_path) {
       for (int i = 0; i < pos; i++) {
         result[i] = lit[i];
       }
+      result[pos] = '\0';
       free(id);
       cmark_iter_free(iter);
       cmark_node_free(document);

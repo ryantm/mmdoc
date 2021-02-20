@@ -40,7 +40,7 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
       "        <div id='search-results'></div>\n";
   fputs(html_head, page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_locations, NULL, NULL);
+                    anchor_location, anchor_locations, NULL, NULL);
   fputs("      </div>\n", page_file);
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
@@ -48,18 +48,22 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
   if (prev_anchor_location != NULL) {
     fputs("    <a class='nav-chapter nav-chapter-previous' href='", page_file);
     fputs(prev_anchor_location->multipage_url, page_file);
-    fputs("' title='Previous chapter'>&lt;</a>\n", page_file);
+    fputs("' title='", page_file);
+    fputs(prev_anchor_location->title, page_file);
+    fputs("'>&lt;</a>\n", page_file);
   }
 
   if (next_anchor_location != NULL) {
     fputs("    <a class='nav-chapter nav-chapter-next' href='", page_file);
     fputs(next_anchor_location->multipage_url, page_file);
-    fputs("' title='Next chapter'>&gt;</a>\n", page_file);
+    fputs("' title='", page_file);
+    fputs(next_anchor_location->title, page_file);
+    fputs("'>&gt;</a>\n", page_file);
   }
 
   fputs("      <main>\n", page_file);
   mmdoc_render_part(anchor_location->file_path, page_file,
-                    RENDER_TYPE_MULTIPAGE, anchor_locations,
+                    RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
                     anchor_location->multipage_url, search_index_file);
   fputs("      </main>\n", page_file);
 
@@ -91,7 +95,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   AnchorLocation *next_anchor_location = NULL;
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocation *anchor_location = &toc_anchor_locations.array[i];
-    if (i < anchor_locations.used - 1) {
+    if (i + 1 < toc_anchor_locations.used) {
       next_anchor_location = &toc_anchor_locations.array[i + 1];
     } else {
       next_anchor_location = NULL;

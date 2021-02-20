@@ -105,8 +105,10 @@ int test_render(char *example) {
 
   FILE *got_file = fopen(got_file_path, "w");
   AnchorLocationArray empty_anchor_locations;
+  AnchorLocation al;
   init_anchor_location_array(&empty_anchor_locations, 0);
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE,
+                    &al,
                     empty_anchor_locations, NULL, NULL);
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
@@ -141,7 +143,9 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   }
 
   FILE *got_file = fopen(got_file_path, "w");
-  mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
+  AnchorLocation al;
+  al.title = "page title";
+  mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE, &al,
                     anchor_locations, NULL, NULL);
   fclose(got_file);
 
@@ -172,7 +176,7 @@ int test_title(char *example, char *expected_title) {
   char *got_title = mmdoc_render_get_title_from_file(input_path);
 
   if (strcmp(got_title, expected_title) != 0) {
-    printf("%s: title didn't match    expected: %s\n         "
+    printf("%s: title didn't match\n    expected: %s\n         "
            "got: %s\n", example, expected_title, got_title);
     free(input_path);
     return 1;

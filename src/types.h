@@ -16,6 +16,7 @@ typedef struct {
   char *man_output_file_path;
   char *man_header;
   char *anchor;
+  char *title;
 } AnchorLocation;
 
 typedef struct {

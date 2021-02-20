@@ -19,7 +19,7 @@ function setupSearch() {
         var li = document.createElement('li')
         var a = document.createElement('a')
         a.href = result.item.url
-        a.appendChild(document.createTextNode(result.item.url))
+        a.appendChild(document.createTextNode(result.item.title))
         li.appendChild(a)
         ol.appendChild(li)
       })
