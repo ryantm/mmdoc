@@ -222,6 +222,16 @@ int main(int argc, char *argv[]) {
       al->multipage_output_directory_path = page_dir_path;
       al->multipage_url = page_dir_path + strlen(out_multi) + 1;
 
+      uint directory_depth = 0;
+      for (int k = 0; k < strlen(al->multipage_url); k++)
+        if (al->multipage_url[k] == '/')
+          directory_depth++;
+
+      al->multipage_base_href = malloc(3*directory_depth + 1);
+      strcpy(al->multipage_base_href, "");
+      for (int k = 0; k < directory_depth; k++)
+        strcat(al->multipage_base_href, "../");
+
       al->title = mmdoc_render_get_title_from_file(al->file_path);
 
       char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +

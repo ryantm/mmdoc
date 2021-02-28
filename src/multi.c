@@ -12,11 +12,15 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   char *page_path = anchor_location->multipage_output_file_path;
   FILE *page_file;
   page_file = fopen(page_path, "w");
-  char *html_head =
+  char *html_head_top =
       "<!doctype html>\n"
       "<html>\n"
       "  <head>\n"
-      "    <base href='/'>\n"
+      "    <base href='";
+  fputs(html_head_top, page_file);
+  fputs(anchor_location->multipage_base_href, page_file);
+  char *html_head =
+      "'>\n"
       "    <meta charset='utf-8'>\n"
       "    <meta name='viewport' content='width=device-width, "
       "initial-scale=1.0'>\n"
@@ -138,6 +142,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   index_anchor_location->multipage_output_file_path = file_path;
   index_anchor_location->multipage_output_directory_path = out;
   index_anchor_location->multipage_url = "";
+  index_anchor_location->multipage_base_href = "";
   index_anchor_location->anchor = "index";
   index_anchor_location->title = project_name;
 
