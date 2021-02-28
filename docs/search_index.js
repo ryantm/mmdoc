@@ -1,2 +1,2 @@
-const corpus = [{ "url": "\/features\/", "title": "Features", "text": "Features\n\n  - No options.\n  - Fast: written in C, using cmark a very fast MarkDown parser\/renderer.\n  - The HTML documents have syntax highlighting via highlight.js.\n  - The multi-page HTML documents have full-text search via fuse.js.\n" }
+const corpus = [{ "url": "features\/", "title": "Features", "text": "Features\n\n  - No options.\n  - Fast: written in C, using cmark a very fast MarkDown parser\/renderer.\n  - The HTML documents have syntax highlighting via highlight.js.\n  - The multi-page HTML documents have full-text search via fuse.js.\n" }
 ]
