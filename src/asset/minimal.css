@@ -48,7 +48,7 @@ section {
   margin-left: var(--sidebar-width);
 }
 
-section .nav-chapter {
+.nav-chapter-previous, .nav-chapter-next {
   height: 100%;
   font-size: 2.5em;
   position: fixed;
@@ -65,18 +65,41 @@ section .nav-chapter {
   color: var(--gray);
 }
 
-section .nav-chapter:hover {
+.nav-chapter:hover {
   background-color: var(--light-gray);
 }
 
-section .nav-chapter-previous {
+.nav-chapter-previous {
   float: left;
 }
 
-section .nav-chapter-next {
+.nav-chapter-next {
   float: right;
   right: 0;
 }
+
+.nav-chapter-bottom {
+  display: none;
+}
+
+@media only screen and (max-width: 1080px) {
+  .nav-chapter-top, .nav-chapter-bottom {
+    display: block;
+    height: 90px;
+  }
+  .nav-chapter-previous, .nav-chapter-next {
+    border-radius: 6px;
+    background-color: var(--light-gray);
+    color: white;
+    position: static;
+    width: 90px;
+    height: 70px;
+  }
+}
+
+/* @media only screen and (max-width: 1380px) { */
+/*   .sidebar-visible .nav-chapter { position: static; } */
+/* } */
 
 main {
   margin-left: auto;
