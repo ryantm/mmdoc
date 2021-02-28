@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
       AnchorLocation *al = malloc(sizeof *al);
       al->file_path = md_files.array[i];
 
-      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path));
+      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path) + 1);
       strcpy(page_path, out_multi);
       strcat(page_path, al->file_path + strlen(src));
       char *lastExt = strrchr(page_path, '.');
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
     return 1;
 
   if (mmdoc_multi(out_multi, src, toc_path, toc_anchor_locations,
-                  anchor_locations) != 0)
+                  anchor_locations, project_name) != 0)
     return 1;
 
   if (mkdir_p(out_man) != 0) {

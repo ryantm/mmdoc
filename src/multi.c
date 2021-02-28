@@ -17,6 +17,8 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
       "  <head>\n"
       "    <base href='/'>\n"
       "    <meta charset='utf-8'>\n"
+      "    <meta name='viewport' content='width=device-width, "
+      "initial-scale=1.0'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
@@ -34,7 +36,7 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
       "    <script src='search.js'></script>\n"
       "  </head>\n"
       "  <body>\n"
-      "    <nav>\n"
+      "    <nav class='sidebar'>\n"
       "      <div class='sidebar-scrollbox'>\n"
       "        <input type='search' id='search' placeholder='Search'>\n"
       "        <div id='search-results'></div>\n";
@@ -53,6 +55,13 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
     fputs("'>&lt;</a>\n", page_file);
   }
 
+  fputs("      <main>\n", page_file);
+  if (anchor_location->file_path != NULL)
+    mmdoc_render_part(anchor_location->file_path, page_file,
+                      RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
+                      anchor_location->multipage_url, search_index_file);
+  fputs("      </main>\n", page_file);
+
   if (next_anchor_location != NULL) {
     fputs("    <a class='nav-chapter nav-chapter-next' href='", page_file);
     fputs(next_anchor_location->multipage_url, page_file);
@@ -60,12 +69,6 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
   }
-
-  fputs("      <main>\n", page_file);
-  mmdoc_render_part(anchor_location->file_path, page_file,
-                    RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
-                    anchor_location->multipage_url, search_index_file);
-  fputs("      </main>\n", page_file);
 
   char *html_foot = "    </section>\n"
                     "  </body>\n"
@@ -77,7 +80,7 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
 
 int mmdoc_multi(char *out, char *src, char *toc_path,
                 AnchorLocationArray toc_anchor_locations,
-                AnchorLocationArray anchor_locations) {
+                AnchorLocationArray anchor_locations, char *project_name) {
   asset_write_to_dir_search_js(out);
   asset_write_to_dir_fuse_basic_min_js(out);
   asset_write_to_dir_highlight_pack_js(out);
@@ -91,8 +94,27 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   FILE *search_index_file = fopen(search_index_path, "w");
   fputs("const corpus = [", search_index_file);
 
-  AnchorLocation *prev_anchor_location = NULL;
   AnchorLocation *next_anchor_location = NULL;
+
+  if (toc_anchor_locations.used > 0)
+    next_anchor_location = &toc_anchor_locations.array[0];
+
+  AnchorLocation *index_anchor_location =
+      malloc(sizeof(*index_anchor_location));
+  index_anchor_location->file_path = NULL;
+  char *index_html = "index.html";
+  char *file_path = malloc(strlen(out) + 1 + strlen(index_html) + 1);
+  sprintf(file_path, "%s/%s", out, index_html);
+  index_anchor_location->multipage_output_file_path = file_path;
+  index_anchor_location->multipage_output_directory_path = out;
+  index_anchor_location->multipage_url = "/";
+  index_anchor_location->anchor = "index";
+  index_anchor_location->title = project_name;
+
+  mmdoc_multi_page(toc_path, anchor_locations, search_index_file,
+                   index_anchor_location, NULL, next_anchor_location);
+
+  AnchorLocation *prev_anchor_location = index_anchor_location;
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocation *anchor_location = &toc_anchor_locations.array[i];
     if (i + 1 < toc_anchor_locations.used) {
