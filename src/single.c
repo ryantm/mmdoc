@@ -20,7 +20,6 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "<!doctype html>\n"
       "<html>\n"
       "  <head>\n"
-      "    <base href='/'>\n"
       "    <meta charset='utf-8'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
