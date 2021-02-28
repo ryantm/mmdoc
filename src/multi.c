@@ -128,34 +128,23 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   FILE *search_index_file = fopen(search_index_path, "w");
   fputs("const corpus = [", search_index_file);
 
-  AnchorLocation *next_anchor_location = NULL;
-
-  if (toc_anchor_locations.used > 0)
-    next_anchor_location = &toc_anchor_locations.array[0];
-
-  AnchorLocation *index_anchor_location =
-      malloc(sizeof(*index_anchor_location));
-  index_anchor_location->file_path = NULL;
   char *index_html = "index.html";
-  char *file_path = malloc(strlen(out) + 1 + strlen(index_html) + 1);
-  sprintf(file_path, "%s/%s", out, index_html);
-  index_anchor_location->multipage_output_file_path = file_path;
-  index_anchor_location->multipage_output_directory_path = out;
-  index_anchor_location->multipage_url = "";
-  index_anchor_location->multipage_base_href = "";
-  index_anchor_location->anchor = "index";
-  index_anchor_location->title = project_name;
+  char *index_file_path = malloc(strlen(out) + 1 + strlen(index_html) + 1);
+  sprintf(index_file_path, "%s/%s", out, index_html);
 
-  mmdoc_multi_page(toc_path, project_name, anchor_locations, search_index_file,
-                   index_anchor_location, NULL, next_anchor_location);
-
-  AnchorLocation *prev_anchor_location = index_anchor_location;
+  AnchorLocation *prev_anchor_location = NULL;
+  AnchorLocation *next_anchor_location = NULL;
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocation *anchor_location = &toc_anchor_locations.array[i];
     if (i + 1 < toc_anchor_locations.used) {
       next_anchor_location = &toc_anchor_locations.array[i + 1];
     } else {
       next_anchor_location = NULL;
+    }
+    if (i == 0) {
+      anchor_location->multipage_output_file_path = index_file_path;
+      anchor_location->multipage_url = "";
+      anchor_location->multipage_base_href = "";
     }
     mmdoc_multi_page(toc_path, project_name, anchor_locations,
                      search_index_file, anchor_location, prev_anchor_location,
