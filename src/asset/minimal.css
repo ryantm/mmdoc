@@ -65,7 +65,7 @@ section {
   color: var(--gray);
 }
 
-.nav-chapter:hover {
+.nav-chapter-previous:hover, .nav-chapter-next:hover {
   background-color: var(--light-gray);
 }
 
