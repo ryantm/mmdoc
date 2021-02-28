@@ -17,7 +17,7 @@
     <script src='fuse.basic.min.js'></script>
     <script src='search_index.js'></script>
     <script src='search.js'></script>
-    <title>mmdoc: mmdoc</title>
+    <title>mmdoc: mmdoc - Minimal Markdown Documentation</title>
   </head>
   <body>
     <nav class='sidebar'>
@@ -36,11 +36,51 @@
     </nav>
     <section>
     <div class='nav-chapter-top'>
-    <a class='nav-chapter-next' href='introduction/' title='mmdoc - Minimal Markdown Documentation'>&gt;</a>
+    <a class='nav-chapter-next' href='features/' title='Features'>&gt;</a>
     </div>
       <main>
+<h1><span id='introduction'>mmdoc - Minimal Markdown Documentation</span></h1>
+<pre><code>mmdoc project_name src out
+</code></pre>
+<p>takes a directory like:</p>
+<pre><code>src
+├── section1.md
+├── section2.md
+└── toc.md
+</code></pre>
+<p>and ouputs:</p>
+<pre><code>out
+├── man
+│   └── man1
+│       ├── project_name-section1.1
+│       └── project_name-section2.1
+├── multi
+│   ├── fuse.basic.min.js
+│   ├── highlight.pack.js
+│   ├── minimal.css
+│   ├── mono-blue.css
+│   ├── search_index.js
+│   ├── search.js
+│   ├── section1
+│   │   └── index.html
+│   └── section2
+│       └── index.html
+├── project_name.epub
+└── single
+    ├── highlight.pack.js
+    ├── index.html
+    ├── minimal.css
+    └── mono-blue.css
+</code></pre>
+<p>That is, given a table of contents MarkDown file, and some other MarkDown files, it generates</p>
+<ul>
+<li>A single-page HTML document</li>
+<li>Multi-page HTML documents</li>
+<li>man pages (experimental)</li>
+<li>An ePub book (experimental)</li>
+</ul>
     <div class='nav-chapter-bottom'>
-    <a class='nav-chapter-next' href='introduction/' title='mmdoc - Minimal Markdown Documentation'>&gt;</a>
+    <a class='nav-chapter-next' href='features/' title='Features'>&gt;</a>
     </div>
       </main>
     </section>
