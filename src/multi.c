@@ -137,7 +137,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   sprintf(file_path, "%s/%s", out, index_html);
   index_anchor_location->multipage_output_file_path = file_path;
   index_anchor_location->multipage_output_directory_path = out;
-  index_anchor_location->multipage_url = "/";
+  index_anchor_location->multipage_url = "";
   index_anchor_location->anchor = "index";
   index_anchor_location->title = project_name;
 
