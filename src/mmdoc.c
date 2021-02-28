@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
       }
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
-      al->multipage_url = page_dir_path + strlen(out_multi);
+      al->multipage_url = page_dir_path + strlen(out_multi) + 1;
 
       al->title = mmdoc_render_get_title_from_file(al->file_path);
 
