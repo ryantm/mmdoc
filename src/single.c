@@ -4,7 +4,7 @@
 #include "types.h"
 #include <string.h>
 
-int mmdoc_single(char *out, char *toc_path,
+int mmdoc_single(char *out, char *toc_path, char *project_name,
                  AnchorLocationArray toc_anchor_locations) {
   asset_write_to_dir_highlight_pack_js(out);
   asset_write_to_dir_minimal_css(out);
@@ -34,11 +34,15 @@ int mmdoc_single(char *out, char *toc_path,
       "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
       "      });\n"
       "    </script>\n"
-      "  </head>\n"
-      "  <body>\n"
-      "    <nav>\n"
-      "      <div class='sidebar-scrollbox'>\n";
+      "    <title>";
   fputs(html_head, index_file);
+  fputs(project_name, index_file);
+  char *html_head_end = "</title>\n"
+                        "  </head>\n"
+                        "  <body>\n"
+                        "    <nav>\n"
+                        "      <div class='sidebar-scrollbox'>\n";
+  fputs(html_head_end, index_file);
   AnchorLocation al;
   mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                     toc_anchor_locations, NULL, NULL);

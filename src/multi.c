@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
+int mmdoc_multi_page(char *toc_path, char *project_name,
+                     AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
                      AnchorLocation *prev_anchor_location,
                      AnchorLocation *next_anchor_location) {
@@ -34,13 +35,20 @@ int mmdoc_multi_page(char *toc_path, AnchorLocationArray anchor_locations,
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
       "    <script src='search.js'></script>\n"
+      "    <title>";
+  fputs(html_head, page_file);
+  fputs(project_name, page_file);
+  fputs(": ", page_file);
+  fputs(anchor_location->title, page_file);
+  char *html_head_end =
+      "</title>\n"
       "  </head>\n"
       "  <body>\n"
       "    <nav class='sidebar'>\n"
       "      <div class='sidebar-scrollbox'>\n"
       "        <input type='search' id='search' placeholder='Search'>\n"
       "        <div id='search-results'></div>\n";
-  fputs(html_head, page_file);
+  fputs(html_head_end, page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
                     anchor_locations, NULL, NULL);
   fputs("      </div>\n", page_file);
@@ -133,7 +141,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   index_anchor_location->anchor = "index";
   index_anchor_location->title = project_name;
 
-  mmdoc_multi_page(toc_path, anchor_locations, search_index_file,
+  mmdoc_multi_page(toc_path, project_name, anchor_locations, search_index_file,
                    index_anchor_location, NULL, next_anchor_location);
 
   AnchorLocation *prev_anchor_location = index_anchor_location;
@@ -144,8 +152,8 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
     } else {
       next_anchor_location = NULL;
     }
-    mmdoc_multi_page(toc_path, anchor_locations, search_index_file,
-                     anchor_location, prev_anchor_location,
+    mmdoc_multi_page(toc_path, project_name, anchor_locations,
+                     search_index_file, anchor_location, prev_anchor_location,
                      next_anchor_location);
     prev_anchor_location = anchor_location;
   }

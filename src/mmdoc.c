@@ -310,7 +310,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (mmdoc_single(out_single, toc_path, toc_anchor_locations) != 0)
+  if (mmdoc_single(out_single, toc_path, project_name, toc_anchor_locations) !=
+      0)
     return 1;
 
   if (mmdoc_multi(out_multi, src, toc_path, toc_anchor_locations,
