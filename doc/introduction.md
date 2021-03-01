@@ -9,32 +9,46 @@ mmdoc project_name src out
 takes a directory like:
 
 ```
-src
-├── section1.md
-├── section2.md
-└── toc.md
+doc
+├── development.md
+├── features.md
+├── introduction.md
+├── license.md
+├── toc.md
+└── usage.md
 ```
 
 and ouputs:
 
 ```
 out
+├── epub
+│   └── OEBPS
+│       └── index.xhtml
 ├── man
 │   └── man1
-│       ├── project_name-section1.1
-│       └── project_name-section2.1
+│       ├── mmdoc-development.1
+│       ├── mmdoc-features.1
+│       ├── mmdoc-introduction.1
+│       ├── mmdoc-license.1
+│       └── mmdoc-usage.1
+├── mmdoc.epub
 ├── multi
+│   ├── development
+│   │   └── index.html
+│   ├── features
+│   │   └── index.html
 │   ├── fuse.basic.min.js
 │   ├── highlight.pack.js
+│   ├── index.html
+│   ├── license
+│   │   └── index.html
 │   ├── minimal.css
 │   ├── mono-blue.css
 │   ├── search_index.js
 │   ├── search.js
-│   ├── section1
-│   │   └── index.html
-│   └── section2
+│   └── usage
 │       └── index.html
-├── project_name.epub
 └── single
     ├── highlight.pack.js
     ├── index.html
