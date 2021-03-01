@@ -9,19 +9,19 @@ Given a table of contents Markdown file, and some other Markdown files, generate
 * man pages (experimental)
 * An ePub book (experimental)
 
-```
-mmdoc project_name src_dir out_dir
+```ShellSession
+$ mmdoc project_name src_dir out_dir
 ```
 
 For example:
 
-```
-mmdoc mmdoc doc out
+```ShellSession
+$ mmdoc mmdoc doc out
 ```
 
 takes a directory like
 
-```
+```text
 doc
 ├── development.md
 ├── features.md
@@ -33,7 +33,7 @@ doc
 
 and ouputs
 
-```
+```text
 out
 ├── epub
 │   └── OEBPS
