@@ -128,10 +128,6 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   FILE *search_index_file = fopen(search_index_path, "w");
   fputs("const corpus = [", search_index_file);
 
-  char *index_html = "index.html";
-  char *index_file_path = malloc(strlen(out) + 1 + strlen(index_html) + 1);
-  sprintf(index_file_path, "%s/%s", out, index_html);
-
   AnchorLocation *prev_anchor_location = NULL;
   AnchorLocation *next_anchor_location = NULL;
   for (int i = 0; i < toc_anchor_locations.used; i++) {
@@ -141,11 +137,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
     } else {
       next_anchor_location = NULL;
     }
-    if (i == 0) {
-      anchor_location->multipage_output_file_path = index_file_path;
-      anchor_location->multipage_url = "";
-      anchor_location->multipage_base_href = "";
-    }
+    printf("multi: %s -> %s\n", anchor_location->anchor, anchor_location->multipage_output_file_path);
     mmdoc_multi_page(toc_path, project_name, anchor_locations,
                      search_index_file, anchor_location, prev_anchor_location,
                      next_anchor_location);

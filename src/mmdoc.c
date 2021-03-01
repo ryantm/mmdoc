@@ -186,6 +186,17 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  Array toc_refs;
+  init_array(&toc_refs, 500);
+  mmdoc_refs(&toc_refs, toc_path);
+
+  if (toc_refs.used == 0 ) {
+    printf("Error toc.md didn't reference any anchor.");
+    return 1;
+  }
+
+  char *index_anchor = toc_refs.array[0];
+
   Array md_files;
   init_array(&md_files, 100);
   mmdoc_md_files(&md_files, src);
@@ -200,6 +211,7 @@ int main(int argc, char *argv[]) {
     mmdoc_anchors(&anchors, md_files.array[i]);
     for (int j = 0; j < anchors.used; j++) {
       AnchorLocation *al = malloc(sizeof *al);
+      al->anchor = anchors.array[j];
       al->file_path = md_files.array[i];
 
       char *page_path = malloc(strlen(out_multi) + strlen(al->file_path) + 1);
@@ -214,13 +226,24 @@ int main(int argc, char *argv[]) {
       char *page_dir_path = malloc(strlen(page_path) + 1);
       strcpy(page_dir_path, page_path);
       strcat(page_path, "index.html");
-      if (mkdir_p(page_dir_path) != 0) {
-        printf("Error recursively making directory %s", page_dir_path);
-        return 1;
-      }
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
       al->multipage_url = page_dir_path + strlen(out_multi) + 1;
+
+      if (strcmp(al->anchor, index_anchor) == 0) {
+        char *index_html = "index.html";
+        char *index_file_path = malloc(strlen(out_multi) + 1 + strlen(index_html) + 1);
+        sprintf(index_file_path, "%s/%s", out_multi, index_html);
+        al->multipage_output_file_path = index_file_path;
+        al->multipage_output_directory_path = out_multi;
+        al->multipage_url = "/";
+        al->multipage_base_href = "";
+      }
+
+      if (mkdir_p(al->multipage_output_directory_path) != 0) {
+        printf("Error recursively making directory %s", al->multipage_output_directory_path);
+        return 1;
+      }
 
       uint directory_depth = 0;
       for (int k = 0; k < strlen(al->multipage_url); k++)
@@ -278,15 +301,11 @@ int main(int argc, char *argv[]) {
       strcat(man_page_header, man_page_name);
       strcat(man_page_header, "\"");
       al->man_header = man_page_header;
-      al->anchor = anchors.array[j];
       insert_anchor_location_array(&anchor_locations, al);
       count++;
     }
   }
 
-  Array toc_refs;
-  init_array(&toc_refs, 500);
-  mmdoc_refs(&toc_refs, toc_path);
 
   AnchorLocationArray toc_anchor_locations;
   init_anchor_location_array(&toc_anchor_locations, toc_refs.used);
