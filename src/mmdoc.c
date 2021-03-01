@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
       al->anchor = anchors.array[j];
       al->file_path = md_files.array[i];
 
-      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path) + 1);
+      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path) + 12);
       strcpy(page_path, out_multi);
       strcat(page_path, al->file_path + strlen(src));
       char *lastExt = strrchr(page_path, '.');
