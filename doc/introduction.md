@@ -40,7 +40,7 @@ out
     └── mono-blue.css
 ```
 
-That is, given a table of contents MarkDown file, and some other MarkDown files, it generates
+That is, given a table of contents Markdown file, and some other Markdown files, it generates
 
 * A single-page HTML document
 * Multi-page HTML documents

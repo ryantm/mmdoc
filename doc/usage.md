@@ -6,7 +6,7 @@
 
 ## Extensions beyond CommonMark
 
-In order to be useful for Documentation, it uses several CommonMark extensions available in GitHub-flavored MarkDown and [Pandoc](https://pandoc.org/).
+In order to be useful for Documentation, it uses several CommonMark extensions available in GitHub-flavored Markdown and [Pandoc](https://pandoc.org/).
 
 * Cross references
 
