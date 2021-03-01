@@ -137,7 +137,6 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
     } else {
       next_anchor_location = NULL;
     }
-    printf("multi: %s -> %s\n", anchor_location->anchor, anchor_location->multipage_output_file_path);
     mmdoc_multi_page(toc_path, project_name, anchor_locations,
                      search_index_file, anchor_location, prev_anchor_location,
                      next_anchor_location);
