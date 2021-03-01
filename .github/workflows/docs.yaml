@@ -15,7 +15,11 @@ jobs:
           install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20201221_9fab14a/install
           extra_nix_config: |
             experimental-features = nix-command flakes
-      - run: nix run .#mmdoc -- mmdoc doc out
+      - run: |
+          ls -la doc
+          nix build
+          nix-env -f channel:nixos-20.09 -iA valgrind
+          valgrind ./result/bin/mmdoc mmdoc doc out
       - if: success()
         uses: crazy-max/ghaction-github-pages@v2
         with:
