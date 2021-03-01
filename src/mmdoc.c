@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
         sprintf(index_file_path, "%s/%s", out_multi, index_html);
         al->multipage_output_file_path = index_file_path;
         al->multipage_output_directory_path = out_multi;
-        al->multipage_url = "/";
+        al->multipage_url = "./";
         al->multipage_base_href = "";
       }
 
