@@ -2,8 +2,11 @@
   inputs.nixpkgs.url = "github:ryantm/nixpkgs/minman";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = { self, nixpkgs, flake-utils } :
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs = { self, nixpkgs, flake-utils } : {
+    overlay = final: prev: {
+      mmdoc = self.packages.mmdoc;
+    };
+  } // flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = nixpkgs.legacyPackages.${system};
     in
@@ -13,9 +16,6 @@
         nixpkgs-manual = pkgs.callPackage ./pkgs/nixpkgs-manual.nix { inherit nixpkgs mmdoc; };
       };
       defaultPackage = self.packages.${system}.mmdoc;
-      overlay = final: prev: {
-        mmdoc = self.packages.${system}.mmdoc;
-      };
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
           cmark-gfm
