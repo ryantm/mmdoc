@@ -41,9 +41,10 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <script src='search.js'></script>\n"
       "    <title>";
   fputs(html_head, page_file);
-  fputs(project_name, page_file);
-  fputs(": ", page_file);
   fputs(anchor_location->title, page_file);
+  fputs(" | ", page_file);
+  fputs(project_name, page_file);
+
   char *html_head_end =
       "</title>\n"
       "  </head>\n"
