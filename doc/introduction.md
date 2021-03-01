@@ -2,11 +2,24 @@
 
 > Minimal Markdown Documentation
 
+Given a table of contents Markdown file, and some other Markdown files, generate:
+
+* A single-page HTML document
+* Multi-page HTML documents, with full-text search
+* man pages (experimental)
+* An ePub book (experimental)
+
 ```
-mmdoc project_name src out
+mmdoc project_name src_dir out_dir
 ```
 
-takes a directory like:
+For example:
+
+```
+mmdoc mmdoc doc out
+```
+
+takes a directory like
 
 ```
 doc
@@ -18,7 +31,7 @@ doc
 └── usage.md
 ```
 
-and ouputs:
+and ouputs
 
 ```
 out
@@ -55,10 +68,3 @@ out
     ├── minimal.css
     └── mono-blue.css
 ```
-
-That is, given a table of contents Markdown file, and some other Markdown files, it generates
-
-* A single-page HTML document
-* Multi-page HTML documents
-* man pages (experimental)
-* An ePub book (experimental)
