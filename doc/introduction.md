@@ -1,4 +1,6 @@
-# mmdoc - Minimal Markdown Documentation {#introduction}
+# mmdoc {#introduction}
+
+> Minimal Markdown Documentation
 
 ```
 mmdoc project_name src out
