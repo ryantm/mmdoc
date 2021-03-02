@@ -1,6 +1,6 @@
 # Development {#development}
 
-For easily development, `nix` with flake support is recommended. Start a development environment with:
+For easy development, `nix` with flake support is recommended. Start a development environment with:
 
 ```ShellSession
 $ nix develop
