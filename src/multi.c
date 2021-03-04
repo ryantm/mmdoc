@@ -91,6 +91,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs(prev_anchor_location->title, page_file);
     fputs("'>&lt;</a>\n", page_file);
   }
+  else
+    fputs("    <a class 'chapter-previous'></a>", page_file);
 
   if (next_anchor_location != NULL) {
     fputs("    <a class='chapter-next' href='", page_file);
@@ -99,6 +101,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
   }
+  else
+    fputs("    <a class 'chapter-next'></a>", page_file);
 
 
   fputs("    </nav>\n", page_file);
