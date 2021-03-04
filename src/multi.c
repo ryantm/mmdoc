@@ -39,6 +39,10 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
       "    <script src='search.js'></script>\n"
+      "    <script>\n"
+      "      if (localStorage.getItem('sidebar-hidden') === '')\n"
+      "        document.querySelector('html').classList.add('sidebar-hidden')\n"
+      "    </script>\n"
       "    <title>";
   fputs(html_head, page_file);
   fputs(anchor_location->title, page_file);
@@ -60,7 +64,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("    </nav>\n", page_file);
   fputs("    <section>\n", page_file);
 
-  fputs("    <div class='nav-chapter-top'>\n", page_file);
   if (prev_anchor_location != NULL) {
     fputs("    <a class='nav-chapter-previous' href='", page_file);
     fputs(prev_anchor_location->multipage_url, page_file);
@@ -76,7 +79,29 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
   }
-  fputs("    </div>\n", page_file);
+
+
+  fputs("    <nav class='nav-top'>\n", page_file);
+  fputs("      <button type='button' class='sidebar-toggle'>≡</button>", page_file);
+
+  if (prev_anchor_location != NULL) {
+    fputs("    <a class='chapter-previous' href='", page_file);
+    fputs(prev_anchor_location->multipage_url, page_file);
+    fputs("' title='", page_file);
+    fputs(prev_anchor_location->title, page_file);
+    fputs("'>&lt;</a>\n", page_file);
+  }
+
+  if (next_anchor_location != NULL) {
+    fputs("    <a class='chapter-next' href='", page_file);
+    fputs(next_anchor_location->multipage_url, page_file);
+    fputs("' title='", page_file);
+    fputs(next_anchor_location->title, page_file);
+    fputs("'>&gt;</a>\n", page_file);
+  }
+
+
+  fputs("    </nav>\n", page_file);
 
   fputs("      <main>\n", page_file);
 
@@ -84,24 +109,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     mmdoc_render_part(anchor_location->file_path, page_file,
                       RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
                       anchor_location->multipage_url, search_index_file);
-
-  fputs("    <div class='nav-chapter-bottom'>\n", page_file);
-  if (prev_anchor_location != NULL) {
-    fputs("    <a class='nav-chapter-previous' href='", page_file);
-    fputs(prev_anchor_location->multipage_url, page_file);
-    fputs("' title='", page_file);
-    fputs(prev_anchor_location->title, page_file);
-    fputs("'>&lt;</a>\n", page_file);
-  }
-
-  if (next_anchor_location != NULL) {
-    fputs("    <a class='nav-chapter-next' href='", page_file);
-    fputs(next_anchor_location->multipage_url, page_file);
-    fputs("' title='", page_file);
-    fputs(next_anchor_location->title, page_file);
-    fputs("'>&gt;</a>\n", page_file);
-  }
-  fputs("    </div>\n", page_file);
 
   fputs("      </main>\n", page_file);
 

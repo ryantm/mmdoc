@@ -1,10 +1,22 @@
 :root {
     --sidebar-width: 300px;
+
+    --light-gray: lightgray;
+    --gray: gray;
+    --orange: #FF9636;
+    --yellow: #FFCD58;
+    --green: #DAD870;
+    --red: #FF5C4D;
+}
+
+:root.sidebar-hidden {
+  --sidebar-width: 0px;
 }
 
 body {
   line-height: 1.45;
-  font-family: "Open Sans", sans-serif
+  font-family: "Open Sans", sans-serif;
+  margin: 0;
 }
 
 #search-results ol {
@@ -12,13 +24,17 @@ body {
   border-bottom: 1px solid black;
 }
 
-nav {
+nav.sidebar {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
   width: var(--sidebar-width);
   margin: 0;
+}
+
+.sidebar-hidden nav.sidebar {
+  display: none;
 }
 
 nav .sidebar-scrollbox {
@@ -62,11 +78,11 @@ section {
   align-content: center;
   text-align: center;
   text-decoration: none;
-  color: var(--gray);
+  color: var(--light-gray);
 }
 
 .nav-chapter-previous:hover, .nav-chapter-next:hover {
-  background-color: var(--light-gray);
+  color: var(--gray);
 }
 
 .nav-chapter-previous {
@@ -78,22 +94,50 @@ section {
   right: 0;
 }
 
-.nav-chapter-bottom {
-  display: none;
+.nav-top {
+  position: sticky;
+  top: 0;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  background-color: white;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--light-gray);
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80ch;
+}
+
+.nav-top button, .nav-top a {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    text-align: center;
+    text-decoration: none;
+    color: var(--light-gray);
+    margin: 0;
+    margin-right: 10px;
+    font-size: 30px;
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    border: 0px;
+    background-color: white;
+}
+
+.nav-top button:hover, .nav-top a:hover {
+  color: var(--gray);
+}
+
+button.sidebar-toggle {
+  cursor: pointer;
 }
 
 @media only screen and (max-width: 1080px) {
-  .nav-chapter-top, .nav-chapter-bottom {
-    display: block;
-    height: 90px;
-  }
   .nav-chapter-previous, .nav-chapter-next {
-    border-radius: 6px;
-    background-color: var(--light-gray);
-    color: white;
-    position: static;
-    width: 90px;
-    height: 70px;
+    display: none;
   }
 }
 
@@ -109,14 +153,6 @@ main {
   text-align: justify;
 }
 
-:root {
-    --light-gray: lightgray;
-    --gray: gray;
-    --orange: #FF9636;
-    --yellow: #FFCD58;
-    --green: #DAD870;
-    --red: #FF5C4D;
-}
 
 main .admonition {
   border-radius: 6px;

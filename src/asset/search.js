@@ -28,3 +28,19 @@ function setupSearch() {
 }
 
 window.addEventListener('DOMContentLoaded', setupSearch)
+
+function toggleSidebar() {
+  document.querySelector('html').classList.toggle("sidebar-hidden")
+  if (document.querySelector('html').classList.contains("sidebar-hidden"))
+    localStorage.setItem('sidebar-hidden', '');
+  else
+    localStorage.removeItem('sidebar-hidden', '');
+}
+
+function setupToggleSidebar() {
+  Array.from(document.querySelectorAll('.sidebar-toggle')).forEach(el => {
+    el.addEventListener('click', toggleSidebar)
+  })
+}
+
+window.addEventListener('DOMContentLoaded', setupToggleSidebar)
