@@ -259,8 +259,15 @@ int main(int argc, char *argv[]) {
 
       char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +
                               strlen(al->file_path) + 2);
+
+      int dash_count = 0;
+      for (int k = 0; *(al->file_path + strlen(src) + k) != '\0'; k++) {
+        char *c = al->file_path + strlen(src) + k;
+        if (c[0] == '/') dash_count++;
+        if (c[0] == '-') dash_count++;
+      }
       char *man_page_name =
-          malloc(strlen(project_name) + strlen(al->file_path) + 1);
+          malloc(strlen(project_name) + strlen(al->file_path) + dash_count + 1);
       man_page_name[0] = '\0';
       strcpy(man_path, out_man);
       strcat(man_path, "/");
