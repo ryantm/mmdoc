@@ -127,11 +127,14 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 int mmdoc_multi(char *out, char *src, char *toc_path,
                 AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations, char *project_name) {
-  asset_write_to_dir_search_js(out);
-  asset_write_to_dir_fuse_basic_min_js(out);
-  asset_write_to_dir_highlight_pack_js(out);
-  asset_write_to_dir_minimal_css(out);
-  asset_write_to_dir_mono_blue_css(out);
+  if (asset_write_to_dir_search_js(out) != 0
+      || asset_write_to_dir_fuse_basic_min_js(out) != 0
+      || asset_write_to_dir_highlight_pack_js(out) != 0
+      || asset_write_to_dir_minimal_css(out) != 0
+      || asset_write_to_dir_mono_blue_css(out) != 0
+  ) {
+    return -1;
+  }
 
   char *search_index_js = "search_index.js";
   char *search_index_path =
