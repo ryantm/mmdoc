@@ -17,6 +17,8 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ ninja meson pkg-config ];
 
+  doCheck = true;
+
   buildInputs = [ cmark-gfm fastJson xxd libzip.dev ];
 
   meta = with stdenv.lib; {
