@@ -12,11 +12,10 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   char *page_path = anchor_location->multipage_output_file_path;
   FILE *page_file;
   page_file = fopen(page_path, "w");
-  char *html_head_top =
-      "<!doctype html>\n"
-      "<html>\n"
-      "  <head>\n"
-      "    <base href='";
+  char *html_head_top = "<!doctype html>\n"
+                        "<html>\n"
+                        "  <head>\n"
+                        "    <base href='";
   fputs(html_head_top, page_file);
   fputs(anchor_location->multipage_base_href, page_file);
   char *html_head =
@@ -80,9 +79,9 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs("'>&gt;</a>\n", page_file);
   }
 
-
   fputs("    <nav class='nav-top'>\n", page_file);
-  fputs("      <button type='button' class='sidebar-toggle'>≡</button>", page_file);
+  fputs("      <button type='button' class='sidebar-toggle'>≡</button>",
+        page_file);
 
   if (prev_anchor_location != NULL) {
     fputs("    <a class='chapter-previous' href='", page_file);
@@ -90,8 +89,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs("' title='", page_file);
     fputs(prev_anchor_location->title, page_file);
     fputs("'>&lt;</a>\n", page_file);
-  }
-  else
+  } else
     fputs("    <a class 'chapter-previous'></a>", page_file);
 
   if (next_anchor_location != NULL) {
@@ -100,10 +98,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs("' title='", page_file);
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
-  }
-  else
+  } else
     fputs("    <a class 'chapter-next'></a>", page_file);
-
 
   fputs("    </nav>\n", page_file);
 
@@ -127,12 +123,11 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 int mmdoc_multi(char *out, char *src, char *toc_path,
                 AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations, char *project_name) {
-  if (asset_write_to_dir_search_js(out) != 0
-      || asset_write_to_dir_fuse_basic_min_js(out) != 0
-      || asset_write_to_dir_highlight_pack_js(out) != 0
-      || asset_write_to_dir_minimal_css(out) != 0
-      || asset_write_to_dir_mono_blue_css(out) != 0
-  ) {
+  if (asset_write_to_dir_search_js(out) != 0 ||
+      asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
+      asset_write_to_dir_highlight_pack_js(out) != 0 ||
+      asset_write_to_dir_minimal_css(out) != 0 ||
+      asset_write_to_dir_mono_blue_css(out) != 0) {
     return -1;
   }
 

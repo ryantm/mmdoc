@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
   init_array(&toc_refs, 500);
   mmdoc_refs(&toc_refs, toc_path);
 
-  if (toc_refs.used == 0 ) {
+  if (toc_refs.used == 0) {
     printf("Error toc.md didn't reference any anchor.");
     return 1;
   }
@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
         if (al->multipage_url[k] == '/')
           directory_depth++;
 
-      al->multipage_base_href = malloc(3*directory_depth + 1);
+      al->multipage_base_href = malloc(3 * directory_depth + 1);
       strcpy(al->multipage_base_href, "");
       for (int k = 0; k < directory_depth; k++)
         strcat(al->multipage_base_href, "../");
@@ -244,7 +244,8 @@ int main(int argc, char *argv[]) {
 
       if (strcmp(al->anchor, index_anchor) == 0) {
         char *index_html = "index.html";
-        char *index_file_path = malloc(strlen(out_multi) + 1 + strlen(index_html) + 1);
+        char *index_file_path =
+            malloc(strlen(out_multi) + 1 + strlen(index_html) + 1);
         sprintf(index_file_path, "%s/%s", out_multi, index_html);
         al->multipage_output_file_path = index_file_path;
         al->multipage_output_directory_path = out_multi;
@@ -253,7 +254,8 @@ int main(int argc, char *argv[]) {
       }
 
       if (mkdir_p(al->multipage_output_directory_path) != 0) {
-        printf("Error recursively making directory %s", al->multipage_output_directory_path);
+        printf("Error recursively making directory %s",
+               al->multipage_output_directory_path);
         return 1;
       }
 
@@ -263,8 +265,10 @@ int main(int argc, char *argv[]) {
       int dash_count = 0;
       for (int k = 0; *(al->file_path + strlen(src) + k) != '\0'; k++) {
         char *c = al->file_path + strlen(src) + k;
-        if (c[0] == '/') dash_count++;
-        if (c[0] == '-') dash_count++;
+        if (c[0] == '/')
+          dash_count++;
+        if (c[0] == '-')
+          dash_count++;
       }
       char *man_page_name =
           malloc(strlen(project_name) + strlen(al->file_path) + dash_count + 1);
@@ -312,7 +316,6 @@ int main(int argc, char *argv[]) {
       count++;
     }
   }
-
 
   AnchorLocationArray toc_anchor_locations;
   init_anchor_location_array(&toc_anchor_locations, toc_refs.used);

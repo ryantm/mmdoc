@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,3 +19,11 @@ jobs:
         run: nix flake show
       - name: Build and test
         run: nix build -L
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: DoozyX/clang-format-lint-action@v0.11
+      with:
+        source: '.'
+        extensions: 'h,c,cpp,hpp'

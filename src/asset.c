@@ -14,8 +14,8 @@
 extern int errno;
 
 static int asset_write_to_dir(char *dir, char *asset_file_name,
-                       unsigned char *asset_array,
-                       unsigned int asset_array_length) {
+                              unsigned char *asset_array,
+                              unsigned int asset_array_length) {
   char *asset_path = malloc(strlen(dir) + 1 + strlen(asset_file_name) + 1);
   if (asset_path == NULL) {
     printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
