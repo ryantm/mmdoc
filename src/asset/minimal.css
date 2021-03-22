@@ -203,3 +203,12 @@ code.hljs {
   border-radius: 6px;
   padding: 5px;
 }
+
+code.language-ShellSession .hljs-meta,
+code.language-shellsession .hljs-meta,
+code.language-Shell .hljs-meta,
+code.language-shell .hljs-meta,
+code.language-Console .hljs-meta,
+code.language-console .hljs-meta {
+  user-select: none;
+}
