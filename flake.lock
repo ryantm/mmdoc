@@ -17,6 +17,21 @@
     },
     "nixpkgs": {
       "locked": {
+        "lastModified": 1616379010,
+        "narHash": "sha256-E55i8UD22BVJVcjaqFv5SkhyZHa05lIYE8NXDFwgPpk=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "342c7e724eb7fb1f60da3eaf082cfe6ea0df1e8f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-manual": {
+      "locked": {
         "lastModified": 1613859673,
         "narHash": "sha256-kwhKrlFUg3mhmXu0IOY1kUzUeZfZ01YaGAkY+U5Opwg=",
         "owner": "ryantm",
@@ -34,7 +49,8 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-manual": "nixpkgs-manual"
       }
     }
   },

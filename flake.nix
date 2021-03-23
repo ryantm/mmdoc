@@ -1,8 +1,10 @@
 {
-  inputs.nixpkgs.url = "github:ryantm/nixpkgs/minman";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs";
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.nixpkgs-manual.url = "github:ryantm/nixpkgs/minman";
 
-  outputs = { self, nixpkgs, flake-utils } : {
+
+  outputs = { self, nixpkgs, nixpkgs-manual, flake-utils } : {
     overlay = final: prev: {
       mmdoc = self.packages.mmdoc;
     };
@@ -13,7 +15,7 @@
     {
       packages = rec {
         mmdoc = pkgs.callPackage ./pkgs/mmdoc.nix {inherit self;};
-        nixpkgs-manual = pkgs.callPackage ./pkgs/nixpkgs-manual.nix { inherit nixpkgs mmdoc; };
+        nixpkgs-manual = pkgs.callPackage ./pkgs/nixpkgs-manual.nix { inherit mmdoc; nixpkgs = nixpkgs-manual; };
       };
       defaultPackage = self.packages.${system}.mmdoc;
       devShell = pkgs.mkShell {
