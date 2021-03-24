@@ -1,4 +1,5 @@
-{stdenv,
+{lib,
+stdenv,
 cmark-gfm,
 xxd,
 fastJson,
@@ -8,6 +9,8 @@ ninja,
 meson,
 pkg-config
 } :
+
+with lib;
 
 stdenv.mkDerivation rec {
   pname = "mmdoc";
@@ -21,7 +24,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [ cmark-gfm fastJson xxd libzip.dev ];
 
-  meta = with stdenv.lib; {
+  meta = {
     description = "Minimal Markdown Documentation";
     homepage = src.meta.homepage;
     license = licenses.cc0;
