@@ -36,7 +36,8 @@ void print_usage() {
   printf("OUT a directory where the documentation is written to.\n");
 }
 
-int ends_with(const char *str, size_t str_len, const char *suffix, size_t suffix_len) {
+int ends_with(const char *str, size_t str_len, const char *suffix,
+              size_t suffix_len) {
   return (str_len >= suffix_len) &&
          (!memcmp(str + str_len - suffix_len, suffix, suffix_len));
 }
@@ -173,8 +174,7 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
   fclose(file);
 }
 
-int copy_imgs(char *src, char *multi_dir, char *single_dir)
-{
+int copy_imgs(char *src, char *multi_dir, char *single_dir) {
   Array img_files;
   init_array(&img_files, 100);
   mmdoc_img_files(&img_files, src);
@@ -237,8 +237,7 @@ int copy_imgs(char *src, char *multi_dir, char *single_dir)
     while ((ch = fgetc(source)) != EOF) {
       int ret;
       ret = fputc(ch, multi);
-      if (ret != ch)
-      {
+      if (ret != ch) {
         fclose(single);
         fclose(multi);
         fclose(source);
@@ -246,8 +245,7 @@ int copy_imgs(char *src, char *multi_dir, char *single_dir)
         return -1;
       }
       ret = fputc(ch, single);
-      if (ret != ch)
-      {
+      if (ret != ch) {
         fclose(single);
         fclose(multi);
         fclose(source);
