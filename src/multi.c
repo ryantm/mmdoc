@@ -23,6 +23,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <meta charset='utf-8'>\n"
       "    <meta name='viewport' content='width=device-width, "
       "initial-scale=1.0'>\n"
+      "    <link rel='icon' href='favicon.svg'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"

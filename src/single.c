@@ -21,6 +21,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "<html>\n"
       "  <head>\n"
       "    <meta charset='utf-8'>\n"
+      "    <link rel='icon' href='favicon.svg'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='mono-blue.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
