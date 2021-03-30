@@ -19,6 +19,11 @@ body {
   margin: 0;
 }
 
+#search {
+  margin-top: 5px;
+  width: 100%;
+}
+
 #search-results ol {
   padding-bottom: 1em;
   border-bottom: 1px solid black;
@@ -131,8 +136,12 @@ section {
   color: var(--gray);
 }
 
-button.sidebar-toggle {
+button.sidebar-toggle, button.search-toggle {
   cursor: pointer;
+}
+
+.search-visible #search, .search-visible #search-results {
+  display: block !important;
 }
 
 @media only screen and (max-width: 1080px) {

@@ -3,6 +3,10 @@ function setupSearch() {
   let input = document.getElementById('search')
   let timeout = null
   input.addEventListener('keyup', function (e) {
+    if (e.key === "Escape") {
+      toggleSearch()
+      return;
+    }
     clearTimeout(timeout)
     timeout = setTimeout(function () {
       let resultsElem = document.getElementById('search-results')
@@ -44,3 +48,16 @@ function setupToggleSidebar() {
 }
 
 window.addEventListener('DOMContentLoaded', setupToggleSidebar)
+
+function toggleSearch() {
+  document.querySelector('html').classList.toggle("search-visible")
+  document.getElementById('search').select();
+}
+
+function setupToggleSearch() {
+  Array.from(document.querySelectorAll('.search-toggle')).forEach(el => {
+    el.addEventListener('click', toggleSearch)
+  })
+}
+
+window.addEventListener('DOMContentLoaded', setupToggleSearch)
