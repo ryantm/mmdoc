@@ -337,6 +337,8 @@ int main(int argc, char *argv[]) {
       while (lastExt != NULL) {
         *lastExt = '\0';
         lastExt = strrchr(page_path, '.');
+        if (lastExt < strrchr(page_path, '/'))
+          break;
       }
       strcat(page_path, "/");
       char *page_dir_path = malloc(strlen(page_path) + 1);
