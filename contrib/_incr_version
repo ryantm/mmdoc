@@ -2,7 +2,9 @@
 set -euo pipefail
 
 grep -q "$1" meson.build || (echo "Couldn't find version $1 in meson.build" && exit 1)
+grep -q "$1" pkgs/mmdoc.nix || (echo "Couldn't find version $1 in pkgs/mmdoc.nix" && exit 1)
 sed -i "s/$1/$2/g" meson.build
-git add meson.build
+sed -i "s/$1/$2/g" pkgs/mmdoc.nix
+git add meson.build pkgs/mmdoc.nix
 git commit -m "version $2"
 exit 0
