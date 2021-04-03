@@ -49,12 +49,11 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs(" | ", page_file);
   fputs(project_name, page_file);
 
-  char *html_head_end =
-      "</title>\n"
-      "  </head>\n"
-      "  <body>\n"
-      "    <nav class='sidebar'>\n"
-      "      <div class='sidebar-scrollbox'>\n";
+  char *html_head_end = "</title>\n"
+                        "  </head>\n"
+                        "  <body>\n"
+                        "    <nav class='sidebar'>\n"
+                        "      <div class='sidebar-scrollbox'>\n";
   fputs(html_head_end, page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
                     anchor_locations, NULL, NULL);
@@ -81,7 +80,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("    <nav class='nav-top'>\n", page_file);
   fputs("      <button type='button' class='sidebar-toggle'>≡</button>",
         page_file);
-  fputs("    <button type='button' class='search-toggle'>🔍</button>", page_file);
+  fputs("    <button type='button' class='search-toggle'>🔍</button>",
+        page_file);
 
   if (prev_anchor_location != NULL) {
     fputs("    <a class='chapter-previous' href='", page_file);
@@ -101,13 +101,14 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   } else
     fputs("    <a class='chapter-next'></a>", page_file);
 
-
   fputs("    </nav>\n", page_file);
 
   fputs("      <main>\n", page_file);
 
-  fputs("        <input type='search' id='search' placeholder='Search' style='display:none;'>\n"
-        "        <div id='search-results' style='display:none;'></div>\n", page_file);
+  fputs("        <input type='search' id='search' placeholder='Search' "
+        "style='display:none;'>\n"
+        "        <div id='search-results' style='display:none;'></div>\n",
+        page_file);
 
   if (anchor_location->file_path != NULL)
     mmdoc_render_part(anchor_location->file_path, page_file,
