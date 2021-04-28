@@ -3,7 +3,8 @@ assets = [
   'fuse.basic.min.js',
   'highlight.pack.js',
   'minimal.css',
-  'mono-blue.css',
+  'a11y-dark.css',
+  'a11y-light.css',
   'search.js',
 ]
 

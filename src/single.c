@@ -8,7 +8,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
                  AnchorLocationArray toc_anchor_locations) {
   asset_write_to_dir_highlight_pack_js(out);
   asset_write_to_dir_minimal_css(out);
-  asset_write_to_dir_mono_blue_css(out);
+  asset_write_to_dir_a11y_light_css(out);
 
   char index_path[2048];
   FILE *index_file;
@@ -23,7 +23,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "    <meta charset='utf-8'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
-      "    <link rel='stylesheet' href='mono-blue.css'>\n"
+      "    <link rel='stylesheet' href='a11y-light.css'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.highlightAll()</script>\n"
       "    <script>\n"
@@ -40,13 +40,18 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
   char *html_head_end = "</title>\n"
                         "  </head>\n"
                         "  <body>\n"
-                        "    <nav>\n"
-                        "      <div class='sidebar-scrollbox'>\n";
+                        "    <div class='nav-top-container'>\n"
+                        "    <nav class='nav-top'>\n"
+                        "    </nav>\n"
+                        "    </div\n"
+                        "    <nav>\n";
   fputs(html_head_end, index_file);
+
+  fputs("    <div class='grid-container'>\n", index_file);
+  fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
   mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                     toc_anchor_locations, NULL, NULL);
-  fputs("      </div>\n", index_file);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);
   fputs("      <main>\n", index_file);

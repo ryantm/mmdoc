@@ -25,7 +25,10 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "initial-scale=1.0'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
-      "    <link rel='stylesheet' href='mono-blue.css'>\n"
+      "    <link rel='stylesheet' href='a11y-light.css' "
+      "media='(prefers-color-scheme: light)'>\n"
+      "    <link rel='stylesheet' href='a11y-dark.css' "
+      "media='(prefers-color-scheme: dark)'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.highlightAll()</script>\n"
       "    <script>\n"
@@ -39,10 +42,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
       "    <script src='search.js'></script>\n"
-      "    <script>\n"
-      "      if (localStorage.getItem('sidebar-hidden') === '')\n"
-      "        document.querySelector('html').classList.add('sidebar-hidden')\n"
-      "    </script>\n"
       "    <title>";
   fputs(html_head, page_file);
   fputs(anchor_location->title, page_file);
@@ -51,37 +50,18 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 
   char *html_head_end = "</title>\n"
                         "  </head>\n"
-                        "  <body>\n"
-                        "    <nav class='sidebar'>\n"
-                        "      <div class='sidebar-scrollbox'>\n";
+                        "  <body>\n";
   fputs(html_head_end, page_file);
-  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
-                    anchor_locations, NULL, NULL);
-  fputs("      </div>\n", page_file);
-  fputs("    </nav>\n", page_file);
-  fputs("    <section>\n", page_file);
-
-  if (prev_anchor_location != NULL) {
-    fputs("    <a class='nav-chapter-previous' href='", page_file);
-    fputs(prev_anchor_location->multipage_url, page_file);
-    fputs("' title='", page_file);
-    fputs(prev_anchor_location->title, page_file);
-    fputs("'>&lt;</a>\n", page_file);
-  }
-
-  if (next_anchor_location != NULL) {
-    fputs("    <a class='nav-chapter-next' href='", page_file);
-    fputs(next_anchor_location->multipage_url, page_file);
-    fputs("' title='", page_file);
-    fputs(next_anchor_location->title, page_file);
-    fputs("'>&gt;</a>\n", page_file);
-  }
-
+  fputs("    <div class='nav-top-container'>\n", page_file);
   fputs("    <nav class='nav-top'>\n", page_file);
   fputs("      <button type='button' class='sidebar-toggle'>≡</button>",
         page_file);
-  fputs("    <button type='button' class='search-toggle'>🔍</button>",
+  fputs("    <button type='button' class='search-toggle "
+        "emoji'>🔍&#xFE0E;</button>",
         page_file);
+  fputs(
+      "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
+      page_file);
 
   if (prev_anchor_location != NULL) {
     fputs("    <a class='chapter-previous' href='", page_file);
@@ -90,7 +70,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs(prev_anchor_location->title, page_file);
     fputs("'>&lt;</a>\n", page_file);
   } else
-    fputs("    <a class='chapter-previous'></a>", page_file);
+    fputs("    <a class='chapter-previous'>&nbsp;</a>", page_file);
 
   if (next_anchor_location != NULL) {
     fputs("    <a class='chapter-next' href='", page_file);
@@ -99,16 +79,25 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
   } else
-    fputs("    <a class='chapter-next'></a>", page_file);
+    fputs("    <a class='chapter-next'>&nbsp;</a>", page_file);
 
   fputs("    </nav>\n", page_file);
+  fputs("    </div>\n", page_file);
+
+  fputs("    <nav class='nav-search' style='display:none;'>\n", page_file);
+  fputs("        <input type='search' id='search' placeholder='Search'>\n"
+        "        <div id='search-results'></div>\n",
+        page_file);
+  fputs("    </nav>\n", page_file);
+
+  fputs("    <div class='grid-container'>\n", page_file);
+  fputs("    <nav class='sidebar'>\n", page_file);
+  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
+                    anchor_locations, NULL, NULL);
+  fputs("    </nav>\n", page_file);
+  fputs("    <section>\n", page_file);
 
   fputs("      <main>\n", page_file);
-
-  fputs("        <input type='search' id='search' placeholder='Search' "
-        "style='display:none;'>\n"
-        "        <div id='search-results' style='display:none;'></div>\n",
-        page_file);
 
   if (anchor_location->file_path != NULL)
     mmdoc_render_part(anchor_location->file_path, page_file,
@@ -118,6 +107,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("      </main>\n", page_file);
 
   char *html_foot = "    </section>\n"
+                    "    </div>\n"
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);
@@ -132,7 +122,8 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
       asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
       asset_write_to_dir_minimal_css(out) != 0 ||
-      asset_write_to_dir_mono_blue_css(out) != 0) {
+      asset_write_to_dir_a11y_light_css(out) != 0 ||
+      asset_write_to_dir_a11y_dark_css(out) != 0) {
     return -1;
   }
 
