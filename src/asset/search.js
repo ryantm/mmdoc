@@ -33,26 +33,6 @@ function setupSearch() {
 
 window.addEventListener('DOMContentLoaded', setupSearch)
 
-function toggleSidebar() {
-  document.querySelector('html').classList.toggle("sidebar-hidden")
-  if (document.querySelector('html').classList.contains("sidebar-hidden"))
-    localStorage.setItem('sidebar-hidden', '')
-  else
-    localStorage.removeItem('sidebar-hidden', '')
-}
-
-function setupToggleSidebar() {
-  Array.from(document.querySelectorAll('.sidebar-toggle')).forEach(el => {
-    el.addEventListener('click', toggleSidebar)
-  })
-}
-
-window.addEventListener('DOMContentLoaded', setupToggleSidebar)
-
-if (localStorage.getItem('sidebar-hidden') === '')
-  document.querySelector('html').classList.add('sidebar-hidden')
-
-
 function toggleSearch() {
   document.querySelector('html').classList.toggle("search-visible")
   document.getElementById('search').select()
@@ -66,10 +46,71 @@ function setupToggleSearch() {
 
 window.addEventListener('DOMContentLoaded', setupToggleSearch)
 
-//Theme
+//// Sidebar
+
+const sidebarQuery = '(max-width: 600px)'
+
+// Returns 'hidden' or 'visible'
+function getDefaultSidebar() {
+  if (window.matchMedia(sidebarQuery).matches)
+    return 'hidden'
+  else
+    return 'visible'
+}
+
+// Returns 'hidden' or 'visible'
+function getSelectedSidebar() {
+  return localStorage.getItem('sidebar') ?? getDefaultSidebar()
+}
+
+function toggleSidebar() {
+  const sidebar = getSelectedSidebar()
+  if (sidebar === 'hidden')
+  {
+    localStorage.setItem('sidebar', 'visible')
+    setSidebarVisible()
+  }
+  else
+  {
+    localStorage.setItem('sidebar', 'hidden')
+    setSidebarHidden()
+  }
+}
+
+function setSidebarHidden() {
+  document.querySelector('html').classList.add("sidebar-hidden")
+}
+
+function setSidebarVisible() {
+  document.querySelector('html').classList.remove("sidebar-hidden")
+}
+
+function setupToggleSidebar() {
+  Array.from(document.querySelectorAll('.sidebar-toggle')).forEach(el => {
+    el.addEventListener('click', toggleSidebar)
+  })
+}
+
+window.addEventListener('DOMContentLoaded', setupToggleSidebar)
+
+const sidebarMediaQueryEvent = window.matchMedia(sidebarQuery)
+
+function sidebarMediaQueryEventHandler(_e) {
+  const sidebar = getSelectedSidebar()
+  if (sidebar === 'hidden')
+    setSidebarHidden()
+  else
+    setSidebarVisible()
+}
+
+sidebarMediaQueryEvent.addListener(sidebarMediaQueryEventHandler);
+
+sidebarMediaQueryEventHandler(null)
+
+//// Theme
 
 // Returns 'light' or 'dark'
-function getSystemPreferredTheme() {
+function getDefaultTheme() {
   if (window.matchMedia('(prefers-color-scheme: dark)').matches)
     return 'dark'
   else
@@ -78,11 +119,11 @@ function getSystemPreferredTheme() {
 
 // Returns 'light' or 'dark'
 function getSelectedTheme() {
-  return localStorage.getItem('theme') ?? getSystemPreferredTheme()
+  return localStorage.getItem('theme') ?? getDefaultTheme()
 }
 
 function toggleTheme() {
-  const theme = getSelectedTheme();
+  const theme = getSelectedTheme()
 
   if (theme === 'dark')
   {

@@ -158,6 +158,7 @@ button.sidebar-toggle, button.search-toggle, button.theme-toggle {
 
 #search {
   width: 100%;
+  font-size: 20px;
 }
 
 #search-results {
@@ -218,6 +219,13 @@ main > h2, main > h3, main > h4, main > h5, main > h6 {
   text-align: left;
 }
 
+main blockquote {
+  border-left: 5px solid var(--light-gray);
+  margin-left: 0px;
+  padding-left: 10px;
+  font-size: 20px;
+}
+
 pre code.hljs {
   display: block;
   padding: 10px;
@@ -239,11 +247,4 @@ code.language-shell .hljs-meta,
 code.language-Console .hljs-meta,
 code.language-console .hljs-meta {
   user-select: none;
-}
-
-blockquote {
-  border-left: 5px solid var(--light-gray);
-  margin-left: 0px;
-  padding-left: 10px;
-  font-size: 20px;
 }
