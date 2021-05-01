@@ -67,12 +67,33 @@ function setupToggleSearch() {
 window.addEventListener('DOMContentLoaded', setupToggleSearch)
 
 //Theme
+
+// Returns 'light' or 'dark'
+function getSystemPreferredTheme() {
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+    return 'dark'
+  else
+    return 'light'
+}
+
+// Returns 'light' or 'dark'
+function getSelectedTheme() {
+  return localStorage.getItem('theme') ?? getSystemPreferredTheme()
+}
+
 function toggleTheme() {
-  const theme = localStorage.getItem('theme')
+  const theme = getSelectedTheme();
+
   if (theme === 'dark')
+  {
+    localStorage.setItem('theme', 'light')
     setLightTheme()
+  }
   else if (theme === 'light')
+  {
+    localStorage.setItem('theme', 'dark')
     setDarkTheme()
+  }
 }
 
 function setDarkTheme() {
@@ -80,7 +101,6 @@ function setDarkTheme() {
   var light_css = document.querySelector("link[href='a11y-light.css']")
   dark_css.setAttribute("media", "")
   light_css.setAttribute("media", "false")
-  localStorage.setItem('theme', 'dark')
   document.querySelector('html').classList.remove("light-theme")
   document.querySelector('html').classList.add("dark-theme")
 }
@@ -90,7 +110,6 @@ function setLightTheme() {
   var light_css = document.querySelector("link[href='a11y-light.css']")
   dark_css.setAttribute("media", "false")
   light_css.setAttribute("media", "")
-  localStorage.setItem('theme', 'light')
   document.querySelector('html').classList.remove("dark-theme")
   document.querySelector('html').classList.add("light-theme")
 }
@@ -103,7 +122,7 @@ function setupToggleTheme() {
 
 window.addEventListener('DOMContentLoaded', setupToggleTheme)
 
-if (localStorage.getItem('theme') === 'dark')
+if (getSelectedTheme() === 'dark')
   setDarkTheme();
-if (localStorage.getItem('theme') === 'light')
+else
   setLightTheme();
