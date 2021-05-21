@@ -14,7 +14,6 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
     return -1;
   }
 
-
   char index_path[2048];
   FILE *index_file;
   strcpy(index_path, out);
@@ -51,7 +50,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
   char *html_head_end = "</title>\n"
                         "  </head>\n"
                         "  <body>\n"
-    "    <div class='nav-top-container'>\n";
+                        "    <div class='nav-top-container'>\n";
   fputs(html_head_end, index_file);
 
   fputs("    <nav class='nav-top'>\n", index_file);
@@ -61,8 +60,8 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
       index_file);
 
-  char *html_head_more= "    </nav>\n"
-    "    </div>\n";
+  char *html_head_more = "    </nav>\n"
+                         "    </div>\n";
   fputs(html_head_more, index_file);
 
   fputs("    <nav class='sidebar'>\n", index_file);
