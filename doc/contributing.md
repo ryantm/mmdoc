@@ -30,10 +30,10 @@ Within `nix develop`, build the docs to `./out` with:
 $ doc-build
 ```
 
-Within `nix develop`, continuosly build the docs and server them with:
+Within `nix develop`, continuosly build the docs and serve them with:
 
 ```ShellSession
-$ doc-build
+$ doc-watch
 ```
 
 ## additional test: compile the nixpkgs manual
