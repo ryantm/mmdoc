@@ -40,7 +40,7 @@ let
     pids=()
     ${python3}/bin/python -m http.server --directory ./out &
     pids+=($!)
-    find ./doc/**.md | ${entr}/bin/entr ${doc-build}/bin/doc-build
+    find doc src test | ${entr}/bin/entr -cd ${doc-build}/bin/doc-build
   '';
 
 in
