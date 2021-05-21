@@ -6,9 +6,14 @@
 
 int mmdoc_single(char *out, char *toc_path, char *project_name,
                  AnchorLocationArray toc_anchor_locations) {
-  asset_write_to_dir_highlight_pack_js(out);
-  asset_write_to_dir_minimal_css(out);
-  asset_write_to_dir_a11y_light_css(out);
+  if (asset_write_to_dir_search_js(out) != 0 ||
+      asset_write_to_dir_highlight_pack_js(out) != 0 ||
+      asset_write_to_dir_minimal_css(out) != 0 ||
+      asset_write_to_dir_a11y_light_css(out) != 0 ||
+      asset_write_to_dir_a11y_dark_css(out) != 0) {
+    return -1;
+  }
+
 
   char index_path[2048];
   FILE *index_file;
@@ -21,11 +26,17 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "<html>\n"
       "  <head>\n"
       "    <meta charset='utf-8'>\n"
+      "    <meta name='viewport' content='width=device-width, "
+      "initial-scale=1.0'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
       "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
-      "    <link rel='stylesheet' href='a11y-light.css'>\n"
+      "    <link rel='stylesheet' href='a11y-light.css' "
+      "media='(prefers-color-scheme: light)'>\n"
+      "    <link rel='stylesheet' href='a11y-dark.css' "
+      "media='(prefers-color-scheme: dark)'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.highlightAll()</script>\n"
+      "    <script src='search.js'></script>\n"
       "    <script>\n"
       "      window.addEventListener('load', (event) => { \n"
       "        let codeElems = "
@@ -40,14 +51,20 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
   char *html_head_end = "</title>\n"
                         "  </head>\n"
                         "  <body>\n"
-                        "    <div class='nav-top-container'>\n"
-                        "    <nav class='nav-top'>\n"
-                        "    </nav>\n"
-                        "    </div\n"
-                        "    <nav>\n";
+    "    <div class='nav-top-container'>\n";
   fputs(html_head_end, index_file);
 
-  fputs("    <div class='grid-container'>\n", index_file);
+  fputs("    <nav class='nav-top'>\n", index_file);
+  fputs("      <button type='button' class='sidebar-toggle'>≡</button>",
+        index_file);
+  fputs(
+      "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
+      index_file);
+
+  char *html_head_more= "    </nav>\n"
+    "    </div>\n";
+  fputs(html_head_more, index_file);
+
   fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
   mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, &al,

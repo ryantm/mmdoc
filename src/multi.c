@@ -90,7 +90,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
         page_file);
   fputs("    </nav>\n", page_file);
 
-  fputs("    <div class='grid-container'>\n", page_file);
   fputs("    <nav class='sidebar'>\n", page_file);
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
                     anchor_locations, NULL, NULL);
@@ -107,7 +106,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("      </main>\n", page_file);
 
   char *html_foot = "    </section>\n"
-                    "    </div>\n"
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);

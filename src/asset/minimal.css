@@ -27,8 +27,9 @@
 }
 
 :root {
+  --scrollbar-width: calc(100vw - 100%);
   --sidebar-width: 300px;
-  --topbar-height: 68px;
+  --topbar-height: 50px;
   color: var(--foreground);
   background-color: var(--background);
 }
@@ -53,19 +54,15 @@ body {
   margin: 0;
 }
 
-.grid-container {
-  height: calc(100vh - var(--topbar-height));
-  display: grid;
-  grid-template-columns: var(--sidebar-width) auto;
-}
-
-.sidebar-hidden .grid-container {
-  grid-template-columns: 100%;
-}
-
 nav.sidebar {
+  height: calc(100vh - var(--topbar-height));
+  position: fixed;
   overflow: auto;
   padding: 5px;
+  padding-right: 20px;
+  background-color: var(--background);
+  max-width: 100w;
+  border-right: 1px solid var(--light-gray);
 }
 
 .sidebar-hidden nav.sidebar {
@@ -80,10 +77,6 @@ nav ul ul {
 nav ul {
   padding-left: 0px;
   list-style-type: none;
-}
-
-section {
-  overflow: auto;
 }
 
 .nav-chapter-previous:hover, .nav-chapter-next:hover {
@@ -109,12 +102,16 @@ section {
 
 .nav-top {
   display: grid;
-  grid-template-columns: 50px 50px 50px 50px 50px;
-  height: 50px;
+  grid-template-columns:
+      var(--topbar-height)
+      var(--topbar-height)
+      var(--topbar-height)
+      var(--topbar-height)
+      var(--topbar-height);
+  height: var(--topbar-height);
+  line-height: var(--topbar-height);
+  overflow: hidden;
   grid-column-gap: 10px;
-  flex-direction: row;
-  padding-top: 4px;
-  padding-bottom: 4px;
   border-bottom: 1px solid var(--light-gray);
   margin-left: auto;
   margin-right: auto;
@@ -171,6 +168,12 @@ button.sidebar-toggle, button.search-toggle, button.theme-toggle {
   border-bottom: 1px solid var(--light-gray);
 }
 
+section {
+  height: calc(100vh - var(--topbar-height));
+  overflow: auto;
+  /* scrollbar-gutter: stable; */
+}
+
 main {
   margin-left: auto;
   margin-right: auto;
@@ -214,6 +217,10 @@ main > h1 {
   font-size: 2.5rem;
 }
 
+main > h1:first-child, nav.sidebar > h1:first-child {
+  margin-top: 10px;
+}
+
 main > h2, main > h3, main > h4, main > h5, main > h6 {
   margin-top: 2rem;
   text-align: left;
@@ -238,6 +245,7 @@ code.hljs {
   border-color: var(--gray);
   border-style: solid;
   border-width: 2px;
+  scrollbar-width: thin;
 }
 
 code.language-ShellSession .hljs-meta,
