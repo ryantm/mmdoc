@@ -1,4 +1,4 @@
-# Development {#development}
+# Contributing {#contributing}
 
 For easy development, `nix` with flake support is recommended. Start a development environment with:
 
@@ -19,7 +19,21 @@ $ ninja test
 ## Format
 
 ```ShellSession
-$ ninja clang-format
+$ ninja -C build clang-format
+```
+
+## Documentation
+
+Within `nix develop`, build the docs to `./out` with:
+
+```ShellSession
+$ doc-build
+```
+
+Within `nix develop`, continuosly build the docs and server them with:
+
+```ShellSession
+$ doc-build
 ```
 
 ## additional test: compile the nixpkgs manual

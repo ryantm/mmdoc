@@ -5,7 +5,7 @@ function setupSearch() {
   input.addEventListener('keyup', function (e) {
     if (e.key === "Escape") {
       toggleSearch()
-      return;
+      return
     }
     clearTimeout(timeout)
     timeout = setTimeout(function () {
@@ -33,12 +33,56 @@ function setupSearch() {
 
 window.addEventListener('DOMContentLoaded', setupSearch)
 
-function toggleSidebar() {
-  document.querySelector('html').classList.toggle("sidebar-hidden")
-  if (document.querySelector('html').classList.contains("sidebar-hidden"))
-    localStorage.setItem('sidebar-hidden', '');
+function toggleSearch() {
+  document.querySelector('html').classList.toggle("search-visible")
+  document.getElementById('search').select()
+}
+
+function setupToggleSearch() {
+  Array.from(document.querySelectorAll('.search-toggle')).forEach(el => {
+    el.addEventListener('click', toggleSearch)
+  })
+}
+
+window.addEventListener('DOMContentLoaded', setupToggleSearch)
+
+//// Sidebar
+
+const sidebarQuery = '(max-width: 600px)'
+
+// Returns 'hidden' or 'visible'
+function getDefaultSidebar() {
+  if (window.matchMedia(sidebarQuery).matches)
+    return 'hidden'
   else
-    localStorage.removeItem('sidebar-hidden', '');
+    return 'visible'
+}
+
+// Returns 'hidden' or 'visible'
+function getSelectedSidebar() {
+  return localStorage.getItem('sidebar') ?? getDefaultSidebar()
+}
+
+function toggleSidebar() {
+  const sidebar = getSelectedSidebar()
+  if (sidebar === 'hidden')
+  {
+    localStorage.setItem('sidebar', 'visible')
+    setSidebarVisible()
+  }
+  else
+  {
+    localStorage.setItem('sidebar', 'hidden')
+    setSidebarHidden()
+  }
+}
+
+function setSidebarHidden() {
+  document.querySelector('html').classList.add("sidebar-hidden")
+}
+
+function setSidebarVisible() {
+  document.querySelector('html').classList.remove("sidebar-hidden")
 }
 
 function setupToggleSidebar() {
@@ -49,15 +93,77 @@ function setupToggleSidebar() {
 
 window.addEventListener('DOMContentLoaded', setupToggleSidebar)
 
-function toggleSearch() {
-  document.querySelector('html').classList.toggle("search-visible")
-  document.getElementById('search').select();
+const sidebarMediaQueryEvent = window.matchMedia(sidebarQuery)
+
+function sidebarMediaQueryEventHandler(_e) {
+  const sidebar = getSelectedSidebar()
+  if (sidebar === 'hidden')
+    setSidebarHidden()
+  else
+    setSidebarVisible()
 }
 
-function setupToggleSearch() {
-  Array.from(document.querySelectorAll('.search-toggle')).forEach(el => {
-    el.addEventListener('click', toggleSearch)
+sidebarMediaQueryEvent.addListener(sidebarMediaQueryEventHandler);
+
+sidebarMediaQueryEventHandler(null)
+
+//// Theme
+
+// Returns 'light' or 'dark'
+function getDefaultTheme() {
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+    return 'dark'
+  else
+    return 'light'
+}
+
+// Returns 'light' or 'dark'
+function getSelectedTheme() {
+  return localStorage.getItem('theme') ?? getDefaultTheme()
+}
+
+function toggleTheme() {
+  const theme = getSelectedTheme()
+
+  if (theme === 'dark')
+  {
+    localStorage.setItem('theme', 'light')
+    setLightTheme()
+  }
+  else if (theme === 'light')
+  {
+    localStorage.setItem('theme', 'dark')
+    setDarkTheme()
+  }
+}
+
+function setDarkTheme() {
+  var dark_css = document.querySelector("link[href='a11y-dark.css']")
+  var light_css = document.querySelector("link[href='a11y-light.css']")
+  dark_css.setAttribute("media", "")
+  light_css.setAttribute("media", "false")
+  document.querySelector('html').classList.remove("light-theme")
+  document.querySelector('html').classList.add("dark-theme")
+}
+
+function setLightTheme() {
+  var dark_css = document.querySelector("link[href='a11y-dark.css']")
+  var light_css = document.querySelector("link[href='a11y-light.css']")
+  dark_css.setAttribute("media", "false")
+  light_css.setAttribute("media", "")
+  document.querySelector('html').classList.remove("dark-theme")
+  document.querySelector('html').classList.add("light-theme")
+}
+
+function setupToggleTheme() {
+  Array.from(document.querySelectorAll('.theme-toggle')).forEach(el => {
+    el.addEventListener('click', toggleTheme)
   })
 }
 
-window.addEventListener('DOMContentLoaded', setupToggleSearch)
+window.addEventListener('DOMContentLoaded', setupToggleTheme)
+
+if (getSelectedTheme() === 'dark')
+  setDarkTheme();
+else
+  setLightTheme();

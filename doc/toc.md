@@ -3,5 +3,5 @@
 * [Introduction](#introduction)
 * [Features](#features)
 * [Usage](#usage)
-* [Development](#development)
+* [Contributing](#contributing)
 * [License](#license)

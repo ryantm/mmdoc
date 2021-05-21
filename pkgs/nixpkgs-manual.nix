@@ -1,5 +1,5 @@
 { stdenv,
-nixpkgs,
+nixpkgs-for-manual,
 writeScript,
 mmdoc,
 gdb,
@@ -8,7 +8,7 @@ gdb,
 stdenv.mkDerivation rec {
   name = "nixpkgs-manual";
 
-  src = "${nixpkgs}/doc";
+  src = "${nixpkgs-for-manual}/doc";
 
   buildInputs = [gdb mmdoc];
 
