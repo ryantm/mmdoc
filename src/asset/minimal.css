@@ -1,25 +1,75 @@
-:root.light-theme  {
-  --background: white;
-  --foreground: black;
-  --light-gray: lightgray;
-  --gray: gray;
-  --orange: #FF9636;
-  --yellow: #FFCD58;
-  --green: #DAD870;
-  --red: #FF5C4D;
-  --link: black;
+:root {
+  --light_background: white;
+  --light_foreground: black;
+  --light_light-gray: lightgray;
+  --light_gray: gray;
+  --light_orange: #FF9636;
+  --light_yellow: #FFCD58;
+  --light_green: #DAD870;
+  --light_red: #FF5C4D;
+  --light_link: black;
+
+  --dark_background: black;
+  --dark_foreground: white;
+  --dark_light-gray: gray;
+  --dark_gray: lightgray;
+  --dark_orange: #FF9636;
+  --dark_yellow: #FFCD58;
+  --dark_green: #DAD870;
+  --dark_red: #FF5C4D;
+  --dark_link: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--dark_background);
+    --foreground: var(--dark_foreground);
+    --light-gray: var(--dark_light-gray);
+    --gray: var(--dark_gray);
+    --orange: var(--dark_orange);
+    --yellow: var(--dark_yellow);
+    --green: var(--dark_green);
+    --red: var(--dark_red);
+    --link: var(--dark_link);
+  }
 }
 
 :root.dark-theme {
-  --background: black;
-  --foreground: white;
-  --light-gray: gray;
-  --gray: lightgray;
-  --orange: #FF9636;
-  --yellow: #FFCD58;
-  --green: #DAD870;
-  --red: #FF5C4D;
-  --link: white;
+  --background: var(--dark_background);
+  --foreground: var(--dark_foreground);
+  --light-gray: var(--dark_light-gray);
+  --gray: var(--dark_gray);
+  --orange: var(--dark_orange);
+  --yellow: var(--dark_yellow);
+  --green: var(--dark_green);
+  --red: var(--dark_red);
+  --link: var(--dark_link);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: var(--light_background);
+    --foreground: var(--light_foreground);
+    --light-gray: var(--light_light-gray);
+    --gray: var(--light_gray);
+    --orange: var(--light_orange);
+    --yellow: var(--light_yellow);
+    --green: var(--light_green);
+    --red: var(--light_red);
+    --link: var(--light_link);
+  }
+}
+
+:root.light-theme {
+  --background: var(--light_background);
+  --foreground: var(--light_foreground);
+  --light-gray: var(--light_light-gray);
+  --gray: var(--light_gray);
+  --orange: var(--light_orange);
+  --yellow: var(--light_yellow);
+  --green: var(--light_green);
+  --red: var(--light_red);
+  --link: var(--light_link);
 }
 
 :root.sidebar-hidden {
