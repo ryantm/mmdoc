@@ -27,7 +27,7 @@ let
   '';
 
   doc-build = writeScriptBin "doc-build" ''
-     nix build && ./result/bin/mmdoc mmdoc doc out
+     nix build .#mmdoc-docs
   '';
 
   doc-watch = writeScriptBin "doc-watch" ''
@@ -38,9 +38,26 @@ let
     }
     trap killbg EXIT
     pids=()
-    ${python3}/bin/python -m http.server --directory ./out &
+    ${python3}/bin/python -m http.server --directory ./result &
     pids+=($!)
     find doc src test | ${entr}/bin/entr -cd ${doc-build}/bin/doc-build
+  '';
+
+  np-build = writeScriptBin "np-build" ''
+     nix build .#nixpkgs-manual
+  '';
+
+  np-watch = writeScriptBin "np-watch" ''
+    killbg() {
+      for p in "''${pids[@]}" ; do
+        kill "$p";
+      done
+    }
+    trap killbg EXIT
+    pids=()
+    ${python3}/bin/python -m http.server --directory ./result &
+    pids+=($!)
+    find doc src test | ${entr}/bin/entr -cd ${np-build}/bin/np-build
   '';
 
 in
@@ -64,6 +81,10 @@ mkShell {
 
     doc-build
     doc-watch
+
+    np-build
+    np-watch
+
     fmt
   ] ++ lib.optionals (!stdenv.isDarwin) [
     valgrind
