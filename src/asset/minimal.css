@@ -1,6 +1,7 @@
 :root {
   --light_background: white;
   --light_foreground: black;
+  --light_lightest-gray: #f8f8f8;
   --light_light-gray: lightgray;
   --light_gray: gray;
   --light_orange: #FF9636;
@@ -12,6 +13,7 @@
   --dark_background: black;
   --dark_foreground: white;
   --dark_light-gray: gray;
+  --dark_lightest-gray: #2b2b2b;
   --dark_gray: lightgray;
   --dark_orange: #FF9636;
   --dark_yellow: #FFCD58;
@@ -25,6 +27,7 @@
     --background: var(--dark_background);
     --foreground: var(--dark_foreground);
     --light-gray: var(--dark_light-gray);
+    --lightest-gray: var(--dark_lightest-gray);
     --gray: var(--dark_gray);
     --orange: var(--dark_orange);
     --yellow: var(--dark_yellow);
@@ -38,6 +41,7 @@
   --background: var(--dark_background);
   --foreground: var(--dark_foreground);
   --light-gray: var(--dark_light-gray);
+  --lightest-gray: var(--dark_lightest-gray);
   --gray: var(--dark_gray);
   --orange: var(--dark_orange);
   --yellow: var(--dark_yellow);
@@ -51,6 +55,7 @@
     --background: var(--light_background);
     --foreground: var(--light_foreground);
     --light-gray: var(--light_light-gray);
+    --lightest-gray: var(--light_lightest-gray);
     --gray: var(--light_gray);
     --orange: var(--light_orange);
     --yellow: var(--light_yellow);
@@ -64,6 +69,7 @@
   --background: var(--light_background);
   --foreground: var(--light_foreground);
   --light-gray: var(--light_light-gray);
+  --lightest-gray: var(--light_lightest-gray);
   --gray: var(--light_gray);
   --orange: var(--light_orange);
   --yellow: var(--light_yellow);
@@ -229,7 +235,6 @@ main {
   margin-right: auto;
   max-width: 80ch;
   padding: 0em 1em 20em 1em;
-  text-align: justify;
 }
 
 main .admonition {
@@ -263,17 +268,39 @@ main th, main td {
   padding: 0.75em;
 }
 
-main > h1 {
-  font-size: 2.5rem;
+main h1:first-child, nav.sidebar > h1:first-child {
+  margin-top: 1rem;
 }
 
-main > h1:first-child, nav.sidebar > h1:first-child {
-  margin-top: 10px;
+main h1 {
+    font-size: 2.5rem;
+    line-height: calc(1ex / 0.42);
+    margin: calc(1ex / 0.42) 0;
 }
 
-main > h2, main > h3, main > h4, main > h5, main > h6 {
-  margin-top: 2rem;
-  text-align: left;
+main h2 {
+    font-size: 2rem;
+    line-height: calc(1ex / 0.42);
+    margin: calc(1ex / 0.42) 0;
+}
+
+main h3 {
+    font-size: 1.75rem;
+    line-height: calc(1ex / 0.38);
+    margin: calc(1ex / 0.38) 0;
+}
+
+main h4 {
+    font-size: 1.5rem;
+    line-height: calc(1ex / 0.37);
+    margin: calc(1ex / 0.37) 0;
+}
+
+main p {
+  text-align: justify;
+  font-size: 1rem;
+  line-height: calc(1ex / 0.32);
+  margin: calc(1ex / 0.32) 0;
 }
 
 main blockquote {
@@ -285,17 +312,19 @@ main blockquote {
 
 code, code.hljs {
   display: inline;
-  padding: 0.25em;
   border-radius: 5px;
-  border-color: var(--light-gray);
-  border-style: solid;
-  border-width: 1px;
-  scrollbar-width: thin;
+  padding: 2px;
+  background: var(--lightest-gray);
 }
 
 pre code, pre code.hljs {
   display: block;
   padding: 10px;
+  border-radius: 5px;
+  border-color: var(--light-gray);
+  border-style: solid;
+  border-width: 1px;
+  scrollbar-width: thin;
 }
 
 code.language-ShellSession .hljs-meta,
