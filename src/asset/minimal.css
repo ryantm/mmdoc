@@ -283,19 +283,19 @@ main blockquote {
   font-size: 20px;
 }
 
-pre code.hljs {
-  display: block;
-  padding: 10px;
-}
-
-code.hljs {
+code, code.hljs {
   display: inline;
   padding: 0.25em;
   border-radius: 5px;
-  border-color: var(--gray);
+  border-color: var(--light-gray);
   border-style: solid;
-  border-width: 2px;
+  border-width: 1px;
   scrollbar-width: thin;
+}
+
+pre code, pre code.hljs {
+  display: block;
+  padding: 10px;
 }
 
 code.language-ShellSession .hljs-meta,
