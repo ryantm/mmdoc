@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int write_css(FILE *file)
-{
+int write_css(FILE *file) {
   fputs("<style>\n", file);
   if (asset_write_to_file_mmdoc_css(file) != 0)
     return -1;
@@ -13,8 +12,7 @@ int write_css(FILE *file)
   return 0;
 }
 
-int write_js(FILE *file)
-{
+int write_js(FILE *file) {
   fputs("<script>\n", file);
   if (asset_write_to_file_mmdoc_js(file) != 0)
     return -1;
@@ -55,13 +53,12 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "{return !elem.parentElement.classList.contains('heade'); });\n"
       "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
       "      });\n"
-    "    </script>\n";
+      "    </script>\n";
   fputs(html_head, page_file);
   write_css(page_file);
-  html_head =
-      "    <script src='fuse.basic.min.js'></script>\n"
-      "    <script src='search_index.js'></script>\n"
-      "    <title>";
+  html_head = "    <script src='fuse.basic.min.js'></script>\n"
+              "    <script src='search_index.js'></script>\n"
+              "    <title>";
   fputs(html_head, page_file);
   fputs(anchor_location->title, page_file);
   fputs(" | ", page_file);
