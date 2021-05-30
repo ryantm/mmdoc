@@ -20,6 +20,14 @@ int write_js(FILE *file) {
   return 0;
 }
 
+int write_highlight_js(FILE *file) {
+  fputs("<script>\n", file);
+  if (asset_write_to_file_highlight_pack_js(file) != 0)
+    return -1;
+  fputs("hljs.highlightAll()\n</script>\n", file);
+  return 0;
+}
+
 int mmdoc_multi_page(char *toc_path, char *project_name,
                      AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
@@ -44,8 +52,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "media='(prefers-color-scheme: light)'>\n"
       "    <link rel='stylesheet' href='a11y-dark.css' "
       "media='(prefers-color-scheme: dark)'>\n"
-      "    <script src='highlight.pack.js'></script>\n"
-      "    <script>hljs.highlightAll()</script>\n"
       "    <script>\n"
       "      window.addEventListener('load', (event) => { \n"
       "        let codeElems = "
@@ -122,6 +128,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("      </main>\n</section>\n", page_file);
 
   write_js(page_file);
+  write_highlight_js(page_file);
+
   char *html_foot = "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);
@@ -133,7 +141,6 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
                 AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations, char *project_name) {
   if (asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
-      asset_write_to_dir_highlight_pack_js(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
       asset_write_to_dir_a11y_dark_css(out) != 0) {
     return -1;
