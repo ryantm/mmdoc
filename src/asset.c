@@ -4,7 +4,7 @@
 #include "epub.css.h"
 #include "fuse.basic.min.js.h"
 #include "highlight.pack.js.h"
-#include "minimal.css.h"
+#include "mmdoc.css.h"
 #include "search.js.h"
 
 #include <errno.h>
@@ -83,11 +83,11 @@ int asset_write_to_dir_epub_css(char *dir) {
                             ___src_asset_epub_css_len);
 }
 
-extern unsigned char ___src_asset_minimal_css[];
-extern unsigned int ___src_asset_minimal_css_len;
-int asset_write_to_dir_minimal_css(char *dir) {
-  return asset_write_to_dir(dir, "minimal.css", ___src_asset_minimal_css,
-                            ___src_asset_minimal_css_len);
+extern unsigned char ___src_asset_mmdoc_css[];
+extern unsigned int ___src_asset_mmdoc_css_len;
+int asset_write_to_dir_mmdoc_css(char *dir) {
+  return asset_write_to_dir(dir, "mmdoc.css", ___src_asset_mmdoc_css,
+                            ___src_asset_mmdoc_css_len);
 }
 
 extern unsigned char ___src_asset_search_js[];

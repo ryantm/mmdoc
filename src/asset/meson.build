@@ -2,7 +2,7 @@ assets = [
   'epub.css',
   'fuse.basic.min.js',
   'highlight.pack.js',
-  'minimal.css',
+  'mmdoc.css',
   'a11y-dark.css',
   'a11y-light.css',
   'search.js',

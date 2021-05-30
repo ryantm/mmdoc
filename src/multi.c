@@ -24,7 +24,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <meta name='viewport' content='width=device-width, "
       "initial-scale=1.0'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
-      "    <link href='minimal.css' rel='stylesheet' type='text/css'>\n"
+      "    <link href='mmdoc.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='a11y-light.css' "
       "media='(prefers-color-scheme: light)'>\n"
       "    <link rel='stylesheet' href='a11y-dark.css' "
@@ -119,7 +119,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
   if (asset_write_to_dir_search_js(out) != 0 ||
       asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
-      asset_write_to_dir_minimal_css(out) != 0 ||
+      asset_write_to_dir_mmdoc_css(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
       asset_write_to_dir_a11y_dark_css(out) != 0) {
     return -1;
