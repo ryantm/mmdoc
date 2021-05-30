@@ -24,7 +24,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "    <meta name='viewport' content='width=device-width, "
       "initial-scale=1.0'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
-      "    <link href='mmdoc.css' rel='stylesheet' type='text/css'>\n"
       "    <link rel='stylesheet' href='a11y-light.css' "
       "media='(prefers-color-scheme: light)'>\n"
       "    <link rel='stylesheet' href='a11y-dark.css' "
@@ -39,6 +38,12 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
       "      });\n"
       "    </script>\n"
+    "    <style>\n";
+  fputs(html_head, page_file);
+  if (asset_write_to_file_mmdoc_css(page_file) != 0)
+    return;
+  html_head =
+      "    </style>\n"
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
       "    <script src='search.js'></script>\n"

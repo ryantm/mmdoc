@@ -14,6 +14,19 @@
 
 extern int errno;
 
+static int asset_write_to_file(FILE *file, char *asset_file_name,
+                              unsigned char *asset_array,
+                              unsigned int asset_array_length) {
+  for (int i = 0; i < asset_array_length; i++) {
+    int ret = fputc(asset_array[i], file);
+    if (ret == EOF) {
+      printf("Failed to write %s to file: %s\n", asset_file_name, strerror(errno));
+      return -1;
+    }
+  }
+  return 0;
+}
+
 static int asset_write_to_dir(char *dir, char *asset_file_name,
                               unsigned char *asset_array,
                               unsigned int asset_array_length) {
@@ -30,14 +43,12 @@ static int asset_write_to_dir(char *dir, char *asset_file_name,
     free(asset_path);
     return -1;
   }
-  for (int i = 0; i < asset_array_length; i++) {
-    int ret = fputc(asset_array[i], asset_file);
-    if (ret == EOF) {
+  if (asset_write_to_file(asset_file, asset_file_name, asset_array, asset_array_length) != 0)
+    {
       printf("Failed to write to file %s: %s\n", asset_path, strerror(errno));
       free(asset_path);
       return -1;
     }
-  }
   free(asset_path);
   if (fclose(asset_file) != 0) {
     printf("Failed to close file %s: %s\n", asset_path, strerror(errno));
@@ -87,6 +98,11 @@ extern unsigned char ___src_asset_mmdoc_css[];
 extern unsigned int ___src_asset_mmdoc_css_len;
 int asset_write_to_dir_mmdoc_css(char *dir) {
   return asset_write_to_dir(dir, "mmdoc.css", ___src_asset_mmdoc_css,
+                            ___src_asset_mmdoc_css_len);
+}
+
+int asset_write_to_file_mmdoc_css(FILE *file) {
+  return asset_write_to_file(file, "mmdoc.css", ___src_asset_mmdoc_css,
                             ___src_asset_mmdoc_css_len);
 }
 
