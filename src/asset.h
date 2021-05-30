@@ -13,4 +13,5 @@ int asset_write_to_dir_a11y_dark_css(char *dir);
 int asset_write_to_dir_epub_css(char *dir);
 int asset_write_to_dir_mmdoc_css(char *dir);
 int asset_write_to_file_mmdoc_css(FILE *file);
-int asset_write_to_dir_search_js(char *dir);
+int asset_write_to_dir_mmdoc_js(char *dir);
+int asset_write_to_file_mmdoc_js(char *dir);

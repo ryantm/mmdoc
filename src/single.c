@@ -6,7 +6,7 @@
 
 int mmdoc_single(char *out, char *toc_path, char *project_name,
                  AnchorLocationArray toc_anchor_locations) {
-  if (asset_write_to_dir_search_js(out) != 0 ||
+  if (asset_write_to_dir_mmdoc_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
       asset_write_to_dir_mmdoc_css(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
@@ -35,7 +35,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "media='(prefers-color-scheme: dark)'>\n"
       "    <script src='highlight.pack.js'></script>\n"
       "    <script>hljs.highlightAll()</script>\n"
-      "    <script src='search.js'></script>\n"
+      "    <script src='mmdoc.js'></script>\n"
       "    <script>\n"
       "      window.addEventListener('load', (event) => { \n"
       "        let codeElems = "

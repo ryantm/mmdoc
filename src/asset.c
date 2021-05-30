@@ -5,7 +5,7 @@
 #include "fuse.basic.min.js.h"
 #include "highlight.pack.js.h"
 #include "mmdoc.css.h"
-#include "search.js.h"
+#include "mmdoc.js.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -106,9 +106,14 @@ int asset_write_to_file_mmdoc_css(FILE *file) {
                             ___src_asset_mmdoc_css_len);
 }
 
-extern unsigned char ___src_asset_search_js[];
-extern unsigned int ___src_asset_search_js_len;
-int asset_write_to_dir_search_js(char *dir) {
-  return asset_write_to_dir(dir, "search.js", ___src_asset_search_js,
-                            ___src_asset_search_js_len);
+extern unsigned char ___src_asset_mmdoc_js[];
+extern unsigned int ___src_asset_mmdoc_js_len;
+int asset_write_to_dir_mmdoc_js(char *dir) {
+  return asset_write_to_dir(dir, "mmdoc.js", ___src_asset_mmdoc_js,
+                            ___src_asset_mmdoc_js_len);
+}
+
+int asset_write_to_file_mmdoc_js(FILE *file) {
+  return asset_write_to_file(file, "mmdoc.js", ___src_asset_mmdoc_js,
+                            ___src_asset_mmdoc_js_len);
 }

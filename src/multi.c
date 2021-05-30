@@ -4,6 +4,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+int write_css(FILE *file)
+{
+  fputs("<style>\n", file);
+  if (asset_write_to_file_mmdoc_css(file) != 0)
+    return -1;
+  fputs("</style>\n", file);
+  return 0;
+}
+
+int write_js(FILE *file)
+{
+  fputs("<script>\n", file);
+  if (asset_write_to_file_mmdoc_js(file) != 0)
+    return -1;
+  fputs("</script>\n", file);
+  return 0;
+}
+
 int mmdoc_multi_page(char *toc_path, char *project_name,
                      AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
@@ -37,16 +55,12 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
       "{return !elem.parentElement.classList.contains('heade'); });\n"
       "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
       "      });\n"
-      "    </script>\n"
-    "    <style>\n";
+    "    </script>\n";
   fputs(html_head, page_file);
-  if (asset_write_to_file_mmdoc_css(page_file) != 0)
-    return;
+  write_css(page_file);
   html_head =
-      "    </style>\n"
       "    <script src='fuse.basic.min.js'></script>\n"
       "    <script src='search_index.js'></script>\n"
-      "    <script src='search.js'></script>\n"
       "    <title>";
   fputs(html_head, page_file);
   fputs(anchor_location->title, page_file);
@@ -108,10 +122,10 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
                       RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
                       anchor_location->multipage_url, search_index_file);
 
-  fputs("      </main>\n", page_file);
+  fputs("      </main>\n</section>\n", page_file);
 
-  char *html_foot = "    </section>\n"
-                    "  </body>\n"
+  write_js(page_file);
+  char *html_foot = "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);
   fclose(page_file);
@@ -121,10 +135,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 int mmdoc_multi(char *out, char *src, char *toc_path,
                 AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations, char *project_name) {
-  if (asset_write_to_dir_search_js(out) != 0 ||
-      asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
+  if (asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
-      asset_write_to_dir_mmdoc_css(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
       asset_write_to_dir_a11y_dark_css(out) != 0) {
     return -1;
