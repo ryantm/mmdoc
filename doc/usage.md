@@ -34,11 +34,11 @@ In order to be useful for Documentation, it uses several CommonMark extensions a
   ```
 * DD Lists
   ```text
-  : term 1
+  term 1
 
-  defintion 1
+  : defintion 1
 
-  : term 2
+  term 2
 
-  defintion 2
+  : defintion 2
   ```
