@@ -1,7 +1,7 @@
 # mmdoc docs
 
-* [Introduction](#introduction)
-* [Features](#features)
-* [Usage](#usage)
-* [Contributing](#contributing)
-* [License](#license)
+* [](#introduction)
+* [](#features)
+* [](#usage)
+* [](#contributing)
+* [](#license)
