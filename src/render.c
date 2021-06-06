@@ -302,6 +302,14 @@ void replace_link(cmark_node *node, char *input_file_path,
   strcat(new_url, url);
   cmark_node_set_url(node, new_url);
   free(new_url);
+  if (strlen(anchor_location.title) != 0) {
+    cmark_node *child = cmark_node_first_child(node);
+    if (child == NULL) {
+      cmark_node *new_child = cmark_node_new(CMARK_NODE_TEXT);
+      cmark_node_set_literal(new_child, anchor_location.title);
+      cmark_node_prepend_child(node, new_child);
+    }
+  }
 }
 
 void insert_search_index(FILE *search_index_path, const char *text,

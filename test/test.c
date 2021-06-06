@@ -156,10 +156,20 @@ int test_e007() {
   init_anchor_location_array(&anchor_locations, 1);
   AnchorLocation *al = malloc(sizeof *al);
   al->anchor = "#first_section";
+  al->title = "First section";
   al->multipage_url = "url";
   al->multipage_output_directory_path = "output_path/";
   al->multipage_output_file_path = "output_path/index.html";
   insert_anchor_location_array(&anchor_locations, al);
+
+  AnchorLocation *al2 = malloc(sizeof *al2);
+  al2->anchor = "#second_section";
+  al2->title = "Second section";
+  al2->multipage_url = "url";
+  al2->multipage_output_directory_path = "output_path/";
+  al2->multipage_output_file_path = "output_path/index.html";
+  insert_anchor_location_array(&anchor_locations, al2);
+
   int retval = test_multipage_render("e007", anchor_locations);
   free_anchor_location_array(&anchor_locations);
   return retval;
