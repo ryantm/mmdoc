@@ -8,6 +8,13 @@ int write_css(FILE *file) {
   fputs("<style>\n", file);
   if (asset_write_to_file_mmdoc_css(file) != 0)
     return -1;
+
+  if (asset_write_to_file_a11y_light_css(file) != 0)
+    return -1;
+
+  if (asset_write_to_file_a11y_dark_css(file) != 0)
+    return -1;
+
   fputs("</style>\n", file);
   return 0;
 }

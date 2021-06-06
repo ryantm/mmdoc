@@ -81,11 +81,19 @@ int asset_write_to_dir_a11y_light_css(char *dir) {
   return asset_write_to_dir(dir, "a11y-light.css", ___src_asset_a11y_light_css,
                             ___src_asset_a11y_light_css_len);
 }
+int asset_write_to_file_a11y_light_css(char *dir) {
+  return asset_write_to_file(dir, ___src_asset_a11y_light_css,
+                            ___src_asset_a11y_light_css_len);
+}
 
 extern unsigned char ___src_asset_a11y_dark_css[];
 extern unsigned int ___src_asset_a11y_dark_css_len;
 int asset_write_to_dir_a11y_dark_css(char *dir) {
   return asset_write_to_dir(dir, "a11y-dark.css", ___src_asset_a11y_dark_css,
+                            ___src_asset_a11y_dark_css_len);
+}
+int asset_write_to_file_a11y_dark_css(char *dir) {
+  return asset_write_to_file(dir, ___src_asset_a11y_dark_css,
                             ___src_asset_a11y_dark_css_len);
 }
 

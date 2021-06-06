@@ -1,82 +1,245 @@
-:root {
-  --light_background: white;
-  --light_foreground: black;
-  --light_lightest-gray: #f8f8f8;
-  --light_light-gray: lightgray;
-  --light_gray: gray;
-  --light_orange: #FF9636;
-  --light_yellow: #FFCD58;
-  --light_green: #DAD870;
-  --light_red: #FF5C4D;
-  --light_link: black;
-
-  --dark_background: black;
-  --dark_foreground: white;
-  --dark_light-gray: gray;
-  --dark_lightest-gray: #2b2b2b;
-  --dark_gray: lightgray;
-  --dark_orange: #FF9636;
-  --dark_yellow: #FFCD58;
-  --dark_green: #DAD870;
-  --dark_red: #FF5C4D;
-  --dark_link: white;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--dark_background);
-    --foreground: var(--dark_foreground);
-    --light-gray: var(--dark_light-gray);
-    --lightest-gray: var(--dark_lightest-gray);
-    --gray: var(--dark_gray);
-    --orange: var(--dark_orange);
-    --yellow: var(--dark_yellow);
-    --green: var(--dark_green);
-    --red: var(--dark_red);
-    --link: var(--dark_link);
-  }
+:root, :root.light-theme {
+  --background: white;
+  --foreground: black;
+  --lightest-gray: #f8f8f8;
+  --light-gray: lightgray;
+  --gray: gray;
+  --orange: #FF9636;
+  --yellow: #FFCD58;
+  --green: #DAD870;
+  --red: #FF5C4D;
+  --link: black;
 }
 
 :root.dark-theme {
-  --background: var(--dark_background);
-  --foreground: var(--dark_foreground);
-  --light-gray: var(--dark_light-gray);
-  --lightest-gray: var(--dark_lightest-gray);
-  --gray: var(--dark_gray);
-  --orange: var(--dark_orange);
-  --yellow: var(--dark_yellow);
-  --green: var(--dark_green);
-  --red: var(--dark_red);
-  --link: var(--dark_link);
+  --background: black;
+  --foreground: white;
+  --light-gray: gray;
+  --lightest-gray: #2b2b2b;
+  --gray: lightgray;
+  --orange: #FF9636;
+  --yellow: #FFCD58;
+  --green: #DAD870;
+  --red: #FF5C4D;
+  --link: white;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: var(--light_background);
-    --foreground: var(--light_foreground);
-    --light-gray: var(--light_light-gray);
-    --lightest-gray: var(--light_lightest-gray);
-    --gray: var(--light_gray);
-    --orange: var(--light_orange);
-    --yellow: var(--light_yellow);
-    --green: var(--light_green);
-    --red: var(--light_red);
-    --link: var(--light_link);
-  }
+@media (prefers-color-scheme: dark) { :root {
+  --background: black;
+  --foreground: white;
+  --light-gray: gray;
+  --lightest-gray: #2b2b2b;
+  --gray: lightgray;
+  --orange: #FF9636;
+  --yellow: #FFCD58;
+  --green: #DAD870;
+  --red: #FF5C4D;
+  --link: white;
+}}
+
+
+/* a11y-dark theme */
+/* Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css */
+/* @author: ericwbailey */
+
+/* Comment */
+.hljs-comment,
+.hljs-quote {
+  color: #d4d0ab;
 }
 
-:root.light-theme {
-  --background: var(--light_background);
-  --foreground: var(--light_foreground);
-  --light-gray: var(--light_light-gray);
-  --lightest-gray: var(--light_lightest-gray);
-  --gray: var(--light_gray);
-  --orange: var(--light_orange);
-  --yellow: var(--light_yellow);
-  --green: var(--light_green);
-  --red: var(--light_red);
-  --link: var(--light_link);
+/* Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+  color: #ffa07a;
 }
+
+/* Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+  color: #f5ab35;
+}
+
+/* Yellow */
+.hljs-attribute {
+  color: #ffd700;
+}
+
+/* Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+  color: #abe338;
+}
+
+/* Blue */
+.hljs-title,
+.hljs-section {
+  color: #00e0e0;
+}
+
+/* Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #dcc6e0;
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: #2b2b2b;
+  color: #f8f8f2;
+  padding: 0.5em;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  .hljs-addition,
+  .hljs-attribute,
+  .hljs-built_in,
+  .hljs-builtin-name,
+  .hljs-bullet,
+  .hljs-comment,
+  .hljs-link,
+  .hljs-literal,
+  .hljs-meta,
+  .hljs-number,
+  .hljs-params,
+  .hljs-string,
+  .hljs-symbol,
+  .hljs-type,
+  .hljs-quote {
+        color: highlight;
+    }
+
+    .hljs-keyword,
+    .hljs-selector-tag {
+        font-weight: bold;
+    }
+}
+
+
+/* a11y-light theme */
+/* Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css */
+/* @author: ericwbailey */
+
+/* Comment */
+.hljs-comment,
+.hljs-quote {
+  color: #696969;
+}
+
+/* Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+  color: #d91e18;
+}
+
+/* Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+  color: #aa5d00;
+}
+
+/* Yellow */
+.hljs-attribute {
+  color: #aa5d00;
+}
+
+/* Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+  color: #008000;
+}
+
+/* Blue */
+.hljs-title,
+.hljs-section {
+  color: #007faa;
+}
+
+/* Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #7928a1;
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: #fefefe;
+  color: #545454;
+  padding: 0.5em;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  .hljs-addition,
+  .hljs-attribute,
+  .hljs-built_in,
+  .hljs-builtin-name,
+  .hljs-bullet,
+  .hljs-comment,
+  .hljs-link,
+  .hljs-literal,
+  .hljs-meta,
+  .hljs-number,
+  .hljs-params,
+  .hljs-string,
+  .hljs-symbol,
+  .hljs-type,
+  .hljs-quote {
+        color: highlight;
+    }
+
+    .hljs-keyword,
+    .hljs-selector-tag {
+        font-weight: bold;
+    }
+}
+
+/* end a11y-light theme */
 
 :root.sidebar-hidden {
   --sidebar-width: 0px;
