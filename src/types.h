@@ -26,6 +26,10 @@ typedef struct {
   size_t size;
 } AnchorLocationArray;
 
+typedef struct {
+  char *anchor;
+} HeadingInfo;
+
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize);
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element);

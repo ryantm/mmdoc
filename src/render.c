@@ -14,38 +14,110 @@
 #include <string.h>
 #include <sys/stat.h>
 
-int replace_bracket_with_span(cmark_node *node) {
-  const char *lit = cmark_node_get_literal(node);
+/**
+ * Replaces 'oldnode' with 'newnode', reconnects children of 'oldnode' to
+ * 'newnode' and unlinks 'oldnode' (but does not free its memory). Can fail if
+ * 'newnode' does not like to contain child’s node type. Returns 1 on success, 0
+ * on failure.
+ */
+int cmark_node_replace_with_children(cmark_node *oldnode, cmark_node *newnode) {
+  cmark_node_replace(oldnode, newnode);
+
+  cmark_node *child;
+  cmark_node *next;
+
+  while ((child = cmark_node_first_child(oldnode)) != NULL) {
+    next = cmark_node_next(child);
+    if (!cmark_node_append_child(newnode, child)) {
+      return 0;
+    }
+    child = next;
+  }
+
+  return 1;
+}
+
+/**
+ * Extracts id attribute from header and attaches it to the node as custom
+ * metadata.
+ */
+int replace_header_attributes(cmark_node *node, char *input_file_path,
+                              AnchorLocationArray anchor_locations) {
+  if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
+    return 0;
+  cmark_node *last_child = cmark_node_last_child(node);
+
+  if (cmark_node_get_type(last_child) != CMARK_NODE_TEXT)
+    return 0;
+
+  const char *lit = cmark_node_get_literal(last_child);
   char *id = malloc(strlen(lit) + 1);
   int pos = parse_heading_bracketed_span_id(lit, id);
   if (-1 == pos) {
     free(id);
     return 0;
   }
-  char *new_lit = malloc(strlen(lit) + 1);
-  int i;
-  for (i = 0; i < pos; i++) {
-    new_lit[i] = lit[i];
+
+  HeadingInfo *info = malloc(sizeof *info);
+  info->anchor = malloc(strlen(id) + 1);
+  strcpy(info->anchor, id);
+  cmark_node_set_user_data(node, info);
+
+  // TODO: populate anchor_locations here
+
+  if (pos == 0) {
+    cmark_node_unlink(last_child);
+  } else {
+    char *new_lit = malloc(strlen(lit) + 1);
+    int i;
+    for (i = 0; i < pos; i++) {
+      new_lit[i] = lit[i];
+    }
+    new_lit[i] = '\0';
+    cmark_node *new_node = cmark_node_new(CMARK_NODE_TEXT);
+    cmark_node_set_literal(new_node, new_lit);
+    cmark_node_replace(last_child, new_node);
   }
-  new_lit[i] = '\0';
-  char *first_span = malloc(12 + strlen(lit) + 1);
-  strcpy(first_span, "<span id='");
-  strcat(first_span, id);
-  strcat(first_span, "'>");
-  cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(new_node, first_span);
-  cmark_node_insert_before(node, new_node);
-  new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(new_node, "</span>");
-  cmark_node_insert_after(node, new_node);
-  new_node = cmark_node_new(CMARK_NODE_TEXT);
-  cmark_node_set_literal(new_node, new_lit);
-  cmark_node_insert_after(node, new_node);
-  cmark_node_replace(node, new_node);
-  cmark_node_free(node);
+
+  cmark_node_free(last_child);
   free(id);
-  free(new_lit);
-  free(first_span);
+  return 1;
+}
+
+/**
+ * Converts headers with custom metadata into HTML heading node.
+ */
+int replace_headers_with_attributes_for_html(cmark_node *node) {
+  if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
+    return 0;
+
+  HeadingInfo *info = cmark_node_get_user_data(node);
+
+  if (!info)
+    return 0;
+
+  char level[2];
+  snprintf(level, sizeof(level), "%d", cmark_node_get_heading_level(node));
+  char *on_enter = malloc(2 + 1 + 5 + strlen(info->anchor) + 2 + 1);
+  strcpy(on_enter, "<h");
+  strcat(on_enter, level);
+  strcat(on_enter, " id='");
+  strcat(on_enter, info->anchor);
+  strcat(on_enter, "'>");
+  char *on_exit = malloc(3 + 1 + 1 + 1);
+  strcpy(on_exit, "</h");
+  strcat(on_exit, level);
+  strcat(on_exit, ">");
+
+  cmark_node *new_node = cmark_node_new(CMARK_NODE_CUSTOM_BLOCK);
+  cmark_node_set_on_enter(new_node, on_enter);
+  cmark_node_set_on_exit(new_node, on_exit);
+  cmark_node_replace_with_children(node, new_node);
+
+  free(info->anchor);
+  free(info);
+  cmark_node_set_user_data(node, NULL);
+  cmark_node_free(node);
   return 1;
 }
 
@@ -317,6 +389,37 @@ void insert_search_index(FILE *search_index_path, const char *text,
   fputs("\n,", search_index_path);
 }
 
+/**
+ * Moves custom syntax tokens from AST text nodes into custom data structures
+ * attached to the nodes.
+ */
+void cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
+                          char *input_file_path, render_type render_type,
+                          AnchorLocationArray anchor_locations) {
+  cmark_iter *iter = cmark_iter_new(document);
+
+  cmark_event_type event;
+  cmark_node *node;
+
+  while ((event = cmark_iter_next(iter))) {
+    switch (event) {
+    case CMARK_EVENT_NONE:
+      break;
+    case CMARK_EVENT_DONE:
+      break;
+    case CMARK_EVENT_ENTER:
+      break;
+    case CMARK_EVENT_EXIT:
+      node = cmark_iter_get_node(iter);
+      if (replace_header_attributes(node, input_file_path, anchor_locations))
+        continue;
+    }
+    if (CMARK_EVENT_DONE == event)
+      break;
+  }
+  cmark_iter_free(iter);
+}
+
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
                    render_type render_type,
                    AnchorLocationArray anchor_locations) {
@@ -345,13 +448,39 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
         continue;
       if (replace_link_bracket_with_span(node))
         continue;
-      if (replace_bracket_with_span(node))
-        continue;
       if (replace_admonition_start(node))
         continue;
       if (replace_admonition_end(node))
         continue;
       if (replace_dd(node))
+        continue;
+    }
+    if (CMARK_EVENT_DONE == event)
+      break;
+  }
+  cmark_iter_free(iter);
+}
+
+/**
+ * Turns CommonMark nodes annotated with our custom data into HTML elements.
+ */
+void cmark_rewrite_html(cmark_node *document) {
+  cmark_iter *iter = cmark_iter_new(document);
+
+  cmark_event_type event;
+  cmark_node *node;
+
+  while ((event = cmark_iter_next(iter))) {
+    switch (event) {
+    case CMARK_EVENT_NONE:
+      break;
+    case CMARK_EVENT_DONE:
+      break;
+    case CMARK_EVENT_ENTER:
+      break;
+    case CMARK_EVENT_EXIT:
+      node = cmark_iter_get_node(iter);
+      if (replace_headers_with_attributes_for_html(node))
         continue;
     }
     if (CMARK_EVENT_DONE == event)
@@ -448,7 +577,13 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   /* printf("BEFORE\n"); */
   /* render_debug_cmark_node(document); */
 
+  cmark_rewrite_syntax(document, mem, file_path, render_type, anchor_locations);
+
   cmark_rewrite(document, mem, file_path, render_type, anchor_locations);
+
+  if (render_type != RENDER_TYPE_MAN) {
+    cmark_rewrite_html(document);
+  }
 
   /* printf("AFTER\n"); */
   /* render_debug_cmark_node(document); */
