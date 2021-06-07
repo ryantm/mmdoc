@@ -1,4 +1,4 @@
-# mmdoc {#introduction}
+# Introduction {#introduction}
 
 > Minimal Markdown Documentation
 

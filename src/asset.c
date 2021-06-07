@@ -62,8 +62,8 @@ int asset_write_to_dir_highlight_pack_js(char *dir) {
                             ___src_asset_highlight_pack_js,
                             ___src_asset_highlight_pack_js_len);
 }
-int asset_write_to_file_highlight_pack_js(char *dir) {
-  return asset_write_to_file(dir, ___src_asset_highlight_pack_js,
+int asset_write_to_file_highlight_pack_js(FILE *file) {
+  return asset_write_to_file(file, ___src_asset_highlight_pack_js,
                              ___src_asset_highlight_pack_js_len);
 }
 
