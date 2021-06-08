@@ -158,7 +158,7 @@ int replace_link_bracket_with_span(cmark_node *node) {
   cmark_node_insert_before(node, new_node);
 
   char *new_r_lit = malloc(strlen(lit) + 1);
-  int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 2;
+  int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 1;
   for (i = end_of_span; lit[i] != '\0'; i++) {
     new_r_lit[i - end_of_span] = lit[i];
   }
