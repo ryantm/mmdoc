@@ -193,7 +193,16 @@ int replace_admonition_start(cmark_node *node) {
       strcmp(admonition_type, "important") != 0 &&
       strcmp(admonition_type, "note") != 0 &&
       strcmp(admonition_type, "tip") != 0 &&
-      strcmp(admonition_type, "warning") != 0) {
+      strcmp(admonition_type, "warning") != 0 &&
+      strcmp(admonition_type, "{.attention}") != 0 &&
+      strcmp(admonition_type, "{.caution}") != 0 &&
+      strcmp(admonition_type, "{.danger}") != 0 &&
+      strcmp(admonition_type, "{.error}") != 0 &&
+      strcmp(admonition_type, "{.hint}") != 0 &&
+      strcmp(admonition_type, "{.important}") != 0 &&
+      strcmp(admonition_type, "{.note}") != 0 &&
+      strcmp(admonition_type, "{.tip}") != 0 &&
+      strcmp(admonition_type, "{.warning}") != 0) {
     printf("admonition type '%s' doesn't match\n", admonition_type);
     free(admonition_type);
     return 0;
@@ -201,39 +210,49 @@ int replace_admonition_start(cmark_node *node) {
 
   cmark_node *parent = cmark_node_parent(node);
   cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  if (strcmp(admonition_type, "attention") == 0)
+  if (strcmp(admonition_type, "attention") == 0 ||
+      strcmp(admonition_type, "{.attention}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition attention'><h3 class='title'>Attention</h3>");
-  if (strcmp(admonition_type, "caution") == 0)
+  if (strcmp(admonition_type, "caution") == 0 ||
+      strcmp(admonition_type, "{.caution}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition caution'><h3 class='title'>Caution</h3>");
-  if (strcmp(admonition_type, "danger") == 0)
+  if (strcmp(admonition_type, "danger") == 0 ||
+      strcmp(admonition_type, "{.danger}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "error") == 0)
+  if (strcmp(admonition_type, "error") == 0 ||
+      strcmp(admonition_type, "{.error}") == 0)
     cmark_node_set_literal(
         new_node, "<div class='admonition error'><h3 class='title'>Error</h3>");
-  if (strcmp(admonition_type, "hint") == 0)
+  if (strcmp(admonition_type, "hint") == 0 ||
+      strcmp(admonition_type, "{.hint}") == 0)
     cmark_node_set_literal(
         new_node, "<div class='admonition hint'><h3 class='title'>Hint</h3>");
-  if (strcmp(admonition_type, "important") == 0)
+  if (strcmp(admonition_type, "important") == 0 ||
+      strcmp(admonition_type, "{.important}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition important'><h3 class='title'>Important</h3>");
-  if (strcmp(admonition_type, "danger") == 0)
+  if (strcmp(admonition_type, "danger") == 0 ||
+      strcmp(admonition_type, "{.danger}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "note") == 0)
+  if (strcmp(admonition_type, "note") == 0 ||
+      strcmp(admonition_type, "{.note}") == 0)
     cmark_node_set_literal(
         new_node, "<div class='admonition note'><h3 class='title'>Note</h3>");
-  if (strcmp(admonition_type, "tip") == 0)
+  if (strcmp(admonition_type, "tip") == 0 ||
+      strcmp(admonition_type, "{.tip}") == 0)
     cmark_node_set_literal(
         new_node, "<div class='admonition tip'><h3 class='title'>Tip</h3>");
-  if (strcmp(admonition_type, "warning") == 0)
+  if (strcmp(admonition_type, "warning") == 0 ||
+      strcmp(admonition_type, "{.warning}") == 0)
     cmark_node_set_literal(
         new_node,
         "<div class='admonition warning'><h3 class='title'>Warning</h3>");
