@@ -72,7 +72,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 
   char *html_head_end = "</title>\n"
                         "  </head>\n"
-                        "  <body>\n";
+                        "  <body>\n"
+                        "  <div class='body'>\n";
   fputs(html_head_end, page_file);
   fputs("    <div class='nav-top-container'>\n", page_file);
   fputs("    <nav class='nav-top'>\n", page_file);
@@ -105,7 +106,6 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
 
   fputs("    </nav>\n", page_file);
   fputs("    </div>\n", page_file);
-
   fputs("    <nav class='nav-search' style='display:none;'>\n", page_file);
   fputs("        <input type='search' id='search' placeholder='Search'>\n"
         "        <div id='search-results'></div>\n",
@@ -116,8 +116,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
                     anchor_locations, NULL, NULL);
   fputs("    </nav>\n", page_file);
-  fputs("    <section>\n", page_file);
-
+  fputs("      <section id='main'>\n", page_file);
   fputs("      <main>\n", page_file);
 
   if (anchor_location->file_path != NULL)
@@ -125,12 +124,14 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
                       RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
                       anchor_location->multipage_url, search_index_file);
 
-  fputs("      </main>\n</section>\n", page_file);
+  fputs("      </main>\n", page_file);
+  fputs("      </section>\n", page_file);
 
   write_js(page_file);
   write_highlight_js(page_file);
 
-  char *html_foot = "  </body>\n"
+  char *html_foot = "  </div>\n"
+                    "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);
   fclose(page_file);

@@ -10,15 +10,15 @@
   --light_red: #FF5C4D;
   --light_link: black;
 
-  --dark_background: black;
-  --dark_foreground: white;
+  --dark_background: #2b2b2b;
+  --dark_foreground: #F5F5F5;
   --dark_light-gray: gray;
   --dark_lightest-gray: #2b2b2b;
   --dark_gray: lightgray;
-  --dark_orange: #FF9636;
-  --dark_yellow: #FFCD58;
-  --dark_green: #DAD870;
-  --dark_red: #FF5C4D;
+  --dark_orange: #7c3b00;
+  --dark_yellow: #896000;
+  --dark_green: #69671b;
+  --dark_red: #850b00;
   --dark_link: white;
 }
 
@@ -78,20 +78,10 @@
   --link: var(--light_link);
 }
 
-:root.sidebar-hidden {
-  --sidebar-width: 0px;
-}
-
 :root {
-  --scrollbar-width: calc(100vw - 100%);
-  --sidebar-width: 300px;
   --topbar-height: 50px;
   color: var(--foreground);
   background-color: var(--background);
-}
-
-body {
-  overflow-y: hidden;
 }
 
 a {
@@ -104,25 +94,68 @@ input {
   background-color: var(--background);
 }
 
-body {
+html, body {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+.body {
+  position: fixed;
+  display: grid;
+  height: 100%;
+  width: 100%;
+
+  grid-template-areas:
+      "navtop navtop"
+      "search search"
+      "sidebar main";
+  grid-template-columns: auto minmax(0, 1fr);
   line-height: 1.45;
   font-family: "Open Sans", sans-serif;
   margin: 0;
+  background-color: var(--background);
 }
 
-nav.sidebar {
-  height: calc(100vh - var(--topbar-height));
-  position: fixed;
-  overflow: auto;
-  padding: 5px;
-  padding-right: 20px;
-  background-color: var(--background);
-  max-width: 100w;
-  border-right: 1px solid var(--light-gray);
+@media (any-pointer: fine) {
+  .body {
+    top: 0;
+  }
+  .nav-top {
+    border-bottom: 1px solid var(--light-gray);
+  }
+}
+
+@media not (any-pointer: fine) {
+  .body {
+    grid-template-areas:
+        "sidebar main"
+        "navtop navtop"
+        "search search";
+  }
+  .nav-top {
+    border-top: 1px solid var(--light-gray);
+  }
+}
+
+.sidebar-hidden body {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .sidebar-hidden nav.sidebar {
   display: none;
+}
+
+nav.sidebar {
+  overflow: auto;
+  grid-area: sidebar;
+  max-width: 100ch;
+  overflow: auto;
+  padding: 5px;
+  padding-right: 20px;
+  border-right: 1px solid var(--light-gray);
 }
 
 nav ul ul {
@@ -149,9 +182,7 @@ nav ul {
 }
 
 .nav-top-container {
-  display: block;
-  position: sticky;
-  top: 0;
+  grid-area: navtop;
   height: var(--topbar-height);
   background-color: var(--background);
 }
@@ -169,9 +200,6 @@ nav ul {
   overflow: hidden;
   grid-column-gap: 10px;
   border-bottom: 1px solid var(--light-gray);
-  margin-left: auto;
-  margin-right: auto;
-  max-width: 80ch;
 }
 
 .nav-top button, .nav-top a {
@@ -199,6 +227,7 @@ button.sidebar-toggle, button.search-toggle, button.theme-toggle {
 }
 
 .nav-search {
+  grid-area: search;
   padding: 5px;
   margin-left: auto;
   margin-right: auto;
@@ -224,23 +253,22 @@ button.sidebar-toggle, button.search-toggle, button.theme-toggle {
   border-bottom: 1px solid var(--light-gray);
 }
 
-section {
-  height: calc(100vh - var(--topbar-height));
+section#main {
+  grid-area: main;
   overflow: auto;
-  /* scrollbar-gutter: stable; */
 }
 
 main {
+  max-width: min(100vw, 80ch);
+  padding: 0em 1em 20em 1em;
   margin-left: auto;
   margin-right: auto;
-  max-width: 80ch;
-  padding: 0em 1em 20em 1em;
 }
 
 main .admonition {
   border-radius: 6px;
   padding: 0.5em 1em 0.5em 1em;
-  margin-bottom: 1em;
+  margin: calc(1ex / 0.32) 0 0 0;
 }
 
 main .attention, main .caution, main .warning {
@@ -272,35 +300,39 @@ main h1:first-child, nav.sidebar > h1:first-child {
   margin-top: 1rem;
 }
 
+main .admonition h3 {
+    margin-top: 0;
+}
+
 main h1 {
     font-size: 2.5rem;
     line-height: calc(1ex / 0.42);
-    margin: calc(1ex / 0.42) 0;
+    margin-top: calc(1ex / 0.42);
 }
 
 main h2 {
     font-size: 2rem;
     line-height: calc(1ex / 0.42);
-    margin: calc(1ex / 0.42) 0;
+    margin-top: calc(1ex / 0.42);
 }
 
 main h3 {
     font-size: 1.75rem;
     line-height: calc(1ex / 0.38);
-    margin: calc(1ex / 0.38) 0;
+    margin-top: calc(1ex / 0.38);
 }
 
 main h4 {
     font-size: 1.5rem;
     line-height: calc(1ex / 0.37);
-    margin: calc(1ex / 0.37) 0;
+    margin-top: calc(1ex / 0.37);
 }
 
 main p {
   text-align: justify;
   font-size: 1rem;
   line-height: calc(1ex / 0.32);
-  margin: calc(1ex / 0.32) 0;
+  margin: calc(1ex / 0.32) 0 0 0;
 }
 
 main blockquote {
