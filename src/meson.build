@@ -1,11 +1,14 @@
 src = [
+  'anchors.c',
   'asset.c',
   'epub.c',
+  'files.c',
   'man.c',
   'mkdir_p.c',
   'multi.c',
   'parse.c',
   'render.c',
+  'refs.c',
   'single.c',
   'types.c',
 ]
