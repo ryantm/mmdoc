@@ -3,6 +3,7 @@ src = [
   'asset.c',
   'epub.c',
   'files.c',
+  'inputs.c',
   'man.c',
   'mkdir_p.c',
   'multi.c',

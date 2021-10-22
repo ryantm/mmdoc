@@ -125,6 +125,8 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
                       anchor_location->multipage_url, search_index_file);
 
   fputs("      </main>\n", page_file);
+  fputs("    <nav class='sidebar2'>\n", page_file);
+  fputs("    </nav>\n", page_file);
   fputs("      </section>\n", page_file);
 
   write_js(page_file);

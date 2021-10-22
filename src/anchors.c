@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "inputs.h"
 #include "mkdir_p.h"
 #include "render.h"
 #include "types.h"
@@ -47,9 +48,7 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
 }
 
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
-                            Array *md_files, Array *toc_refs, char *src,
-                            char *project_name, char *out_multi,
-                            char *out_man) {
+                            Array *md_files, Array *toc_refs, Inputs inputs) {
   char *index_anchor = toc_refs->array[0];
 
   int count = 0;
@@ -62,9 +61,10 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       al->anchor = anchors.array[j];
       al->file_path = md_files->array[i];
 
-      char *page_path = malloc(strlen(out_multi) + strlen(al->file_path) + 12);
-      strcpy(page_path, out_multi);
-      strcat(page_path, al->file_path + strlen(src));
+      char *page_path =
+          malloc(strlen(inputs.out_multi) + strlen(al->file_path) + 12);
+      strcpy(page_path, inputs.out_multi);
+      strcat(page_path, al->file_path + strlen(inputs.src));
       char *lastExt = strrchr(page_path, '.');
       while (lastExt != NULL) {
         *lastExt = '\0';
@@ -78,7 +78,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       strcat(page_path, "index.html");
       al->multipage_output_file_path = page_path;
       al->multipage_output_directory_path = page_dir_path;
-      al->multipage_url = page_dir_path + strlen(out_multi) + 1;
+      al->multipage_url = page_dir_path + strlen(inputs.out_multi) + 1;
 
       uint directory_depth = 0;
       for (int k = 0; k < strlen(al->multipage_url); k++)
@@ -95,10 +95,10 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       if (strcmp(al->anchor, index_anchor) == 0) {
         char *index_html = "index.html";
         char *index_file_path =
-            malloc(strlen(out_multi) + 1 + strlen(index_html) + 1);
-        sprintf(index_file_path, "%s/%s", out_multi, index_html);
+            malloc(strlen(inputs.out_multi) + 1 + strlen(index_html) + 1);
+        sprintf(index_file_path, "%s/%s", inputs.out_multi, index_html);
         al->multipage_output_file_path = index_file_path;
-        al->multipage_output_directory_path = out_multi;
+        al->multipage_output_directory_path = inputs.out_multi;
         al->multipage_url = "./";
         al->multipage_base_href = "";
       }
@@ -109,26 +109,27 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
         return -1;
       }
 
-      char *man_path = malloc(strlen(out_man) + 1 + strlen(project_name) +
-                              strlen(al->file_path) + 2);
+      char *man_path =
+          malloc(strlen(inputs.out_man) + 1 + strlen(inputs.project_name) +
+                 strlen(al->file_path) + 2);
 
       int dash_count = 0;
-      for (int k = 0; *(al->file_path + strlen(src) + k) != '\0'; k++) {
-        char *c = al->file_path + strlen(src) + k;
+      for (int k = 0; *(al->file_path + strlen(inputs.src) + k) != '\0'; k++) {
+        char *c = al->file_path + strlen(inputs.src) + k;
         if (c[0] == '/')
           dash_count++;
         if (c[0] == '-')
           dash_count++;
       }
-      char *man_page_name =
-          malloc(strlen(project_name) + strlen(al->file_path) + dash_count + 1);
+      char *man_page_name = malloc(strlen(inputs.project_name) +
+                                   strlen(al->file_path) + dash_count + 1);
       man_page_name[0] = '\0';
-      strcpy(man_path, out_man);
+      strcpy(man_path, inputs.out_man);
       strcat(man_path, "/");
-      strcat(man_path, project_name);
-      strcpy(man_page_name, project_name);
-      for (int k = 0; *(al->file_path + strlen(src) + k) != '\0'; k++) {
-        char *c = al->file_path + strlen(src) + k;
+      strcat(man_path, inputs.project_name);
+      strcpy(man_page_name, inputs.project_name);
+      for (int k = 0; *(al->file_path + strlen(inputs.src) + k) != '\0'; k++) {
+        char *c = al->file_path + strlen(inputs.src) + k;
         if (c[0] == '/') {
           strcat(man_path, "-");
           strcat(man_page_name, "\\-");
@@ -153,11 +154,11 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       strcat(man_path, ".1");
       al->man_output_file_path = man_path;
       char *man_page_header =
-          malloc(19 + strlen(man_path) * 2 + strlen(project_name) + 1);
+          malloc(19 + strlen(man_path) * 2 + strlen(inputs.project_name) + 1);
       strcpy(man_page_header, ".TH \"");
       strcat(man_page_header, man_page_name);
       strcat(man_page_header, "\" \"1\" \"\" \"");
-      strcat(man_page_header, project_name);
+      strcat(man_page_header, inputs.project_name);
       strcat(man_page_header, "\" \"");
       strcat(man_page_header, man_page_name);
       strcat(man_page_header, "\"");
