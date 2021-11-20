@@ -29,6 +29,7 @@ void print_usage() {
   printf("\n");
   printf("options:\n");
   printf("-h, --help                show help\n");
+  printf("-v, --version             show version\n");
   printf("\n");
   printf("PROJECT_NAME is the name of the project the documentation is "
          "generated for.\n");
