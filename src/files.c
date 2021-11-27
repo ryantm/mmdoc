@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "types.h"
 #include "inputs.h"
+#include "types.h"
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -87,7 +87,8 @@ int copy_imgs(Inputs inputs) {
     }
 
     char *rel_path = source_path + strlen(inputs.src);
-    char *multi_path = malloc(strlen(inputs.out_multi) + 1 + strlen(rel_path) + 1);
+    char *multi_path =
+        malloc(strlen(inputs.out_multi) + 1 + strlen(rel_path) + 1);
     if (NULL == multi_path) {
       printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
       fclose(source);
@@ -95,7 +96,8 @@ int copy_imgs(Inputs inputs) {
       return -1;
     }
     sprintf(multi_path, "%s/%s", inputs.out_multi, rel_path);
-    char *single_path = malloc(strlen(inputs.out_single) + 1 + strlen(rel_path) + 1);
+    char *single_path =
+        malloc(strlen(inputs.out_single) + 1 + strlen(rel_path) + 1);
     if (NULL == single_path) {
       printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
       free(multi_path);

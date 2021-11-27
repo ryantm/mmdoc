@@ -63,8 +63,7 @@ int main(int argc, char *argv[]) {
   if (0 != mmdoc_single(inputs, toc_anchor_locations))
     return 1;
 
-  if (0 != mmdoc_multi(inputs,
-                       toc_anchor_locations, anchor_locations))
+  if (0 != mmdoc_multi(inputs, toc_anchor_locations, anchor_locations))
     return 1;
 
   if (0 != mmdoc_man(inputs, toc_anchor_locations, anchor_locations))

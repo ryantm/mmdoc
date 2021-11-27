@@ -58,7 +58,8 @@ int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
   char *out_epub_file =
       malloc(strlen(inputs->out) + 1 + strlen(inputs->project_name) +
              strlen(epub_ext) + 1);
-  sprintf(out_epub_file, "%s/%s%s", inputs->out, inputs->project_name, epub_ext);
+  sprintf(out_epub_file, "%s/%s%s", inputs->out, inputs->project_name,
+          epub_ext);
   inputs->out_epub_file = out_epub_file;
 
   return 0;

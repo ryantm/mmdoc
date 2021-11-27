@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "render.h"
 #include "inputs.h"
-#include <string.h>
 #include "mkdir_p.h"
+#include "render.h"
+#include <string.h>
 
-int mmdoc_man(Inputs inputs,
-              AnchorLocationArray toc_anchor_locations,
+int mmdoc_man(Inputs inputs, AnchorLocationArray toc_anchor_locations,
               AnchorLocationArray anchor_locations) {
   if (0 != mkdir_p(inputs.out_man)) {
     printf("Error recursively making directory %s", inputs.out_man);

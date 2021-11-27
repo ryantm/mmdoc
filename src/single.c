@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
+#include "inputs.h"
+#include "mkdir_p.h"
 #include "render.h"
 #include "types.h"
-#include "inputs.h"
 #include <string.h>
-#include "mkdir_p.h"
 
 int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   char *out = inputs.out_single;

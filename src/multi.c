@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
-#include "render.h"
 #include "inputs.h"
+#include "render.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,8 +29,7 @@ int write_highlight_js(FILE *file) {
   return 0;
 }
 
-int mmdoc_multi_page(Inputs inputs,
-                     AnchorLocationArray anchor_locations,
+int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
                      AnchorLocation *prev_anchor_location,
                      AnchorLocation *next_anchor_location) {
@@ -114,8 +113,8 @@ int mmdoc_multi_page(Inputs inputs,
   fputs("    </nav>\n", page_file);
 
   fputs("    <nav class='sidebar'>\n", page_file);
-  mmdoc_render_part(inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
-                    anchor_locations, NULL, NULL);
+  mmdoc_render_part(inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE,
+                    anchor_location, anchor_locations, NULL, NULL);
   fputs("    </nav>\n", page_file);
   fputs("      <section id='main'>\n", page_file);
   fputs("      <main>\n", page_file);
@@ -166,8 +165,8 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     } else {
       next_anchor_location = NULL;
     }
-    mmdoc_multi_page(inputs, anchor_locations,
-                     search_index_file, anchor_location, prev_anchor_location,
+    mmdoc_multi_page(inputs, anchor_locations, search_index_file,
+                     anchor_location, prev_anchor_location,
                      next_anchor_location);
     prev_anchor_location = anchor_location;
   }

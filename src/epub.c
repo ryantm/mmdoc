@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
+#include "inputs.h"
 #include "mkdir_p.h"
 #include "render.h"
-#include "inputs.h"
 #include <stdlib.h>
 #include <string.h>
 #include <zip.h>
 
-int mmdoc_epub(Inputs inputs,
-               AnchorLocationArray toc_anchor_locations) {
+int mmdoc_epub(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   char *out = inputs.out_epub_dir;
   char *out_epub_file = inputs.out_epub_file;
 
@@ -105,8 +104,9 @@ int mmdoc_epub(Inputs inputs,
       "    <itemref idref='index' />\n"
       "  </spine>\n"
       "</package>\n";
-  char *content = malloc(strlen(content_before_title) + strlen(inputs.project_name) +
-                         strlen(content_after_title) + 1);
+  char *content =
+      malloc(strlen(content_before_title) + strlen(inputs.project_name) +
+             strlen(content_after_title) + 1);
   strcpy(content, content_before_title);
   strcat(content, inputs.project_name);
   strcat(content, content_after_title);
