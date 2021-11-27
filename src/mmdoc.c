@@ -24,13 +24,13 @@ extern int errno;
 void print_usage() {
   printf("mmdoc version %s - minimal markdown documentation\n", MMDOC_VERSION);
   printf("\n");
-  printf("mmdoc PROJECT_NAME SRC OUT\n");
+  printf("mmdoc PROJECT-NAME SRC OUT\n");
   printf("\n");
   printf("options:\n");
   printf("-h, --help                show help\n");
   printf("-v, --version             show version\n");
   printf("\n");
-  printf("PROJECT_NAME is the name of the project the documentation is "
+  printf("PROJECT-NAME is the name of the project the documentation is "
          "generated for.\n");
   printf("\n");
   printf("SRC a directory containing Markdown files; a file called toc.md at "
