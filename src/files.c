@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "types.h"
+#include "inputs.h"
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -68,10 +69,10 @@ void mmdoc_img_files(Array *img_files, char *base_path) {
   return;
 }
 
-int copy_imgs(char *src, char *multi_dir, char *single_dir) {
+int copy_imgs(Inputs inputs) {
   Array img_files;
   init_array(&img_files, 100);
-  mmdoc_img_files(&img_files, src);
+  mmdoc_img_files(&img_files, inputs.src);
 
   for (int i = 0; i < img_files.used; i++) {
     int ch;
@@ -85,16 +86,16 @@ int copy_imgs(char *src, char *multi_dir, char *single_dir) {
       return -1;
     }
 
-    char *rel_path = source_path + strlen(src);
-    char *multi_path = malloc(strlen(multi_dir) + 1 + strlen(rel_path) + 1);
+    char *rel_path = source_path + strlen(inputs.src);
+    char *multi_path = malloc(strlen(inputs.out_multi) + 1 + strlen(rel_path) + 1);
     if (NULL == multi_path) {
       printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
       fclose(source);
       free_array(&img_files);
       return -1;
     }
-    sprintf(multi_path, "%s/%s", multi_dir, rel_path);
-    char *single_path = malloc(strlen(single_dir) + 1 + strlen(rel_path) + 1);
+    sprintf(multi_path, "%s/%s", inputs.out_multi, rel_path);
+    char *single_path = malloc(strlen(inputs.out_single) + 1 + strlen(rel_path) + 1);
     if (NULL == single_path) {
       printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
       free(multi_path);
@@ -103,7 +104,7 @@ int copy_imgs(char *src, char *multi_dir, char *single_dir) {
       return -1;
     }
 
-    sprintf(single_path, "%s/%s", single_dir, rel_path);
+    sprintf(single_path, "%s/%s", inputs.out_single, rel_path);
 
     FILE *multi = fopen(multi_path, "w");
     if (multi == NULL) {

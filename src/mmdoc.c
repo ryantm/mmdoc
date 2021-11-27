@@ -9,15 +9,7 @@
 #include "render.h"
 #include "single.h"
 #include "types.h"
-#include <dirent.h>
-#include <errno.h>
 #include <mmdocconfig.h>
-#include <regex.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 extern int errno;
 
@@ -68,24 +60,20 @@ int main(int argc, char *argv[]) {
     return 1;
   free_array(&toc_refs);
 
-  if (0 != mmdoc_single(inputs.out_single, inputs.toc_path, inputs.project_name,
-                   toc_anchor_locations))
+  if (0 != mmdoc_single(inputs, toc_anchor_locations))
     return 1;
 
-  if (0 != mmdoc_multi(inputs.out_multi, inputs.src, inputs.toc_path,
-                  toc_anchor_locations, anchor_locations,
-                  inputs.project_name))
+  if (0 != mmdoc_multi(inputs,
+                       toc_anchor_locations, anchor_locations))
     return 1;
 
-  if (0 != mmdoc_man(inputs.out_man, inputs.src, inputs.toc_path,
-                toc_anchor_locations, anchor_locations))
+  if (0 != mmdoc_man(inputs, toc_anchor_locations, anchor_locations))
     return 1;
 
-  if (0 != mmdoc_epub(inputs.out_epub_dir, inputs.out_epub_file, inputs.toc_path, toc_anchor_locations,
-                      inputs.project_name))
+  if (0 != mmdoc_epub(inputs, toc_anchor_locations))
     return 1;
 
-  if (0 != copy_imgs(inputs.src, inputs.out_multi, inputs.out_single))
+  if (0 != copy_imgs(inputs))
     return 1;
 
   free_array(&md_files);

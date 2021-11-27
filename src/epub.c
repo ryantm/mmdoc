@@ -2,12 +2,15 @@
 #include "asset.h"
 #include "mkdir_p.h"
 #include "render.h"
+#include "inputs.h"
 #include <stdlib.h>
 #include <string.h>
 #include <zip.h>
 
-int mmdoc_epub(char *out, char *out_epub_file, char *toc_path,
-               AnchorLocationArray toc_anchor_locations, char *project_name) {
+int mmdoc_epub(Inputs inputs,
+               AnchorLocationArray toc_anchor_locations) {
+  char *out = inputs.out_epub_dir;
+  char *out_epub_file = inputs.out_epub_file;
 
   if (mkdir_p(out) != 0) {
     printf("Error recursively making epub directory %s", out);
@@ -41,7 +44,7 @@ int mmdoc_epub(char *out, char *out_epub_file, char *toc_path,
       "  <body>\n";
   fputs(xhtml_head, index_file);
   AnchorLocation al;
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, &al,
+  mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                     toc_anchor_locations, NULL, NULL);
 
   for (int i = 0; i < toc_anchor_locations.used; i++) {
@@ -102,10 +105,10 @@ int mmdoc_epub(char *out, char *out_epub_file, char *toc_path,
       "    <itemref idref='index' />\n"
       "  </spine>\n"
       "</package>\n";
-  char *content = malloc(strlen(content_before_title) + strlen(project_name) +
+  char *content = malloc(strlen(content_before_title) + strlen(inputs.project_name) +
                          strlen(content_after_title) + 1);
   strcpy(content, content_before_title);
-  strcat(content, project_name);
+  strcat(content, inputs.project_name);
   strcat(content, content_after_title);
   zip_source_t *source_content =
       zip_source_buffer(zip, content, strlen(content), 0);

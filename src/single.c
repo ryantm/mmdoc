@@ -2,11 +2,13 @@
 #include "asset.h"
 #include "render.h"
 #include "types.h"
+#include "inputs.h"
 #include <string.h>
 #include "mkdir_p.h"
 
-int mmdoc_single(char *out, char *toc_path, char *project_name,
-                 AnchorLocationArray toc_anchor_locations) {
+int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
+  char *out = inputs.out_single;
+
   if (asset_write_to_dir_mmdoc_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
       asset_write_to_dir_mmdoc_css(out) != 0 ||
@@ -52,7 +54,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
       "    </script>\n"
       "    <title>";
   fputs(html_head, index_file);
-  fputs(project_name, index_file);
+  fputs(inputs.project_name, index_file);
   char *html_head_end = "</title>\n"
                         "  </head>\n"
                         "  <body>\n"
@@ -72,7 +74,7 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
 
   fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
-  mmdoc_render_part(toc_path, index_file, RENDER_TYPE_SINGLE, &al,
+  mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                     toc_anchor_locations, NULL, NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section>\n", index_file);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
 #include "render.h"
+#include "inputs.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,7 +29,7 @@ int write_highlight_js(FILE *file) {
   return 0;
 }
 
-int mmdoc_multi_page(char *toc_path, char *project_name,
+int mmdoc_multi_page(Inputs inputs,
                      AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
                      AnchorLocation *prev_anchor_location,
@@ -68,7 +69,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs(html_head, page_file);
   fputs(anchor_location->title, page_file);
   fputs(" | ", page_file);
-  fputs(project_name, page_file);
+  fputs(inputs.project_name, page_file);
 
   char *html_head_end = "</title>\n"
                         "  </head>\n"
@@ -113,7 +114,7 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   fputs("    </nav>\n", page_file);
 
   fputs("    <nav class='sidebar'>\n", page_file);
-  mmdoc_render_part(toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
+  mmdoc_render_part(inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
                     anchor_locations, NULL, NULL);
   fputs("    </nav>\n", page_file);
   fputs("      <section id='main'>\n", page_file);
@@ -140,9 +141,9 @@ int mmdoc_multi_page(char *toc_path, char *project_name,
   return 0;
 }
 
-int mmdoc_multi(char *out, char *src, char *toc_path,
-                AnchorLocationArray toc_anchor_locations,
-                AnchorLocationArray anchor_locations, char *project_name) {
+int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
+                AnchorLocationArray anchor_locations) {
+  char *out = inputs.out;
   if (asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
       asset_write_to_dir_a11y_dark_css(out) != 0) {
@@ -165,7 +166,7 @@ int mmdoc_multi(char *out, char *src, char *toc_path,
     } else {
       next_anchor_location = NULL;
     }
-    mmdoc_multi_page(toc_path, project_name, anchor_locations,
+    mmdoc_multi_page(inputs, anchor_locations,
                      search_index_file, anchor_location, prev_anchor_location,
                      next_anchor_location);
     prev_anchor_location = anchor_location;
