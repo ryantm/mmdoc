@@ -9,6 +9,11 @@
 int mmdoc_epub(char *out, char *out_epub_file, char *toc_path,
                AnchorLocationArray toc_anchor_locations, char *project_name) {
 
+  if (mkdir_p(out) != 0) {
+    printf("Error recursively making epub directory %s", out);
+    return 1;
+  }
+
   const char *oebps = "OEBPS";
   char *oebps_dir_path = malloc(strlen(out) + 1 + strlen(oebps) + 1);
   sprintf(oebps_dir_path, "%s/%s", out, oebps);

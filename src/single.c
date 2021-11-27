@@ -3,6 +3,7 @@
 #include "render.h"
 #include "types.h"
 #include <string.h>
+#include "mkdir_p.h"
 
 int mmdoc_single(char *out, char *toc_path, char *project_name,
                  AnchorLocationArray toc_anchor_locations) {
@@ -19,6 +20,11 @@ int mmdoc_single(char *out, char *toc_path, char *project_name,
   strcpy(index_path, out);
   strcat(index_path, "/index.html");
   index_file = fopen(index_path, "w");
+
+  if (mkdir_p(out) != 0) {
+    printf("Error recursively making single directory %s", out);
+    return 1;
+  }
 
   char *html_head =
       "<!doctype html>\n"

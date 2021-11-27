@@ -1,10 +1,16 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "render.h"
 #include <string.h>
+#include "mkdir_p.h"
 
 int mmdoc_man(char *out, char *src, char *toc_path,
               AnchorLocationArray toc_anchor_locations,
               AnchorLocationArray anchor_locations) {
+  if (0 != mkdir_p(out)) {
+    printf("Error recursively making directory %s", out);
+    return -1;
+  }
+
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocation *anchor_location = &toc_anchor_locations.array[i];
     FILE *output_file;

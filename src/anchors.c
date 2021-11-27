@@ -51,6 +51,8 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
                             Array *md_files, Array *toc_refs, Inputs inputs) {
   char *index_anchor = toc_refs->array[0];
 
+  init_anchor_location_array(anchor_locations, 500);
+
   int count = 0;
   for (int i = 0; i < md_files->used; i++) {
     Array anchors;
