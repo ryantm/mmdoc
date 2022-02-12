@@ -9,6 +9,11 @@
 int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   char *out = inputs.out_single;
 
+  if (mkdir_p(out) != 0) {
+    printf("Error recursively making single directory %s", out);
+    return 1;
+  }
+
   if (asset_write_to_dir_mmdoc_js(out) != 0 ||
       asset_write_to_dir_highlight_pack_js(out) != 0 ||
       asset_write_to_dir_mmdoc_css(out) != 0 ||
@@ -22,11 +27,6 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   strcpy(index_path, out);
   strcat(index_path, "/index.html");
   index_file = fopen(index_path, "w");
-
-  if (mkdir_p(out) != 0) {
-    printf("Error recursively making single directory %s", out);
-    return 1;
-  }
 
   char *html_head =
       "<!doctype html>\n"

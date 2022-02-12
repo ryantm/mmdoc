@@ -142,7 +142,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 
 int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations) {
-  char *out = inputs.out;
+  char *out = inputs.out_multi;
   if (asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
       asset_write_to_dir_a11y_light_css(out) != 0 ||
       asset_write_to_dir_a11y_dark_css(out) != 0) {
