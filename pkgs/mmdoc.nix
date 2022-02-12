@@ -13,14 +13,9 @@ pkg-config
 with lib;
 
 let
-  cmark-gfm' = cmark-gfm.overrideAttrs (oldAttrs: rec {
-    # remove when https://github.com/github/cmark-gfm/pull/248 merged and released
-    postInstall = ''
-      substituteInPlace $out/include/cmark-gfm-core-extensions.h \
-        --replace '#include "config.h"' '#include <stdbool.h>'
-    '';
-  });
+  cmark-gfm' = import ./cmark-gfm.nix { inherit cmark-gfm; };
 in
+
 stdenv.mkDerivation rec {
   pname = "mmdoc";
   version = "0.8.0";
