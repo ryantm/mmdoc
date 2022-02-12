@@ -58,7 +58,8 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   char *html_head_end = "</title>\n"
                         "  </head>\n"
                         "  <body>\n"
-                        "    <div class='nav-top-container'>\n";
+                        "    <div class='body'>\n"
+                        "      <div class='nav-top-container'>\n";
   fputs(html_head_end, index_file);
 
   fputs("    <nav class='nav-top'>\n", index_file);
@@ -77,7 +78,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                     toc_anchor_locations, NULL, NULL);
   fputs("    </nav>\n", index_file);
-  fputs("    <section>\n", index_file);
+  fputs("    <section id='main'>\n", index_file);
   fputs("      <main>\n", index_file);
 
   for (int i = 0; i < toc_anchor_locations.used; i++) {
@@ -89,8 +90,9 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
     free_anchor_location_array(&empty_anchor_locations);
   }
 
-  char *html_foot = "      </main>\n"
-                    "    </section>\n"
+  char *html_foot = "        </main>\n"
+                    "      </section>\n"
+                    "    </div>\n"
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, index_file);

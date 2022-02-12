@@ -365,7 +365,7 @@ int replace_dd(cmark_node *node) {
 }
 
 void replace_link(cmark_node *node, char *input_file_path,
-                  AnchorLocationArray anchor_locations) {
+                  AnchorLocationArray anchor_locations, render_type render_type) {
   const char *url = cmark_node_get_url(node);
   if (strlen(url) < 2)
     return;
@@ -387,12 +387,14 @@ void replace_link(cmark_node *node, char *input_file_path,
            input_file_path);
     return;
   }
-  char *new_url =
+  if (render_type == RENDER_TYPE_MULTIPAGE) {
+    char *new_url =
       malloc(strlen(anchor_location.multipage_url) + strlen(url) + 1);
-  strcpy(new_url, anchor_location.multipage_url);
-  strcat(new_url, url);
-  cmark_node_set_url(node, new_url);
-  free(new_url);
+    strcpy(new_url, anchor_location.multipage_url);
+    strcat(new_url, url);
+    cmark_node_set_url(node, new_url);
+    free(new_url);
+  }
   if (strlen(anchor_location.title) != 0) {
     cmark_node *child = cmark_node_first_child(node);
     if (child == NULL) {
@@ -467,8 +469,8 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
     case CMARK_EVENT_ENTER:
       node = cmark_iter_get_node(iter);
       type = cmark_node_get_type(node);
-      if (type == CMARK_NODE_LINK && render_type == RENDER_TYPE_MULTIPAGE) {
-        replace_link(node, input_file_path, anchor_locations);
+      if (type == CMARK_NODE_LINK) {
+        replace_link(node, input_file_path, anchor_locations, render_type);
         continue;
       }
       if (type != CMARK_NODE_TEXT)
