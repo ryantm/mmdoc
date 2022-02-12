@@ -365,7 +365,8 @@ int replace_dd(cmark_node *node) {
 }
 
 void replace_link(cmark_node *node, char *input_file_path,
-                  AnchorLocationArray anchor_locations, render_type render_type) {
+                  AnchorLocationArray anchor_locations,
+                  render_type render_type) {
   const char *url = cmark_node_get_url(node);
   if (strlen(url) < 2)
     return;
@@ -389,7 +390,7 @@ void replace_link(cmark_node *node, char *input_file_path,
   }
   if (render_type == RENDER_TYPE_MULTIPAGE) {
     char *new_url =
-      malloc(strlen(anchor_location.multipage_url) + strlen(url) + 1);
+        malloc(strlen(anchor_location.multipage_url) + strlen(url) + 1);
     strcpy(new_url, anchor_location.multipage_url);
     strcat(new_url, url);
     cmark_node_set_url(node, new_url);
