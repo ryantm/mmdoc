@@ -100,28 +100,31 @@ html, body {
   width: 100vw;
   margin: 0;
   padding: 0;
+
+  line-height: 1.45;
+  font-family: "Open Sans", sans-serif;
+  background-color: var(--background);
 }
 
 .body {
   position: fixed;
-  display: grid;
+  top: 0;
+  margin: 0;
+
   height: 100%;
   width: 100%;
 
-  grid-template-areas:
-      "navtop navtop"
-      "search search"
-      "sidebar main";
+  display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  line-height: 1.45;
-  font-family: "Open Sans", sans-serif;
-  margin: 0;
-  background-color: var(--background);
 }
 
 @media (any-pointer: fine) {
   .body {
-    top: 0;
+    grid-template-areas:
+        "navtop navtop"
+        "search search"
+        "sidebar main";
+    grid-template-rows: var(--topbar-height) min-content auto;
   }
   .nav-top {
     border-bottom: 1px solid var(--light-gray);
@@ -134,6 +137,7 @@ html, body {
         "sidebar main"
         "navtop navtop"
         "search search";
+    grid-template-rows: auto var(--topbar-height) min-content;
   }
   .nav-top {
     border-top: 1px solid var(--light-gray);
@@ -297,7 +301,8 @@ main th, main td {
 }
 
 main h1:first-child, nav.sidebar > h1:first-child {
-  margin-top: 1rem;
+  margin-top: 0px;
+  padding-top: 1rem;
 }
 
 main .admonition h3 {
