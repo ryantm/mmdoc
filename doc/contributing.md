@@ -21,7 +21,7 @@ $ ninja test
 ## Format
 
 ```ShellSession
-$ nix develop -c ninja -C build clang-format
+$ nix shell -c ninja -C build clang-format
 ```
 
 ## Documentation
@@ -29,13 +29,13 @@ $ nix develop -c ninja -C build clang-format
 Build the mmdoc docs to `./result` with:
 
 ```ShellSession
-$ nix develop -c doc-build
+$ nix shell -c doc-build
 ```
 
 Continuosly build the mmdoc docs and serve them on port 8000 with:
 
 ```ShellSession
-$ nix develop -c doc-watch
+$ nix shell -c doc-watch
 ```
 
 ## Nixpkgs manual
