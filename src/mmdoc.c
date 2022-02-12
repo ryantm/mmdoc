@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     return 1;
 
   Array md_files;
+  init_array(&md_files, 100);
   mmdoc_md_files(&md_files, inputs.src);
 
   AnchorLocationArray anchor_locations;

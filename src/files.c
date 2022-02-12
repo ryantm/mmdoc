@@ -20,8 +20,6 @@ void mmdoc_md_files(Array *md_files, char *base_path) {
   if (!dir)
     return;
 
-  init_array(md_files, 100);
-
   while ((dp = readdir(dir)) != NULL) {
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
       size_t size = strlen(base_path) + 1 + strlen(dp->d_name) + 1;
