@@ -18,7 +18,7 @@ in
 
 stdenv.mkDerivation rec {
   pname = "mmdoc";
-  version = "0.8.0";
+  version = "0.9.0";
 
   src = self;
 
