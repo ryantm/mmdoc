@@ -72,12 +72,15 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 
   char *html_head_end = "</title>\n"
                         "  </head>\n"
-                        "  <body>\n"
-                        "  <div class='body'>\n";
+                        "  <body>\n";
   fputs(html_head_end, page_file);
+  fputs("  <input type='checkbox' id='sidebar-checkbox' style='display: "
+        "none;'/>\n",
+        page_file);
+  fputs("  <div class='body'>\n", page_file);
   fputs("    <div class='nav-top-container'>\n", page_file);
   fputs("    <nav class='nav-top'>\n", page_file);
-  fputs("      <button type='button' class='sidebar-toggle'>≡</button>",
+  fputs("      <label for='sidebar-checkbox' class='sidebar-toggle'>≡</label>",
         page_file);
   fputs("    <button type='button' class='search-toggle "
         "emoji'>🔍&#xFE0E;</button>",

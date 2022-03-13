@@ -144,12 +144,18 @@ html, body {
   }
 }
 
-.sidebar-hidden body {
+input:checked + .body {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.sidebar-hidden nav.sidebar {
+input:checked + .body > nav.sidebar {
   display: none;
+}
+
+@media (max-width: 600px) {
+  input:not(:checked) + .body > nav.sidebar {
+    display: none;
+  }
 }
 
 nav.sidebar {
@@ -206,7 +212,7 @@ nav ul {
   border-bottom: 1px solid var(--light-gray);
 }
 
-.nav-top button, .nav-top a {
+.nav-top button, .nav-top a, .nav-top label {
     line-height: 50px;
     text-align: center;
     text-decoration: none;
@@ -222,11 +228,11 @@ nav ul {
     font-size: 30px;
 }
 
-.nav-top button:hover, .nav-top a:hover {
+.nav-top button:hover, .nav-top a:hover, .nav-top label:hover {
   color: var(--gray);
 }
 
-button.sidebar-toggle, button.search-toggle, button.theme-toggle {
+.sidebar-toggle, button.search-toggle, button.theme-toggle {
   cursor: pointer;
 }
 
