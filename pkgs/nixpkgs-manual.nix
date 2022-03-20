@@ -1,11 +1,11 @@
-{ stdenv,
-nixpkgs-for-manual,
-writeScript,
-mmdoc,
-gdb,
-} :
-
-stdenv.mkDerivation rec {
+{
+  stdenv,
+  nixpkgs-for-manual,
+  writeScript,
+  mmdoc,
+  gdb,
+}:
+stdenvNoCC.mkDerivation rec {
   name = "nixpkgs-manual";
 
   src = "${nixpkgs-for-manual}/doc";

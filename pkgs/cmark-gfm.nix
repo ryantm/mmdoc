@@ -1,7 +1,4 @@
-{
-  cmark-gfm
-}:
-
+{cmark-gfm}:
 cmark-gfm.overrideAttrs (oldAttrs: rec {
   # remove when https://github.com/github/cmark-gfm/pull/248 merged and released
   postInstall = ''

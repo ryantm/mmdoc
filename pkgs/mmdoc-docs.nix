@@ -1,9 +1,9 @@
-{ stdenv,
-writeScript,
-mmdoc,
-gdb,
-} :
-
+{
+  stdenv,
+  writeScript,
+  mmdoc,
+  gdb,
+}:
 stdenv.mkDerivation rec {
   name = "mmdoc-docs";
 

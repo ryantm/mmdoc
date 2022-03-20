@@ -1,35 +1,31 @@
 {
-stdenv,
-lib,
-writeScriptBin,
-mkShell,
-cmark-gfm,
-fastJson,
-libzip,
-pkg-config,
-meson,
-ninja,
-xxd,
-clang-tools,
-gdb,
-valgrind,
-cppcheck,
-
-entr,
-python3,
-nix,
-} :
-
-let
-
-  cmark-gfm' = import ./cmark-gfm.nix { inherit cmark-gfm; };
+  stdenv,
+  lib,
+  writeScriptBin,
+  mkShell,
+  cmark-gfm,
+  fastJson,
+  libzip,
+  pkg-config,
+  meson,
+  ninja,
+  xxd,
+  clang-tools,
+  gdb,
+  valgrind,
+  cppcheck,
+  entr,
+  python3,
+  nix,
+}: let
+  cmark-gfm' = import ./cmark-gfm.nix {inherit cmark-gfm;};
 
   fmt = writeScriptBin "fmt" ''
     ${ninja}/bin/ninja -C build clang-format
   '';
 
   doc-build = writeScriptBin "doc-build" ''
-     nix build .#mmdoc-docs
+    nix build .#mmdoc-docs
   '';
 
   doc-watch = writeScriptBin "doc-watch" ''
@@ -46,7 +42,7 @@ let
   '';
 
   np-build = writeScriptBin "np-build" ''
-     nix build .#nixpkgs-manual
+    nix build .#nixpkgs-manual
   '';
 
   np-watch = writeScriptBin "np-watch" ''
@@ -61,34 +57,33 @@ let
     pids+=($!)
     find doc src test | ${entr}/bin/entr -cd ${np-build}/bin/np-build
   '';
-
 in
+  mkShell {
+    buildInputs = [
+      cmark-gfm'
+      fastJson
+      libzip.dev
+    ];
 
-mkShell {
+    nativeBuildInputs =
+      [
+        pkg-config
+        meson
+        ninja
+        xxd
+        clang-tools
+        gdb
+        cppcheck
 
-  buildInputs = [
-    cmark-gfm'
-    fastJson
-    libzip.dev
-  ];
+        doc-build
+        doc-watch
 
-  nativeBuildInputs = [
-    pkg-config
-    meson
-    ninja
-    xxd
-    clang-tools
-    gdb
-    cppcheck
+        np-build
+        np-watch
 
-    doc-build
-    doc-watch
-
-    np-build
-    np-watch
-
-    fmt
-  ] ++ lib.optionals (!stdenv.isDarwin) [
-    valgrind
-  ];
-}
+        fmt
+      ]
+      ++ lib.optionals (!stdenv.isDarwin) [
+        valgrind
+      ];
+  }
