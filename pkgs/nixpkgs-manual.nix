@@ -5,7 +5,7 @@
   mmdoc,
   gdb,
 }:
-stdenvNoCC.mkDerivation rec {
+stdenv.mkDerivation rec {
   name = "nixpkgs-manual";
 
   src = "${nixpkgs-for-manual}/doc";
