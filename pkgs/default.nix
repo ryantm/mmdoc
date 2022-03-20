@@ -8,6 +8,9 @@
 in rec {
   mmdoc = pkgs.callPackage ./mmdoc.nix {inherit self;};
   mmdoc-docs = pkgs.callPackage ./mmdoc-docs.nix {inherit mmdoc;};
-  nixpkgs-manual = pkgs.callPackage ./nixpkgs-manual.nix {inherit mmdoc nixpkgs-for-manual;};
+  nixpkgs-manual = let
+    pkgs = import nixpkgs-for-manual {inherit system;};
+  in
+    pkgs.callPackage ./nixpkgs-manual.nix {inherit mmdoc nixpkgs-for-manual;};
   devShell = pkgs.callPackage ./devShell.nix {};
 }
