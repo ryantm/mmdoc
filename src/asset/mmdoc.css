@@ -118,20 +118,18 @@ html, body {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-@media (any-pointer: fine) {
-  .body {
-    grid-template-areas:
-        "navtop navtop"
-        "search search"
-        "sidebar main";
-    grid-template-rows: var(--topbar-height) min-content auto;
-  }
-  .nav-top {
-    border-bottom: 1px solid var(--light-gray);
-  }
+.body {
+  grid-template-areas:
+      "navtop navtop"
+      "search search"
+      "sidebar main";
+  grid-template-rows: var(--topbar-height) min-content auto;
+}
+.nav-top {
+  border-bottom: 1px solid var(--light-gray);
 }
 
-@media not (any-pointer: fine) {
+@media only screen and (max-width: 600px) {
   .body {
     grid-template-areas:
         "sidebar main"
@@ -153,6 +151,9 @@ input:checked + .body > nav.sidebar {
 }
 
 @media (max-width: 600px) {
+  input:checked + .body > nav.sidebar {
+    display: block;
+  }
   input:not(:checked) + .body > nav.sidebar {
     display: none;
   }
