@@ -18,8 +18,6 @@
   python3,
   nix,
 }: let
-  cmark-gfm' = import ./cmark-gfm.nix {inherit cmark-gfm;};
-
   fmt = writeScriptBin "fmt" ''
     ${ninja}/bin/ninja -C build clang-format
   '';
@@ -60,7 +58,7 @@
 in
   mkShell {
     buildInputs = [
-      cmark-gfm'
+      cmark-gfm
       fastJson
       libzip.dev
     ];
