@@ -1,6 +1,7 @@
 {
   description = "Minimal Markdown Documentation";
 
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.nixpkgs-for-manual.url = "github:ryantm/nixpkgs/minman";
 
   outputs = {
