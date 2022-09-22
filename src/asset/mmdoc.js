@@ -63,7 +63,7 @@ else
 //// Search
 
 function setupSearch() {
-  const fuse = new Fuse(corpus, { keys: ['url', 'text'] })
+  const fuse = new Fuse(corpus, { keys: ['title', 'text'], ignoreLocation: true, threshold: 0.01, minMatchCharLength: 3 })
   let input = document.getElementById('search')
   let timeout = null
   input.addEventListener('keyup', function (e) {
