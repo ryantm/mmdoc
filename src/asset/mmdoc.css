@@ -313,7 +313,11 @@ main h1:first-child, nav.sidebar > h1:first-child {
 }
 
 main .admonition h3 {
-    margin-top: 0;
+  margin-top: 0;
+}
+
+main :is(h1, h2, h3, h4, h5, h6) a {
+  text-decoration: none;
 }
 
 main h1 {

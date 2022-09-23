@@ -98,16 +98,14 @@ int replace_headers_with_attributes_for_html(cmark_node *node) {
 
   char level[2];
   snprintf(level, sizeof(level), "%d", cmark_node_get_heading_level(node));
-  char *on_enter = malloc(2 + 1 + 5 + strlen(info->anchor) + 2 + 1);
-  strcpy(on_enter, "<h");
-  strcat(on_enter, level);
-  strcat(on_enter, " id='");
-  strcat(on_enter, info->anchor);
-  strcat(on_enter, "'>");
-  char *on_exit = malloc(3 + 1 + 1 + 1);
-  strcpy(on_exit, "</h");
-  strcat(on_exit, level);
-  strcat(on_exit, ">");
+
+  int on_enter_size = 2 * strlen(info->anchor) + 50;
+  char *on_enter = malloc(on_enter_size);
+  snprintf(on_enter, on_enter_size, "<h%s id='%s'><a href='#%s'>", level, info->anchor, info->anchor);
+
+  int on_exit_size = 10;
+  char *on_exit = malloc(on_exit_size);
+  snprintf(on_exit, on_exit_size, "</a></h%s>", level);
 
   cmark_node *new_node = cmark_node_new(CMARK_NODE_CUSTOM_BLOCK);
   cmark_node_set_on_enter(new_node, on_enter);
