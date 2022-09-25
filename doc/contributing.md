@@ -53,3 +53,9 @@ Continuosly build the nixpkgs manual and serve them on port 8000 with:
 ```ShellSession
 $ nix develop -c np-watch
 ```
+
+## Making a new release
+
+1. run `./contrib/release {major,minor,patch}`
+2. edit commit message
+3. push commit and tags to GitHub
