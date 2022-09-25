@@ -87,7 +87,7 @@ int replace_header_attributes(cmark_node *node, char *input_file_path,
 /**
  * Converts headers with custom metadata into HTML heading node.
  */
-int replace_headers_with_attributes_for_html(cmark_node *node) {
+int replace_headers_with_attributes_for_html(char *multipage_url, cmark_node *node) {
   if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
     return 0;
 
@@ -99,9 +99,9 @@ int replace_headers_with_attributes_for_html(cmark_node *node) {
   char level[2];
   snprintf(level, sizeof(level), "%d", cmark_node_get_heading_level(node));
 
-  int on_enter_size = 2 * strlen(info->anchor) + 50;
+  int on_enter_size = 2 * strlen(info->anchor) + strlen(multipage_url) + 50;
   char *on_enter = malloc(on_enter_size);
-  snprintf(on_enter, on_enter_size, "<h%s id='%s'><a href='#%s'>", level, info->anchor, info->anchor);
+  snprintf(on_enter, on_enter_size, "<h%s id='%s'><a href='%s#%s'>", level, info->anchor, multipage_url, info->anchor);
 
   int on_exit_size = 10;
   char *on_exit = malloc(on_exit_size);
@@ -492,7 +492,7 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
 /**
  * Turns CommonMark nodes annotated with our custom data into HTML elements.
  */
-void cmark_rewrite_html(cmark_node *document) {
+void cmark_rewrite_html(char *multipage_url, cmark_node *document) {
   cmark_iter *iter = cmark_iter_new(document);
 
   cmark_event_type event;
@@ -508,7 +508,7 @@ void cmark_rewrite_html(cmark_node *document) {
       break;
     case CMARK_EVENT_EXIT:
       node = cmark_iter_get_node(iter);
-      if (replace_headers_with_attributes_for_html(node))
+      if (replace_headers_with_attributes_for_html(multipage_url, node))
         continue;
     }
     if (CMARK_EVENT_DONE == event)
@@ -610,7 +610,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   cmark_rewrite(document, mem, file_path, render_type, anchor_locations);
 
   if (render_type != RENDER_TYPE_MAN) {
-    cmark_rewrite_html(document);
+    cmark_rewrite_html(multipage_url, document);
   }
 
   /* printf("AFTER\n"); */

@@ -76,7 +76,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
   mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
-                    toc_anchor_locations, NULL, NULL);
+                    toc_anchor_locations, "/", NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section id='main'>\n", index_file);
   fputs("      <main>\n", index_file);
@@ -86,7 +86,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
     init_anchor_location_array(&empty_anchor_locations, 0);
     mmdoc_render_part(toc_anchor_locations.array[i].file_path, index_file,
                       RENDER_TYPE_SINGLE, &toc_anchor_locations.array[i],
-                      empty_anchor_locations, NULL, NULL);
+                      empty_anchor_locations, "/", NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
 

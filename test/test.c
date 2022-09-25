@@ -108,7 +108,7 @@ int test_render(char *example) {
   AnchorLocation al;
   init_anchor_location_array(&empty_anchor_locations, 0);
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE, &al,
-                    empty_anchor_locations, NULL, NULL);
+                    empty_anchor_locations, "/", NULL);
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
@@ -145,7 +145,7 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   AnchorLocation al;
   al.title = "page title";
   mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE, &al,
-                    anchor_locations, NULL, NULL);
+                    anchor_locations, "/", NULL);
   fclose(got_file);
 
   return test_files_match(example, expected_path, got_file_path);

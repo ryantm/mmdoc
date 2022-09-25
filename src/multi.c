@@ -117,7 +117,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 
   fputs("    <nav class='sidebar'>\n", page_file);
   mmdoc_render_part(inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_location, anchor_locations, NULL, NULL);
+                    anchor_location, anchor_locations, anchor_location->multipage_url, NULL);
   fputs("    </nav>\n", page_file);
   fputs("      <section id='main'>\n", page_file);
   fputs("      <main>\n", page_file);

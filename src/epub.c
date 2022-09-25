@@ -44,14 +44,14 @@ int mmdoc_epub(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   fputs(xhtml_head, index_file);
   AnchorLocation al;
   mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
-                    toc_anchor_locations, NULL, NULL);
+                    toc_anchor_locations, "/", NULL);
 
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     char *file_path = toc_anchor_locations.array[i].file_path;
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
     mmdoc_render_part(file_path, index_file, RENDER_TYPE_SINGLE, &al,
-                      empty_anchor_locations, NULL, NULL);
+                      empty_anchor_locations, "/", NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
   char *html_foot = "  </body>\n"
