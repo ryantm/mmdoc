@@ -345,7 +345,6 @@ main h4 {
 }
 
 main p {
-  text-align: justify;
   font-size: 1rem;
   line-height: calc(1ex / 0.32);
   margin: calc(1ex / 0.32) 0 0 0;
