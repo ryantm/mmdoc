@@ -13,7 +13,7 @@
 with lib;
 stdenv.mkDerivation rec {
   pname = "mmdoc";
-  version = "0.12.0";
+  version = "0.13.0";
 
   src = self;
 
