@@ -87,7 +87,8 @@ int replace_header_attributes(cmark_node *node, char *input_file_path,
 /**
  * Converts headers with custom metadata into HTML heading node.
  */
-int replace_headers_with_attributes_for_html(char *multipage_url, cmark_node *node) {
+int replace_headers_with_attributes_for_html(char *multipage_url,
+                                             cmark_node *node) {
   if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
     return 0;
 
@@ -101,7 +102,8 @@ int replace_headers_with_attributes_for_html(char *multipage_url, cmark_node *no
 
   int on_enter_size = 2 * strlen(info->anchor) + strlen(multipage_url) + 50;
   char *on_enter = malloc(on_enter_size);
-  snprintf(on_enter, on_enter_size, "<h%s id='%s'><a href='%s#%s'>", level, info->anchor, multipage_url, info->anchor);
+  snprintf(on_enter, on_enter_size, "<h%s id='%s'><a href='%s#%s'>", level,
+           info->anchor, multipage_url, info->anchor);
 
   int on_exit_size = 10;
   char *on_exit = malloc(on_exit_size);
