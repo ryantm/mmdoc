@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
 jobs:
-  build:
+  test-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,11 +15,15 @@ jobs:
         run: nix flake show
       - name: Build and test
         run: nix build -L
-  lint:
-    runs-on: ubuntu-latest
+      - name: Lint
+        uses: DoozyX/clang-format-lint-action@v0.15
+        with:
+          source: '.'
+          extensions: 'h,c,cpp,hpp'
+  test-darwin:
+    runs-on: macos-11
     steps:
-    - uses: actions/checkout@v3
-    - uses: DoozyX/clang-format-lint-action@v0.15
-      with:
-        source: '.'
-        extensions: 'h,c,cpp,hpp'
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - name: Build and test
+        run: nix build -L
