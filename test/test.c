@@ -198,8 +198,8 @@ int test_title(char *example, char *expected_title) {
 }
 
 int main(int argc, char *argv[]) {
-  uint num_failed = 0;
-  uint num_tests = 0;
+  int num_failed = 0;
+  int num_tests = 0;
   num_failed += test_render("e001");
   num_tests++;
   num_failed += test_title("e001", "Header");

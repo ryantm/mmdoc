@@ -82,7 +82,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       al->multipage_output_directory_path = page_dir_path;
       al->multipage_url = page_dir_path + strlen(inputs.out_multi) + 1;
 
-      uint directory_depth = 0;
+      int directory_depth = 0;
       for (int k = 0; k < strlen(al->multipage_url); k++)
         if (al->multipage_url[k] == '/')
           directory_depth++;
