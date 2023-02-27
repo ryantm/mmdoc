@@ -14,9 +14,14 @@ src = [
   'types.c',
 ]
 
-shared_lib = static_library('shared', src, dependencies : [
-                              asset_dep, libcmark_gfm, libfastjson, libzip
-                            ])
+src += asset_headers
+
+shared_lib = static_library(
+           'shared',
+           src,
+           dependencies : [
+             libcmark_gfm, libfastjson, libzip
+      ])
 
 mmdoc_conf = configuration_data()
 mmdoc_conf.set_quoted('MMDOC_VERSION', meson.project_version())

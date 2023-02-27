@@ -57,6 +57,7 @@
   '';
 in
   mkShell {
+    name = "mmdoc";
     buildInputs = [
       cmark-gfm
       fastJson
