@@ -13,7 +13,7 @@ jobs:
         with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v19
+      - uses: cachix/install-nix-action@v20
       - run: nix run .#mmdoc -- mmdoc doc out
       - if: success()
         uses: crazy-max/ghaction-github-pages@v3
