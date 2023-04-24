@@ -16,7 +16,7 @@ jobs:
       - name: Build and test
         run: nix build -L
       - name: Lint
-        uses: DoozyX/clang-format-lint-action@v0.15
+        uses: DoozyX/clang-format-lint-action@v0.16
         with:
           source: '.'
           extensions: 'h,c,cpp,hpp'
