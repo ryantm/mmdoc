@@ -21,7 +21,7 @@ $ ninja test
 ## Format
 
 ```ShellSession
-$ nix develop -c ninja -C build clang-format
+$ nix fmt
 ```
 
 ## Documentation

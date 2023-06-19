@@ -11,23 +11,23 @@
   pkg-config,
 }:
 with lib;
-stdenv.mkDerivation rec {
-  pname = "mmdoc";
-  version = "0.14.0";
+  stdenv.mkDerivation rec {
+    pname = "mmdoc";
+    version = "0.14.0";
 
-  src = self;
+    src = self;
 
-  nativeBuildInputs = [ninja meson pkg-config xxd];
+    nativeBuildInputs = [ninja meson pkg-config xxd];
 
-  buildInputs = [cmark-gfm fastJson libzip];
+    buildInputs = [cmark-gfm fastJson libzip];
 
-  doCheck = stdenv.isx86_64;
+    doCheck = stdenv.isx86_64;
 
-  meta = {
-    description = "Minimal Markdown Documentation";
-    homepage = "https://github.com/ryantm/mmdoc";
-    license = licenses.cc0;
-    maintainers = with maintainers; [ryantm];
-    platforms = platforms.unix;
-  };
-}
+    meta = {
+      description = "Minimal Markdown Documentation";
+      homepage = "https://github.com/ryantm/mmdoc";
+      license = licenses.cc0;
+      maintainers = with maintainers; [ryantm];
+      platforms = platforms.unix;
+    };
+  }

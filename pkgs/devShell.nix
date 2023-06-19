@@ -18,10 +18,6 @@
   python3,
   nix,
 }: let
-  fmt = writeScriptBin "fmt" ''
-    ${ninja}/bin/ninja -C build clang-format
-  '';
-
   doc-build = writeScriptBin "doc-build" ''
     nix build .#mmdoc-docs
   '';
@@ -79,8 +75,6 @@ in
 
         np-build
         np-watch
-
-        fmt
       ]
       ++ lib.optionals (!stdenv.isDarwin) [
         valgrind
