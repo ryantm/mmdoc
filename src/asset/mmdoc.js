@@ -29,19 +29,11 @@ function toggleTheme() {
 }
 
 function setDarkTheme() {
-  var dark_css = document.querySelector("link[href='a11y-dark.css']")
-  var light_css = document.querySelector("link[href='a11y-light.css']")
-  dark_css.setAttribute("media", "")
-  light_css.setAttribute("media", "false")
   document.querySelector('html').classList.remove("light-theme")
   document.querySelector('html').classList.add("dark-theme")
 }
 
 function setLightTheme() {
-  var dark_css = document.querySelector("link[href='a11y-dark.css']")
-  var light_css = document.querySelector("link[href='a11y-light.css']")
-  dark_css.setAttribute("media", "false")
-  light_css.setAttribute("media", "")
   document.querySelector('html').classList.remove("dark-theme")
   document.querySelector('html').classList.add("light-theme")
 }

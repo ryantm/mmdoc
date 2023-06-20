@@ -13,7 +13,7 @@
   --dark_background: #2b2b2b;
   --dark_foreground: #F5F5F5;
   --dark_light-gray: gray;
-  --dark_lightest-gray: #2b2b2b;
+  --dark_lightest-gray: #202020;
   --dark_gray: lightgray;
   --dark_orange: #7c3b00;
   --dark_yellow: #896000;
@@ -167,6 +167,8 @@ nav.sidebar {
   padding: 5px;
   padding-right: 20px;
   border-right: 1px solid var(--light-gray);
+  background-color: var(--lightest-gray);
+  text-align: right;
 }
 
 nav ul ul {
@@ -195,7 +197,7 @@ nav ul {
 .nav-top-container {
   grid-area: navtop;
   height: var(--topbar-height);
-  background-color: var(--background);
+  background-color: var(--lightest-gray);
 }
 
 .nav-top {
@@ -222,7 +224,7 @@ nav ul {
     font-family: monospace;
     font-size: 50px;
     border: none;
-    background-color: var(--background);
+    background-color: var(--lightest-gray);
 }
 
 .nav-top button.emoji, .nav-top a.emoji {

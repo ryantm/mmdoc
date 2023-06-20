@@ -7,6 +7,10 @@
 
 int write_css(FILE *file) {
   fputs("<style>\n", file);
+  if (asset_write_to_file_a11y_dark_css(file) != 0)
+    return -1;
+  if (asset_write_to_file_a11y_light_css(file) != 0)
+    return -1;
   if (asset_write_to_file_mmdoc_css(file) != 0)
     return -1;
   fputs("</style>\n", file);
@@ -48,10 +52,6 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
       "    <meta name='viewport' content='width=device-width, "
       "initial-scale=1.0'>\n"
       "    <link rel='icon' href='favicon.svg'>\n"
-      "    <link rel='stylesheet' href='a11y-light.css' "
-      "media='(prefers-color-scheme: light)'>\n"
-      "    <link rel='stylesheet' href='a11y-dark.css' "
-      "media='(prefers-color-scheme: dark)'>\n"
       "    <script>\n"
       "      window.addEventListener('load', (event) => { \n"
       "        let codeElems = "
