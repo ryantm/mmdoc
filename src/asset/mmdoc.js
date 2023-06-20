@@ -1,3 +1,34 @@
+//// Sidebar
+
+function getSidebarClosed() {
+  return (localStorage.getItem('sidebar-closed') ?? 'false') === 'true'
+}
+
+function showSidebar() {
+  document.getElementById('sidebar-checkbox').checked = true
+}
+
+function hideSidebar() {
+  document.getElementById('sidebar-checkbox').checked = false
+}
+
+function saveSidebar() {
+  const sidebarClosed = document.getElementById('sidebar-checkbox').checked
+  localStorage.setItem('sidebar-closed', sidebarClosed)
+}
+
+function setupSaveSidebar() {
+  const el = document.getElementById('sidebar-checkbox')
+  el.addEventListener('change', saveSidebar)
+}
+
+window.addEventListener('DOMContentLoaded', setupSaveSidebar)
+
+if (getSidebarClosed())
+  showSidebar()
+else
+  hideSidebar()
+
 //// Theme
 
 // Returns 'light' or 'dark'
@@ -16,13 +47,10 @@ function getSelectedTheme() {
 function toggleTheme() {
   const theme = getSelectedTheme()
 
-  if (theme === 'dark')
-  {
+  if (theme === 'dark') {
     localStorage.setItem('theme', 'light')
     setLightTheme()
-  }
-  else if (theme === 'light')
-  {
+  } else if (theme === 'light') {
     localStorage.setItem('theme', 'dark')
     setDarkTheme()
   }
