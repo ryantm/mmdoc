@@ -29,13 +29,13 @@ $ nix fmt
 Build the mmdoc docs to `./result` with:
 
 ```ShellSession
-$ nix shell -c doc-build
+$ nix develop -c doc-build
 ```
 
 Continuosly build the mmdoc docs and serve them on port 8000 with:
 
 ```ShellSession
-$ nix shell -c doc-watch
+$ nix develop -c doc-watch
 ```
 
 ## Nixpkgs manual
