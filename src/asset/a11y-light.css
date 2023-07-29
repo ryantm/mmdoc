@@ -58,11 +58,11 @@
 }
 
 .light-theme .hljs {
-  display: block;
-  overflow-x: auto;
+  /* display: block; */
+  /* overflow-x: auto; */
   background: #fefefe;
   color: #545454;
-  padding: 0.5em;
+  /* padding: 0.5em; */
 }
 
 .light-theme .hljs-emphasis {
