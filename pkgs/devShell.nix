@@ -32,7 +32,8 @@
     pids=()
     ${python3}/bin/python -m http.server --directory ./result &
     pids+=($!)
-    find doc src test | ${entr}/bin/entr -cd ${doc-build}/bin/doc-build
+    trap exit SIGINT
+    while true; do find doc src test | ${entr}/bin/entr -cd ${doc-build}/bin/doc-build; done
   '';
 
   np-build = writeScriptBin "np-build" ''
