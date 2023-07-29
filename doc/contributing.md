@@ -56,6 +56,6 @@ $ nix develop -c np-watch
 
 ## Making a new release
 
-1. run `./contrib/release {major,minor,patch}`
+1. run `./contrib/release {major.minor.patch}`. For example, `./contrib/release 0.16.0`.
 2. edit commit message
 3. push commit and tags to GitHub
