@@ -6,6 +6,7 @@
 #include "highlight.pack.js.h"
 #include "mmdoc.css.h"
 #include "mmdoc.js.h"
+#include "mmdoc_search.js.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -47,21 +48,17 @@ static int asset_write_to_dir(char *dir, char *asset_file_name,
     free(asset_path);
     return -1;
   }
-  free(asset_path);
   if (fclose(asset_file) != 0) {
     printf("Failed to close file %s: %s\n", asset_path, strerror(errno));
+    free(asset_path);
     return -1;
   };
+  free(asset_path);
   return 0;
 }
 
 extern unsigned char ___src_asset_highlight_pack_js[];
 extern unsigned int ___src_asset_highlight_pack_js_len;
-int asset_write_to_dir_highlight_pack_js(char *dir) {
-  return asset_write_to_dir(dir, "highlight.pack.js",
-                            ___src_asset_highlight_pack_js,
-                            ___src_asset_highlight_pack_js_len);
-}
 int asset_write_to_file_highlight_pack_js(FILE *file) {
   return asset_write_to_file(file, ___src_asset_highlight_pack_js,
                              ___src_asset_highlight_pack_js_len);
@@ -77,11 +74,6 @@ int asset_write_to_dir_fuse_basic_min_js(char *dir) {
 
 extern unsigned char ___src_asset_a11y_light_css[];
 extern unsigned int ___src_asset_a11y_light_css_len;
-int asset_write_to_dir_a11y_light_css(char *dir) {
-  return asset_write_to_dir(dir, "a11y-light.css", ___src_asset_a11y_light_css,
-                            ___src_asset_a11y_light_css_len);
-}
-
 int asset_write_to_file_a11y_light_css(FILE *file) {
   return asset_write_to_file(file, ___src_asset_a11y_light_css,
                              ___src_asset_a11y_light_css_len);
@@ -89,11 +81,6 @@ int asset_write_to_file_a11y_light_css(FILE *file) {
 
 extern unsigned char ___src_asset_a11y_dark_css[];
 extern unsigned int ___src_asset_a11y_dark_css_len;
-int asset_write_to_dir_a11y_dark_css(char *dir) {
-  return asset_write_to_dir(dir, "a11y-dark.css", ___src_asset_a11y_dark_css,
-                            ___src_asset_a11y_dark_css_len);
-}
-
 int asset_write_to_file_a11y_dark_css(FILE *file) {
   return asset_write_to_file(file, ___src_asset_a11y_dark_css,
                              ___src_asset_a11y_dark_css_len);
@@ -108,11 +95,6 @@ int asset_write_to_dir_epub_css(char *dir) {
 
 extern unsigned char ___src_asset_mmdoc_css[];
 extern unsigned int ___src_asset_mmdoc_css_len;
-int asset_write_to_dir_mmdoc_css(char *dir) {
-  return asset_write_to_dir(dir, "mmdoc.css", ___src_asset_mmdoc_css,
-                            ___src_asset_mmdoc_css_len);
-}
-
 int asset_write_to_file_mmdoc_css(FILE *file) {
   return asset_write_to_file(file, ___src_asset_mmdoc_css,
                              ___src_asset_mmdoc_css_len);
@@ -120,12 +102,14 @@ int asset_write_to_file_mmdoc_css(FILE *file) {
 
 extern unsigned char ___src_asset_mmdoc_js[];
 extern unsigned int ___src_asset_mmdoc_js_len;
-int asset_write_to_dir_mmdoc_js(char *dir) {
-  return asset_write_to_dir(dir, "mmdoc.js", ___src_asset_mmdoc_js,
-                            ___src_asset_mmdoc_js_len);
-}
-
 int asset_write_to_file_mmdoc_js(FILE *file) {
   return asset_write_to_file(file, ___src_asset_mmdoc_js,
                              ___src_asset_mmdoc_js_len);
+}
+
+extern unsigned char ___src_asset_mmdoc_search_js[];
+extern unsigned int ___src_asset_mmdoc_search_js_len;
+int asset_write_to_file_mmdoc_search_js(FILE *file) {
+  return asset_write_to_file(file, ___src_asset_mmdoc_search_js,
+                             ___src_asset_mmdoc_search_js_len);
 }

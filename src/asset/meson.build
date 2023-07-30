@@ -6,6 +6,7 @@ assets = [
   'a11y-dark.css',
   'a11y-light.css',
   'mmdoc.js',
+  'mmdoc_search.js',
 ]
 
 asset_headers = []

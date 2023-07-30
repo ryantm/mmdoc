@@ -2,36 +2,9 @@
 #include "asset.h"
 #include "inputs.h"
 #include "render.h"
+#include "html.h"
 #include <stdlib.h>
 #include <string.h>
-
-int write_css(FILE *file) {
-  fputs("<style>\n", file);
-  if (asset_write_to_file_a11y_dark_css(file) != 0)
-    return -1;
-  if (asset_write_to_file_a11y_light_css(file) != 0)
-    return -1;
-  if (asset_write_to_file_mmdoc_css(file) != 0)
-    return -1;
-  fputs("</style>\n", file);
-  return 0;
-}
-
-int write_js(FILE *file) {
-  fputs("<script>\n", file);
-  if (asset_write_to_file_mmdoc_js(file) != 0)
-    return -1;
-  fputs("</script>\n", file);
-  return 0;
-}
-
-int write_highlight_js(FILE *file) {
-  fputs("<script>\n", file);
-  if (asset_write_to_file_highlight_pack_js(file) != 0)
-    return -1;
-  fputs("hljs.highlightAll()\n</script>\n", file);
-  return 0;
-}
 
 int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
                      FILE *search_index_file, AnchorLocation *anchor_location,
@@ -46,34 +19,24 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
                         "    <base href='";
   fputs(html_head_top, page_file);
   fputs(anchor_location->multipage_base_href, page_file);
-  char *html_head =
-      "'>\n"
-      "    <meta charset='utf-8'>\n"
-      "    <meta name='viewport' content='width=device-width, "
-      "initial-scale=1.0'>\n"
-      "    <link rel='icon' href='favicon.svg'>\n"
-      "    <script>\n"
-      "      window.addEventListener('load', (event) => { \n"
-      "        let codeElems = "
-      "Array.from(document.querySelectorAll('code')).filter(function (elem) "
-      "{return !elem.parentElement.classList.contains('heade'); });\n"
-      "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
-      "      });\n"
-      "    </script>\n";
-  fputs(html_head, page_file);
-  write_css(page_file);
-  html_head = "    <script src='fuse.basic.min.js'></script>\n"
-              "    <script src='search_index.js'></script>\n"
-              "    <title>";
-  fputs(html_head, page_file);
+  fputs("'>\n"
+        "    <meta charset='utf-8'>\n"
+        "    <meta name='viewport' content='width=device-width, "
+        "initial-scale=1.0'>\n"
+        "    <link rel='icon' href='favicon.svg'>\n",
+        page_file);
+  html_css(page_file);
+  fputs("    <script src='fuse.basic.min.js'></script>\n"
+        "    <script src='search_index.js'></script>\n"
+        "    <title>",
+        page_file);
   fputs(anchor_location->title, page_file);
   fputs(" | ", page_file);
   fputs(inputs.project_name, page_file);
-
-  char *html_head_end = "</title>\n"
-                        "  </head>\n"
-                        "  <body>\n";
-  fputs(html_head_end, page_file);
+  fputs("</title>\n"
+        "  </head>\n"
+        "  <body>\n"
+        , page_file);
   fputs("  <input type='checkbox' id='sidebar-checkbox' style='display: "
         "none;'/>\n",
         page_file);
@@ -133,8 +96,9 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("    </nav>\n", page_file);
   fputs("      </section>\n", page_file);
 
-  write_js(page_file);
-  write_highlight_js(page_file);
+  html_js(page_file);
+  html_search_js(page_file);
+  html_highlight_js(page_file);
 
   char *html_foot = "  </div>\n"
                     "  </body>\n"
@@ -147,9 +111,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations) {
   char *out = inputs.out_multi;
-  if (asset_write_to_dir_fuse_basic_min_js(out) != 0 ||
-      asset_write_to_dir_a11y_light_css(out) != 0 ||
-      asset_write_to_dir_a11y_dark_css(out) != 0) {
+  if (asset_write_to_dir_fuse_basic_min_js(out) != 0) {
     return -1;
   }
 

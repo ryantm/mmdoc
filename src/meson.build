@@ -1,6 +1,7 @@
 src = [
   'anchors.c',
   'asset.c',
+  'html.c',
   'epub.c',
   'files.c',
   'inputs.c',
