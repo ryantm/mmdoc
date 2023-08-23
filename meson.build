@@ -1,5 +1,5 @@
 project('mmdoc', 'c',
-  version : '0.15.0',
+  version : '0.16.0',
   license : 'CC0-1.0',
 )
 
