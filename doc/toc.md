@@ -2,6 +2,7 @@
 
 * [](#introduction)
 * [](#features)
+* [](#install)
 * [](#usage)
 * [](#contributing)
 * [](#license)
