@@ -282,6 +282,7 @@ main .admonition {
   border-radius: 6px;
   padding: 0.5em 1em 0.5em 1em;
   margin: calc(1ex / 0.32) 0 0 0;
+  background-color: var(--green);
 }
 
 main .attention, main .caution, main .warning {
@@ -290,10 +291,6 @@ main .attention, main .caution, main .warning {
 
 main .danger, main .error {
   background-color: var(--red);
-}
-
-main .hint, main .tip {
-  background-color: var(--green);
 }
 
 main .important, main .note {

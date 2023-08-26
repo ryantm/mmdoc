@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/stat.h>
 
 /**
@@ -177,88 +178,49 @@ int replace_link_bracket_with_span(cmark_node *node) {
   return 1;
 }
 
-int replace_admonition_start(cmark_node *node) {
+int replace_admonition_start(char *multipage_url, cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
   char *admonition_type = malloc(strlen(lit) + 1);
-  int pos = parse_admonition_start(lit, admonition_type);
+  admonition_type[0] = '\0';
+  char *admonition_anchor = malloc(strlen(lit) + 1);
+  admonition_anchor[0] = '\0';
+  int pos = parse_admonition_start(lit, admonition_type, admonition_anchor);
   if (-1 == pos) {
     free(admonition_type);
+    free(admonition_anchor);
     return 0;
   }
-  if (strcmp(admonition_type, "attention") != 0 &&
-      strcmp(admonition_type, "caution") != 0 &&
-      strcmp(admonition_type, "danger") != 0 &&
-      strcmp(admonition_type, "error") != 0 &&
-      strcmp(admonition_type, "hint") != 0 &&
-      strcmp(admonition_type, "important") != 0 &&
-      strcmp(admonition_type, "note") != 0 &&
-      strcmp(admonition_type, "tip") != 0 &&
-      strcmp(admonition_type, "warning") != 0 &&
-      strcmp(admonition_type, "{.attention}") != 0 &&
-      strcmp(admonition_type, "{.caution}") != 0 &&
-      strcmp(admonition_type, "{.danger}") != 0 &&
-      strcmp(admonition_type, "{.error}") != 0 &&
-      strcmp(admonition_type, "{.hint}") != 0 &&
-      strcmp(admonition_type, "{.important}") != 0 &&
-      strcmp(admonition_type, "{.note}") != 0 &&
-      strcmp(admonition_type, "{.tip}") != 0 &&
-      strcmp(admonition_type, "{.warning}") != 0) {
-    printf("admonition type '%s' doesn't match\n", admonition_type);
+  if (admonition_type[0] == '\0') {
+    printf("no admonition type specified\n");
     free(admonition_type);
+    free(admonition_anchor);
     return 0;
   }
 
+  char *start = NULL;
   cmark_node *parent = cmark_node_parent(node);
   cmark_node *new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  if (strcmp(admonition_type, "attention") == 0 ||
-      strcmp(admonition_type, "{.attention}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition attention'><h3 class='title'>Attention</h3>");
-  if (strcmp(admonition_type, "caution") == 0 ||
-      strcmp(admonition_type, "{.caution}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition caution'><h3 class='title'>Caution</h3>");
-  if (strcmp(admonition_type, "danger") == 0 ||
-      strcmp(admonition_type, "{.danger}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "error") == 0 ||
-      strcmp(admonition_type, "{.error}") == 0)
-    cmark_node_set_literal(
-        new_node, "<div class='admonition error'><h3 class='title'>Error</h3>");
-  if (strcmp(admonition_type, "hint") == 0 ||
-      strcmp(admonition_type, "{.hint}") == 0)
-    cmark_node_set_literal(
-        new_node, "<div class='admonition hint'><h3 class='title'>Hint</h3>");
-  if (strcmp(admonition_type, "important") == 0 ||
-      strcmp(admonition_type, "{.important}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition important'><h3 class='title'>Important</h3>");
-  if (strcmp(admonition_type, "danger") == 0 ||
-      strcmp(admonition_type, "{.danger}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition danger'><h3 class='title'>Danger</h3>");
-  if (strcmp(admonition_type, "note") == 0 ||
-      strcmp(admonition_type, "{.note}") == 0)
-    cmark_node_set_literal(
-        new_node, "<div class='admonition note'><h3 class='title'>Note</h3>");
-  if (strcmp(admonition_type, "tip") == 0 ||
-      strcmp(admonition_type, "{.tip}") == 0)
-    cmark_node_set_literal(
-        new_node, "<div class='admonition tip'><h3 class='title'>Tip</h3>");
-  if (strcmp(admonition_type, "warning") == 0 ||
-      strcmp(admonition_type, "{.warning}") == 0)
-    cmark_node_set_literal(
-        new_node,
-        "<div class='admonition warning'><h3 class='title'>Warning</h3>");
-  cmark_node_insert_before(parent, new_node);
 
+  if (admonition_anchor[0] == '\0') {
+    const char *fmt = "<div class='admonition %s'><h3 class='title'>%c%s</h3>";
+    size_t len = strlen(fmt) + strlen(admonition_type) * 2 + 1;
+    start = malloc(len);
+    snprintf(start, len, fmt, admonition_type, toupper(admonition_type[0]), admonition_type+1);
+  } else {
+    const char *fmt =
+      "<div class='admonition %s'>"
+      "<h3 id='%s' class='title'>"
+      "<a href='%s#%s'>%c%s</a></h3>";
+    size_t len = strlen(fmt) + strlen(admonition_anchor) * 2 + strlen(admonition_type) * 2 + 1;
+    start = malloc(len);
+    snprintf(start, len, fmt, admonition_type, admonition_anchor, multipage_url, admonition_anchor, toupper(admonition_type[0]), admonition_type+1);
+  }
+
+  cmark_node_set_literal(new_node, start);
+  cmark_node_insert_before(parent, new_node);
   free(admonition_type);
+  free(admonition_anchor);
+  free(start);
   cmark_node_unlink(node);
   cmark_node_free(node);
   return 1;
@@ -451,7 +413,7 @@ void cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
 }
 
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
-                   render_type render_type,
+                   render_type render_type, char *multipage_url,
                    AnchorLocationArray anchor_locations) {
   cmark_iter *iter = cmark_iter_new(document);
 
@@ -478,7 +440,7 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
         continue;
       if (replace_link_bracket_with_span(node))
         continue;
-      if (replace_admonition_start(node))
+      if (replace_admonition_start(multipage_url, node))
         continue;
       if (replace_admonition_end(node))
         continue;
@@ -609,7 +571,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
   cmark_rewrite_syntax(document, mem, file_path, render_type, anchor_locations);
 
-  cmark_rewrite(document, mem, file_path, render_type, anchor_locations);
+  cmark_rewrite(document, mem, file_path, render_type, multipage_url, anchor_locations);
 
   if (render_type != RENDER_TYPE_MAN) {
     cmark_rewrite_html(multipage_url, document);

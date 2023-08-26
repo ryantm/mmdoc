@@ -17,7 +17,7 @@ int mmdoc_man(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     output_file = fopen(anchor_location->man_output_file_path, "w");
     fputs(anchor_location->man_header, output_file);
     mmdoc_render_part(anchor_location->file_path, output_file, RENDER_TYPE_MAN,
-                      anchor_location, anchor_locations, NULL, NULL);
+                      anchor_location, anchor_locations, "", NULL);
     fclose(output_file);
   }
 

@@ -120,12 +120,15 @@ enum parse_admonition_start_state {
   ADMONITION_START_TWO,
   ADMONITION_START_THREE,
   ADMONITION_START_TYPE,
+  ADMONITION_START_TYPE_DONE,
+  ADMONITION_START_ANCHOR,
 };
 
-int parse_admonition_start(const char *text, char *admonition_type) {
+int parse_admonition_start(const char *text, char *admonition_type, char *admonition_anchor) {
   if (text == NULL)
     return -1;
   int type_pos = 0;
+  int anchor_pos = 0;
   enum parse_admonition_start_state state = ADMONITION_START_NONE;
 
   for (int i = 0; text[i] != '\0'; i++) {
@@ -133,7 +136,6 @@ int parse_admonition_start(const char *text, char *admonition_type) {
       return -1;
     if (state == ADMONITION_START_NONE && text[i] == ' ')
       continue;
-
     if (state == ADMONITION_START_NONE && text[i] == ':') {
       state = ADMONITION_START_ONE;
       continue;
@@ -146,22 +148,49 @@ int parse_admonition_start(const char *text, char *admonition_type) {
       state = ADMONITION_START_THREE;
       continue;
     }
-    if (state == ADMONITION_START_THREE && text[i] == ' ') {
-      state = ADMONITION_START_TYPE;
+    if (state == ADMONITION_START_THREE &&
+        (text[i] == ' ' || text[i] == '{' || text[i] == '.')) {
       continue;
     }
-    if (state == ADMONITION_START_TYPE && text[i] == ' ') {
+    if (state == ADMONITION_START_THREE) {
+      state = ADMONITION_START_TYPE;
+    }
+    if (state == ADMONITION_START_TYPE && text[i] == '}') {
       break;
+    }
+    if (state == ADMONITION_START_TYPE && text[i] == ' ') {
+      state = ADMONITION_START_TYPE_DONE;
+      continue;
     }
     if (state == ADMONITION_START_TYPE) {
       admonition_type[type_pos] = text[i];
       type_pos++;
       continue;
     }
+    if (state == ADMONITION_START_TYPE_DONE && text[i] == ' ') {
+      continue;
+    }
+    if (state == ADMONITION_START_TYPE_DONE && text[i] == '}') {
+      break;
+    }
+    if (state == ADMONITION_START_TYPE_DONE && text[i] == '#') {
+      state = ADMONITION_START_ANCHOR;
+      continue;
+    }
+    if (state == ADMONITION_START_ANCHOR &&
+        (text[i] == ' ' || text[i] == '}')) {
+      break;
+    }
+    if (state == ADMONITION_START_ANCHOR) {
+      admonition_anchor[anchor_pos] = text[i];
+      anchor_pos++;
+      continue;
+    }
     return -1;
   }
-  if (state == ADMONITION_START_TYPE) {
+  if (state >= ADMONITION_START_TYPE) {
     admonition_type[type_pos] = '\0';
+    admonition_anchor[anchor_pos] = '\0';
     return 0;
   }
   return -1;

@@ -32,6 +32,20 @@ In order to be useful for Documentation, it uses several CommonMark extensions a
   this is your last warning
   :::
   ```
+
+  ::: warning
+  this is your last warning
+  :::
+
+  ```text
+  ::: {.example #anchor}
+  this is your last warning
+  :::
+  ```
+  ::: {.example #anchor}
+  this is your last warning
+  :::
+
 * DD Lists
   ```text
   term 1
