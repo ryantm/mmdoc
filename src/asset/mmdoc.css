@@ -168,7 +168,6 @@ nav.sidebar {
   padding-right: 20px;
   border-right: 1px solid var(--light-gray);
   background-color: var(--lightest-gray);
-  text-align: right;
 }
 
 nav ul ul {
