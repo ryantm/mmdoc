@@ -211,7 +211,7 @@ int replace_admonition_start(char *multipage_url, cmark_node *node) {
       "<div class='admonition %s'>"
       "<h3 id='%s' class='title'>"
       "<a href='%s#%s'>%c%s</a></h3>";
-    size_t len = strlen(fmt) + strlen(admonition_anchor) * 2 + strlen(admonition_type) * 2 + 1;
+    size_t len = strlen(fmt) + strlen(multipage_url) + strlen(admonition_anchor) * 2 + strlen(admonition_type) * 2 + 1;
     start = malloc(len);
     snprintf(start, len, fmt, admonition_type, admonition_anchor, multipage_url, admonition_anchor, toupper(admonition_type[0]), admonition_type+1);
   }
