@@ -1,4 +1,4 @@
-# Users of mmdoc
+# Users of mmdoc {#users}
 
 * [This manual!](https://ryantm.github.io/mmdoc)
 * [Ryan's rendering of the Nixpkgs manual](https://ryantm.github.io/nixpkgs)
