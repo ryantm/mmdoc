@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "asset.h"
 #include "html.h"
+#include "asset.h"
 
 int html_js(FILE *file) {
   fputs("<script>\n", file);

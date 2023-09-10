@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "html.h"
 #include "inputs.h"
 #include "mkdir_p.h"
 #include "render.h"
-#include "html.h"
 #include "types.h"
 #include <string.h>
 
@@ -20,46 +20,51 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   strcat(index_path, "/index.html");
   index_file = fopen(index_path, "w");
 
-  fputs(
-      "<!doctype html>\n"
-      "<html>\n"
-      "  <head>\n"
-      "    <meta charset='utf-8'>\n"
-      "    <meta name='viewport' content='width=device-width, "
-      "initial-scale=1.0'>\n"
-      "    <link rel='icon' href='favicon.svg'>\n",
-      index_file);
+  fputs("<!doctype html>\n"
+        "<html>\n"
+        "  <head>\n"
+        "    <meta charset='utf-8'>\n"
+        "    <meta name='viewport' content='width=device-width, "
+        "initial-scale=1.0'>\n"
+        "    <link rel='icon' href='favicon.svg'>\n",
+        index_file);
 
   html_css(index_file);
 
-      /* "    <script src='highlight.pack.js'></script>\n" */
-      /* "    <script>hljs.highlightAll()</script>\n" */
-      /* "    <script src='mmdoc.js'></script>\n" */
-      /* "    <script>\n" */
-      /* "      window.addEventListener('load', (event) => { \n" */
-      /* "        let codeElems = " */
-      /* "Array.from(document.querySelectorAll('code')).filter(function (elem) " */
-      /* "{return !elem.parentElement.classList.contains('heade'); });\n" */
-      /* "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n" */
-      /* "      });\n" */
-      /* "    </script>\n" */
-      /* "    <title>"; */
+  /* "    <script src='highlight.pack.js'></script>\n" */
+  /* "    <script>hljs.highlightAll()</script>\n" */
+  /* "    <script src='mmdoc.js'></script>\n" */
+  /* "    <script>\n" */
+  /* "      window.addEventListener('load', (event) => { \n" */
+  /* "        let codeElems = " */
+  /* "Array.from(document.querySelectorAll('code')).filter(function (elem) " */
+  /* "{return !elem.parentElement.classList.contains('heade'); });\n" */
+  /* "        codeElems.forEach(function (e) { e.classList.add('hljs'); });\n"
+   */
+  /* "      });\n" */
+  /* "    </script>\n" */
+  /* "    <title>"; */
   fputs("    <title>", index_file);
   fputs(inputs.project_name, index_file);
   fputs("</title>\n"
         "  </head>\n"
-        "  <body>\n", index_file);
+        "  <body>\n",
+        index_file);
   fputs("  <input type='checkbox' id='sidebar-checkbox' style='display: "
-        "none;'/>\n", index_file);
+        "none;'/>\n",
+        index_file);
   fputs("    <div class='body'>\n"
-        "      <div class='nav-top-container'>\n", index_file);
+        "      <div class='nav-top-container'>\n",
+        index_file);
   fputs("    <nav class='nav-top'>\n", index_file);
   fputs("      <label for='sidebar-checkbox' class='sidebar-toggle'>≡</label>",
         index_file);
-  fputs("    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
+  fputs(
+      "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
       index_file);
   fputs("    </nav>\n"
-        "    </div>\n", index_file);
+        "    </div>\n",
+        index_file);
   fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
   mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
@@ -79,13 +84,15 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
 
   fputs("        </main>\n"
         "      </section>\n"
-        "    </div>\n", index_file);
+        "    </div>\n",
+        index_file);
 
   html_js(index_file);
   html_highlight_js(index_file);
 
   fputs("  </body>\n"
-        "</html>\n", index_file);
+        "</html>\n",
+        index_file);
   fclose(index_file);
   return 0;
 }

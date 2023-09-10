@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
+#include "html.h"
 #include "inputs.h"
 #include "render.h"
-#include "html.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,8 +35,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs(inputs.project_name, page_file);
   fputs("</title>\n"
         "  </head>\n"
-        "  <body>\n"
-        , page_file);
+        "  <body>\n",
+        page_file);
   fputs("  <input type='checkbox' id='sidebar-checkbox' style='display: "
         "none;'/>\n",
         page_file);

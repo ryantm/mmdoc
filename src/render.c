@@ -6,13 +6,13 @@
 #include <cmark-gfm-core-extensions.h>
 #include <cmark-gfm-extension_api.h>
 #include <cmark-gfm.h>
+#include <ctype.h>
 #include <errno.h>
 #include <libfastjson/json_object.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <sys/stat.h>
 
 /**
@@ -205,15 +205,19 @@ int replace_admonition_start(char *multipage_url, cmark_node *node) {
     const char *fmt = "<div class='admonition %s'><h3 class='title'>%c%s</h3>";
     size_t len = strlen(fmt) + strlen(admonition_type) * 2 + 1;
     start = malloc(len);
-    snprintf(start, len, fmt, admonition_type, toupper(admonition_type[0]), admonition_type+1);
+    snprintf(start, len, fmt, admonition_type, toupper(admonition_type[0]),
+             admonition_type + 1);
   } else {
-    const char *fmt =
-      "<div class='admonition %s'>"
-      "<h3 id='%s' class='title'>"
-      "<a href='%s#%s'>%c%s</a></h3>";
-    size_t len = strlen(fmt) + strlen(multipage_url) + strlen(admonition_anchor) * 2 + strlen(admonition_type) * 2 + 1;
+    const char *fmt = "<div class='admonition %s'>"
+                      "<h3 id='%s' class='title'>"
+                      "<a href='%s#%s'>%c%s</a></h3>";
+    size_t len = strlen(fmt) + strlen(multipage_url) +
+                 strlen(admonition_anchor) * 2 + strlen(admonition_type) * 2 +
+                 1;
     start = malloc(len);
-    snprintf(start, len, fmt, admonition_type, admonition_anchor, multipage_url, admonition_anchor, toupper(admonition_type[0]), admonition_type+1);
+    snprintf(start, len, fmt, admonition_type, admonition_anchor, multipage_url,
+             admonition_anchor, toupper(admonition_type[0]),
+             admonition_type + 1);
   }
 
   cmark_node_set_literal(new_node, start);
@@ -571,7 +575,8 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
 
   cmark_rewrite_syntax(document, mem, file_path, render_type, anchor_locations);
 
-  cmark_rewrite(document, mem, file_path, render_type, multipage_url, anchor_locations);
+  cmark_rewrite(document, mem, file_path, render_type, multipage_url,
+                anchor_locations);
 
   if (render_type != RENDER_TYPE_MAN) {
     cmark_rewrite_html(multipage_url, document);

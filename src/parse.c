@@ -124,7 +124,8 @@ enum parse_admonition_start_state {
   ADMONITION_START_ANCHOR,
 };
 
-int parse_admonition_start(const char *text, char *admonition_type, char *admonition_anchor) {
+int parse_admonition_start(const char *text, char *admonition_type,
+                           char *admonition_anchor) {
   if (text == NULL)
     return -1;
   int type_pos = 0;
