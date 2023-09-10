@@ -37,7 +37,7 @@
   '';
 
   np-build = writeScriptBin "np-build" ''
-    nix build .#nixpkgs-manual
+    nix build .#nixpkgs-manual-mmdoc
   '';
 
   np-watch = writeScriptBin "np-watch" ''
