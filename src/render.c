@@ -333,6 +333,9 @@ int replace_dd(cmark_node *node) {
 void replace_link(cmark_node *node, char *input_file_path,
                   AnchorLocationArray anchor_locations,
                   render_type render_type) {
+  if (render_type == RENDER_TYPE_SINGLE) {
+    return;
+  }
   const char *url = cmark_node_get_url(node);
   if (strlen(url) < 2)
     return;
