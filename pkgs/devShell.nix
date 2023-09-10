@@ -19,7 +19,7 @@
   nix,
 }: let
   doc-build = writeScriptBin "doc-build" ''
-    nix build .#mmdoc-docs
+    nix build .#mmdoc-docs -L
   '';
 
   doc-watch = writeScriptBin "doc-watch" ''
@@ -37,7 +37,7 @@
   '';
 
   np-build = writeScriptBin "np-build" ''
-    nix build .#nixpkgs-manual-mmdoc
+    nix build .#nixpkgs-manual-mmdoc -L
   '';
 
   np-watch = writeScriptBin "np-watch" ''
