@@ -23,6 +23,9 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         "    <meta charset='utf-8'>\n"
         "    <meta name='viewport' content='width=device-width, "
         "initial-scale=1.0'>\n"
+        "    <meta name='description' content='", page_file);
+  fputs(anchor_location->title, page_file);
+  fputs("'>\n"
         "    <link rel='icon' href='favicon.svg'>\n",
         page_file);
   html_css(page_file);
@@ -59,7 +62,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs(prev_anchor_location->title, page_file);
     fputs("'>&lt;</a>\n", page_file);
   } else
-    fputs("    <a class='chapter-previous'>&nbsp;</a>", page_file);
+    fputs("    <span>&nbsp;</span>", page_file);
 
   if (next_anchor_location != NULL) {
     fputs("    <a id='chapter-next-button' class='chapter-next' href='", page_file);
@@ -68,7 +71,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
   } else
-    fputs("    <a class='chapter-next'>&nbsp;</a>", page_file);
+    fputs("   <span>&nbsp;</span>", page_file);
 
   fputs("    </nav>\n", page_file);
   fputs("    </div>\n", page_file);
