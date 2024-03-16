@@ -14,8 +14,8 @@
   gdb,
   valgrind,
   cppcheck,
-  entr,
-  python3,
+  inotify-tools,
+  simple-http-server,
   nix,
 }: let
   doc-build = writeScriptBin "doc-build" ''
@@ -30,28 +30,19 @@
     }
     trap killbg EXIT
     pids=()
-    ${python3}/bin/python -m http.server --directory ./result &
+    ${simple-http-server}/bin/simple-http-server --index --nocache ./result &
     pids+=($!)
     trap exit SIGINT
-    while true; do find doc src test | ${entr}/bin/entr -cd ${doc-build}/bin/doc-build; done
+
+    while ${inotify-tools}/bin/inotifywait --event modify --event create --recursive doc src
+    do
+      ${doc-build}/bin/doc-build
+      killbg
+      ${simple-http-server}/bin/simple-http-server --index --nocache ./result
+      pids+=($!)
+    done
   '';
 
-  np-build = writeScriptBin "np-build" ''
-    nix build .#nixpkgs-manual-mmdoc -L
-  '';
-
-  np-watch = writeScriptBin "np-watch" ''
-    killbg() {
-      for p in "''${pids[@]}" ; do
-        kill "$p";
-      done
-    }
-    trap killbg EXIT
-    pids=()
-    ${python3}/bin/python -m http.server --directory ./result &
-    pids+=($!)
-    find doc src test | ${entr}/bin/entr -cd ${np-build}/bin/np-build
-  '';
 in
   mkShell {
     name = "mmdoc";
@@ -73,9 +64,6 @@ in
 
         doc-build
         doc-watch
-
-        np-build
-        np-watch
       ]
       ++ lib.optionals (!stdenv.isDarwin) [
         valgrind

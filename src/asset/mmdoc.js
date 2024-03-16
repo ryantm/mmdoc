@@ -92,10 +92,15 @@ window.addEventListener('load', (event) => {
 window.addEventListener('keydown', (event) => {
   e = event || window.event;
 
+  var button = null
   if (e.key === 'ArrowLeft') {
-    document.getElementById('chapter-previous-button').click()
+    button = document.getElementById('chapter-previous-button')
   }
   else if (e.key === 'ArrowRight') {
-    document.getElementById('chapter-next-button').click()
+    button = document.getElementById('chapter-next-button')
   }
+  if (button !== null) {
+    button.click()
+  }
+
 })
