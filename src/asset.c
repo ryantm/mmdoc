@@ -70,6 +70,12 @@ int asset_write_to_dir_fuse_basic_min_js(char *dir) {
                             ___src_asset_fuse_basic_min_js,
                             ___src_asset_fuse_basic_min_js_len);
 }
+int asset_write_to_file_fuse_basic_min_js(FILE *file) {
+  return asset_write_to_file(file,
+                            ___src_asset_fuse_basic_min_js,
+                            ___src_asset_fuse_basic_min_js_len);
+}
+
 
 extern unsigned char ___src_asset_a11y_light_css[];
 extern unsigned int ___src_asset_a11y_light_css_len;

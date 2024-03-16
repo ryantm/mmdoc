@@ -1,4 +1,5 @@
 //// Sidebar
+setTimeout(() => {
 
 function getSidebarClosed() {
   return (localStorage.getItem('sidebar-closed') ?? 'false') === 'true'
@@ -104,3 +105,4 @@ window.addEventListener('keydown', (event) => {
   }
 
 })
+},0);

@@ -29,8 +29,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         "    <link rel='icon' href='favicon.svg'>\n",
         page_file);
   html_css(page_file);
-  fputs("    <script src='fuse.basic.min.js'></script>\n"
-        "    <script src='search_index.js'></script>\n"
+  fputs(
         "    <title>",
         page_file);
   fputs(anchor_location->title, page_file);
@@ -98,6 +97,9 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("    <nav class='sidebar2'>\n", page_file);
   fputs("    </nav>\n", page_file);
   fputs("      </section>\n", page_file);
+
+  fputs("<script defer='true' src='search_index.js'></script>\n",
+        page_file);
 
   html_js(page_file);
   html_search_js(page_file);
