@@ -30,15 +30,17 @@
     }
     trap killbg EXIT
     pids=()
-    ${simple-http-server}/bin/simple-http-server --index --nocache ./result &
+    ${simple-http-server}/bin/simple-http-server --compress=js,css,html,svg --index --nocache ./result &
     pids+=($!)
     trap exit SIGINT
+
+    ${doc-build}/bin/doc-build
 
     while ${inotify-tools}/bin/inotifywait --event modify --event create --recursive doc src
     do
       ${doc-build}/bin/doc-build
       killbg
-      ${simple-http-server}/bin/simple-http-server --index --nocache ./result
+      ${simple-http-server}/bin/simple-http-server --compress=js,css,html,svg --index --nocache ./result &
       pids+=($!)
     done
   '';
