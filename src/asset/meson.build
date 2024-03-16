@@ -1,5 +1,4 @@
 assets = [
-  'epub.css',
   'fuse.basic.min.js',
   'highlight.pack.js',
   'mmdoc.css',

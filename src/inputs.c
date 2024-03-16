@@ -32,35 +32,12 @@ int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
   strcat(out_multi, multi);
   inputs->out_multi = out_multi;
 
-  char *man = "/man/man1";
-  char *out_man = malloc(strlen(inputs->out) + 1 + strlen(man) + 1);
-  strcpy(out_man, inputs->out);
-  strcat(out_man, man);
-  if (mkdir_p(out_man) != 0) {
-    printf("Error recursively making directory %s", out_man);
-    return -1;
-  }
-  inputs->out_man = out_man;
-
   char *single = "single";
   char *out_single = malloc(strlen(inputs->out) + 1 + strlen(single) + 1);
   strcpy(out_single, inputs->out);
   strcat(out_single, "/");
   strcat(out_single, single);
   inputs->out_single = out_single;
-
-  char *epub = "epub";
-  char *out_epub_dir = malloc(strlen(inputs->out) + 1 + strlen(epub) + 1);
-  sprintf(out_epub_dir, "%s/%s", inputs->out, epub);
-  inputs->out_epub_dir = out_epub_dir;
-
-  char *epub_ext = ".epub";
-  char *out_epub_file =
-      malloc(strlen(inputs->out) + 1 + strlen(inputs->project_name) +
-             strlen(epub_ext) + 1);
-  sprintf(out_epub_file, "%s/%s%s", inputs->out, inputs->project_name,
-          epub_ext);
-  inputs->out_epub_file = out_epub_file;
 
   return 0;
 }

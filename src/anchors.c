@@ -111,10 +111,6 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
         return -1;
       }
 
-      char *man_path =
-          malloc(strlen(inputs.out_man) + 1 + strlen(inputs.project_name) +
-                 strlen(al->file_path) + 2);
-
       int dash_count = 0;
       for (int k = 0; *(al->file_path + strlen(inputs.src) + k) != '\0'; k++) {
         char *c = al->file_path + strlen(inputs.src) + k;
@@ -123,48 +119,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
         if (c[0] == '-')
           dash_count++;
       }
-      char *man_page_name = malloc(strlen(inputs.project_name) +
-                                   strlen(al->file_path) + dash_count + 1);
-      man_page_name[0] = '\0';
-      strcpy(man_path, inputs.out_man);
-      strcat(man_path, "/");
-      strcat(man_path, inputs.project_name);
-      strcpy(man_page_name, inputs.project_name);
-      for (int k = 0; *(al->file_path + strlen(inputs.src) + k) != '\0'; k++) {
-        char *c = al->file_path + strlen(inputs.src) + k;
-        if (c[0] == '/') {
-          strcat(man_path, "-");
-          strcat(man_page_name, "\\-");
-        } else if (c[0] == '-') {
-          strncat(man_path, c, 1);
-          strcat(man_page_name, "\\-");
-        } else {
-          strncat(man_path, c, 1);
-          strncat(man_page_name, c, 1);
-        }
-      }
-      lastExt = strrchr(man_path, '.');
-      while (lastExt != NULL) {
-        *lastExt = '\0';
-        lastExt = strrchr(man_path, '.');
-      }
-      lastExt = strrchr(man_page_name, '.');
-      while (lastExt != NULL) {
-        *lastExt = '\0';
-        lastExt = strrchr(man_page_name, '.');
-      }
-      strcat(man_path, ".1");
-      al->man_output_file_path = man_path;
-      char *man_page_header =
-          malloc(19 + strlen(man_path) * 2 + strlen(inputs.project_name) + 1);
-      strcpy(man_page_header, ".TH \"");
-      strcat(man_page_header, man_page_name);
-      strcat(man_page_header, "\" \"1\" \"\" \"");
-      strcat(man_page_header, inputs.project_name);
-      strcat(man_page_header, "\" \"");
-      strcat(man_page_header, man_page_name);
-      strcat(man_page_header, "\"");
-      al->man_header = man_page_header;
+
       insert_anchor_location_array(anchor_locations, al);
       count++;
     }

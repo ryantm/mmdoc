@@ -14,8 +14,6 @@ typedef struct {
   char *multipage_output_directory_path;
   char *multipage_url;
   char *multipage_base_href;
-  char *man_output_file_path;
-  char *man_header;
   char *anchor;
   char *title;
 } AnchorLocation;

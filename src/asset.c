@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "a11y-dark.css.h"
 #include "a11y-light.css.h"
-#include "epub.css.h"
 #include "fuse.basic.min.js.h"
 #include "highlight.pack.js.h"
 #include "mmdoc.css.h"
@@ -84,13 +83,6 @@ extern unsigned int ___src_asset_a11y_dark_css_len;
 int asset_write_to_file_a11y_dark_css(FILE *file) {
   return asset_write_to_file(file, ___src_asset_a11y_dark_css,
                              ___src_asset_a11y_dark_css_len);
-}
-
-extern unsigned char ___src_asset_epub_css[];
-extern unsigned int ___src_asset_epub_css_len;
-int asset_write_to_dir_epub_css(char *dir) {
-  return asset_write_to_dir(dir, "epub.css", ___src_asset_epub_css,
-                            ___src_asset_epub_css_len);
 }
 
 extern unsigned char ___src_asset_mmdoc_css[];

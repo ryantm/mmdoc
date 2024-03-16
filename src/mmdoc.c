@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "anchors.h"
-#include "epub.h"
 #include "files.h"
 #include "inputs.h"
-#include "man.h"
 #include "multi.h"
 #include "refs.h"
 #include "render.h"
@@ -65,12 +63,6 @@ int main(int argc, char *argv[]) {
     return 1;
 
   if (0 != mmdoc_multi(inputs, toc_anchor_locations, anchor_locations))
-    return 1;
-
-  if (0 != mmdoc_man(inputs, toc_anchor_locations, anchor_locations))
-    return 1;
-
-  if (0 != mmdoc_epub(inputs, toc_anchor_locations))
     return 1;
 
   if (0 != copy_imgs(inputs))
