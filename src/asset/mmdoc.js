@@ -89,3 +89,13 @@ window.addEventListener('load', (event) => {
   codeElems.forEach(e => e.classList.add('hljs'))
 })
 
+window.addEventListener('keydown', (event) => {
+  e = event || window.event;
+
+  if (e.key === 'ArrowLeft') {
+    document.getElementById('chapter-previous-button').click()
+  }
+  else if (e.key === 'ArrowRight') {
+    document.getElementById('chapter-next-button').click()
+  }
+})

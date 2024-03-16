@@ -53,7 +53,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
       page_file);
 
   if (prev_anchor_location != NULL) {
-    fputs("    <a class='chapter-previous' href='", page_file);
+    fputs("    <a id='chapter-previous-button' class='chapter-previous' href='", page_file);
     fputs(prev_anchor_location->multipage_url, page_file);
     fputs("' title='", page_file);
     fputs(prev_anchor_location->title, page_file);
@@ -62,7 +62,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs("    <a class='chapter-previous'>&nbsp;</a>", page_file);
 
   if (next_anchor_location != NULL) {
-    fputs("    <a class='chapter-next' href='", page_file);
+    fputs("    <a id='chapter-next-button' class='chapter-next' href='", page_file);
     fputs(next_anchor_location->multipage_url, page_file);
     fputs("' title='", page_file);
     fputs(next_anchor_location->title, page_file);
