@@ -28,7 +28,7 @@
     --foreground: var(--dark_foreground);
     --light-gray: var(--dark_light-gray);
     --lightest-gray: var(--dark_lightest-gray);
-    --gray: var(--dark_gray);
+    --gray: var(--light_gray);
     --orange: var(--dark_orange);
     --yellow: var(--dark_yellow);
     --green: var(--dark_green);
@@ -42,7 +42,7 @@
   --foreground: var(--dark_foreground);
   --light-gray: var(--dark_light-gray);
   --lightest-gray: var(--dark_lightest-gray);
-  --gray: var(--dark_gray);
+  --gray: var(--light_gray);
   --orange: var(--dark_orange);
   --yellow: var(--dark_yellow);
   --green: var(--dark_green);
@@ -56,7 +56,7 @@
     --foreground: var(--light_foreground);
     --light-gray: var(--light_light-gray);
     --lightest-gray: var(--light_lightest-gray);
-    --gray: var(--light_gray);
+    --gray: var(--dark_gray);
     --orange: var(--light_orange);
     --yellow: var(--light_yellow);
     --green: var(--light_green);
@@ -70,7 +70,7 @@
   --foreground: var(--light_foreground);
   --light-gray: var(--light_light-gray);
   --lightest-gray: var(--light_lightest-gray);
-  --gray: var(--light_gray);
+  --gray: var(--dark_gray);
   --orange: var(--light_orange);
   --yellow: var(--light_yellow);
   --green: var(--light_green);
@@ -180,9 +180,9 @@ nav ul {
   list-style-type: none;
 }
 
-.nav-chapter-previous:hover, .nav-chapter-next:hover {
-  color: var(--gray);
-}
+/* .nav-chapter-previous:hover, .nav-chapter-next:hover { */
+/*   color: var(--gray); */
+/* } */
 
 .nav-chapter-previous {
   float: left;
@@ -218,7 +218,7 @@ nav ul {
     line-height: 50px;
     text-align: center;
     text-decoration: none;
-    color: var(--light-gray);
+    color: var(--foreground);
     margin: 0;
     font-family: monospace;
     font-size: 50px;

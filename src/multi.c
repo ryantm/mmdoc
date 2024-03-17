@@ -14,7 +14,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   FILE *page_file;
   page_file = fopen(page_path, "w");
   char *html_head_top = "<!doctype html>\n"
-                        "<html>\n"
+                        "<html lang='en'>\n"
                         "  <head>\n"
                         "    <base href='";
   fputs(html_head_top, page_file);
