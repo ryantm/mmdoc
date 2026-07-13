@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "../src/files.h"
+#include "../src/mkdir_p.h"
 #include "../src/render.h"
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,6 +200,70 @@ int test_title(char *example, char *expected_title) {
   return 0;
 }
 
+int file_matches_bytes(char *path, const unsigned char *expected,
+                       size_t expected_size) {
+  unsigned char got[16];
+  if (expected_size > sizeof(got))
+    return 0;
+
+  FILE *file = fopen(path, "rb");
+  if (file == NULL)
+    return 0;
+  size_t got_size = fread(got, 1, sizeof(got), file);
+  int close_result = fclose(file);
+  return close_result == 0 && got_size == expected_size &&
+         memcmp(got, expected, expected_size) == 0;
+}
+
+int test_copy_nested_image() {
+  char root[] = "/tmp/mmdoc-image-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char src_dir[PATH_MAX];
+  char source_dir[PATH_MAX];
+  char source_path[PATH_MAX];
+  char multi_dir[PATH_MAX];
+  char multi_path[PATH_MAX];
+  char single_dir[PATH_MAX];
+  char single_path[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(source_dir, sizeof(source_dir), "%s/assets/icons", src_dir);
+  snprintf(source_path, sizeof(source_path), "%s/pixel.png", source_dir);
+  snprintf(multi_dir, sizeof(multi_dir), "%s/out/multi", root);
+  snprintf(multi_path, sizeof(multi_path), "%s/assets/icons/pixel.png",
+           multi_dir);
+  snprintf(single_dir, sizeof(single_dir), "%s/out/single", root);
+  snprintf(single_path, sizeof(single_path), "%s/assets/icons/pixel.png",
+           single_dir);
+
+  if (mkdir_p(source_dir) != 0)
+    return 1;
+
+  const unsigned char image[] = {0, 1, 2, 0xff};
+  FILE *source = fopen(source_path, "wb");
+  if (source == NULL)
+    return 1;
+  int write_failed = fwrite(image, 1, sizeof(image), source) != sizeof(image);
+  if (fclose(source) != 0 || write_failed)
+    return 1;
+
+  Inputs inputs = {
+      .src = src_dir,
+      .out_multi = multi_dir,
+      .out_single = single_dir,
+  };
+  if (copy_imgs(inputs) != 0)
+    return 1;
+
+  if (!file_matches_bytes(multi_path, image, sizeof(image)) ||
+      !file_matches_bytes(single_path, image, sizeof(image)))
+    return 1;
+
+  printf("nested image copy test passed\n");
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
@@ -219,6 +286,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_render("e008");
   num_tests++;
   num_failed += test_render("e009");
+  num_tests++;
+  num_failed += test_copy_nested_image();
   num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);
