@@ -71,6 +71,9 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       free_array(&anchors);
       return -1;
     }
+    char *title = NULL;
+    if (anchors.used > 0)
+      title = mmdoc_render_get_title_from_file(md_files->array[i]);
     for (int j = 0; j < anchors.used; j++) {
       AnchorLocation *al = malloc(sizeof *al);
       al->anchor = anchors.array[j];
@@ -105,7 +108,8 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       for (int k = 0; k < directory_depth; k++)
         strcat(al->multipage_base_href, "../");
 
-      al->title = mmdoc_render_get_title_from_file(al->file_path);
+      al->title = malloc(strlen(title) + 1);
+      strcpy(al->title, title);
 
       if (strcmp(al->anchor, index_anchor) == 0) {
         char *index_html = "index.html";
@@ -136,6 +140,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       insert_anchor_location_array(anchor_locations, al);
       count++;
     }
+    free(title);
   }
   return 0;
 }
