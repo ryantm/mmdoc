@@ -3,7 +3,7 @@
   stdenv,
   cmark-gfm,
   xxd,
-  fastJson,
+  libfastjson,
   libzip,
   self,
   ninja,
@@ -19,9 +19,9 @@ with lib;
 
     nativeBuildInputs = [ninja meson pkg-config xxd];
 
-    buildInputs = [cmark-gfm fastJson libzip];
+    buildInputs = [cmark-gfm libfastjson libzip];
 
-    doCheck = stdenv.isx86_64;
+    doCheck = true;
 
     meta = {
       description = "Minimal Markdown Documentation";

@@ -10,8 +10,4 @@ in rec {
   mmdoc-docs = pkgs.callPackage ./mmdoc-docs.nix {inherit mmdoc;};
   devShell = pkgs.callPackage ./devShell.nix {};
   fmt = pkgs.callPackage ./fmt.nix {};
-  nixpkgs-manual-mmdoc = pkgs.callPackage "${nixpkgs}/pkgs/tools/nix/nixpkgs-manual-mmdoc" {
-
-    inherit mmdoc;
-  };
 }
