@@ -4,7 +4,7 @@
   writeScriptBin,
   mkShell,
   cmark-gfm,
-  fastJson,
+  libfastjson,
   libzip,
   pkg-config,
   meson,
@@ -50,7 +50,7 @@ in
     name = "mmdoc";
     buildInputs = [
       cmark-gfm
-      fastJson
+      libfastjson
       libzip.dev
     ];
 
@@ -65,9 +65,9 @@ in
         cppcheck
 
         doc-build
-        doc-watch
       ]
       ++ lib.optionals (!stdenv.isDarwin) [
+        doc-watch
         valgrind
       ];
   }

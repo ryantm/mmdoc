@@ -59,9 +59,9 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   fputs("    <nav class='nav-top'>\n", index_file);
   fputs("      <label for='sidebar-checkbox' class='sidebar-toggle'>≡</label>",
         index_file);
-  fputs(
-      "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
-      index_file);
+  fputs("    <button type='button' class='theme-toggle "
+        "emoji'>🌘&#xFE0E;</button>",
+        index_file);
   fputs("    </nav>\n"
         "    </div>\n",
         index_file);
