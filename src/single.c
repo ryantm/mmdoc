@@ -67,8 +67,9 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
         index_file);
   fputs("    <nav class='sidebar'>\n", index_file);
   AnchorLocation al;
-  mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
-                    toc_anchor_locations, "/", NULL);
+  int has_code_block =
+      mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
+                        toc_anchor_locations, "/", NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section id='main'>\n", index_file);
   fputs("      <main>\n", index_file);
@@ -76,9 +77,9 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
-    mmdoc_render_part(toc_anchor_locations.array[i].file_path, index_file,
-                      RENDER_TYPE_SINGLE, &toc_anchor_locations.array[i],
-                      empty_anchor_locations, "/", NULL);
+    has_code_block |= mmdoc_render_part(
+        toc_anchor_locations.array[i].file_path, index_file, RENDER_TYPE_SINGLE,
+        &toc_anchor_locations.array[i], empty_anchor_locations, "/", NULL);
     free_anchor_location_array(&empty_anchor_locations);
   }
 
@@ -88,7 +89,8 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
         index_file);
 
   html_js(index_file);
-  html_highlight_js(index_file);
+  if (has_code_block)
+    html_highlight_js(index_file);
 
   fputs("  </body>\n"
         "</html>\n",

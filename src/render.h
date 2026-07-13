@@ -10,9 +10,9 @@ typedef enum {
   RENDER_TYPE_EPUB
 } render_type;
 
-void mmdoc_render_part(char *file_path, FILE *output_file,
-                       render_type render_type, AnchorLocation *anchor_location,
-                       AnchorLocationArray anchor_locations,
-                       char *multipage_url, FILE *search_index_path);
+int mmdoc_render_part(char *file_path, FILE *output_file,
+                      render_type render_type, AnchorLocation *anchor_location,
+                      AnchorLocationArray anchor_locations, char *multipage_url,
+                      FILE *search_index_path);
 
 char *mmdoc_render_get_title_from_file(char *file_path);
