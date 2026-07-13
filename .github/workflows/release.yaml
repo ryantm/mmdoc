@@ -16,7 +16,7 @@ jobs:
           git fetch -f --tags
           git tag -n999 "${GITHUB_REF#refs/tags/}" > ${{ github.workflow }}-CHANGELOG.txt
       - name: release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ github.workflow }}-CHANGELOG.txt
         env:
