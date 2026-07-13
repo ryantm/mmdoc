@@ -23,15 +23,14 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         "    <meta charset='utf-8'>\n"
         "    <meta name='viewport' content='width=device-width, "
         "initial-scale=1.0'>\n"
-        "    <meta name='description' content='", page_file);
+        "    <meta name='description' content='",
+        page_file);
   fputs(anchor_location->title, page_file);
   fputs("'>\n"
         "    <link rel='icon' href='favicon.svg'>\n",
         page_file);
   html_css(page_file);
-  fputs(
-        "    <title>",
-        page_file);
+  fputs("    <title>", page_file);
   fputs(anchor_location->title, page_file);
   fputs(" | ", page_file);
   fputs(inputs.project_name, page_file);
@@ -50,12 +49,13 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("    <button type='button' class='search-toggle "
         "emoji'>🔍&#xFE0E;</button>",
         page_file);
-  fputs(
-      "    <button type='button' class='theme-toggle emoji'>🌘&#xFE0E;</button>",
-      page_file);
+  fputs("    <button type='button' class='theme-toggle "
+        "emoji'>🌘&#xFE0E;</button>",
+        page_file);
 
   if (prev_anchor_location != NULL) {
-    fputs("    <a id='chapter-previous-button' class='chapter-previous' href='", page_file);
+    fputs("    <a id='chapter-previous-button' class='chapter-previous' href='",
+          page_file);
     fputs(prev_anchor_location->multipage_url, page_file);
     fputs("' title='", page_file);
     fputs(prev_anchor_location->title, page_file);
@@ -64,7 +64,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs("    <span>&nbsp;</span>", page_file);
 
   if (next_anchor_location != NULL) {
-    fputs("    <a id='chapter-next-button' class='chapter-next' href='", page_file);
+    fputs("    <a id='chapter-next-button' class='chapter-next' href='",
+          page_file);
     fputs(next_anchor_location->multipage_url, page_file);
     fputs("' title='", page_file);
     fputs(next_anchor_location->title, page_file);
@@ -98,8 +99,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("    </nav>\n", page_file);
   fputs("      </section>\n", page_file);
 
-  fputs("<script defer='true' src='search_index.js'></script>\n",
-        page_file);
+  fputs("<script defer='true' src='search_index.js'></script>\n", page_file);
 
   html_js(page_file);
   html_search_js(page_file);
