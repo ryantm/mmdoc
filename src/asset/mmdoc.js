@@ -1,6 +1,4 @@
 //// Sidebar
-setTimeout(() => {
-
 function getSidebarClosed() {
   return (localStorage.getItem('sidebar-closed') ?? 'false') === 'true'
 }
@@ -23,7 +21,7 @@ function setupSaveSidebar() {
   el.addEventListener('change', saveSidebar)
 }
 
-window.addEventListener('DOMContentLoaded', setupSaveSidebar)
+setupSaveSidebar()
 
 if (getSidebarClosed())
   showSidebar()
@@ -73,7 +71,7 @@ function setupToggleTheme() {
   })
 }
 
-window.addEventListener('DOMContentLoaded', setupToggleTheme)
+setupToggleTheme()
 
 if (getSelectedTheme() === 'dark')
   setDarkTheme();
@@ -105,4 +103,3 @@ window.addEventListener('keydown', (event) => {
   }
 
 })
-},0);
