@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "../src/anchors.h"
 #include "../src/files.h"
 #include "../src/mkdir_p.h"
+#include "../src/refs.h"
 #include "../src/render.h"
 #include <errno.h>
 #include <limits.h>
@@ -291,6 +293,53 @@ int test_zero_capacity_arrays() {
   return 0;
 }
 
+int write_overlong_id(char *path, const char *prefix, const char *suffix) {
+  int fd = mkstemps(path, 5);
+  if (fd == -1)
+    return 1;
+
+  FILE *file = fdopen(fd, "w");
+  if (file == NULL) {
+    close(fd);
+    return 1;
+  }
+
+  int failed = fputs(prefix, file) == EOF;
+  for (int i = 0; i < 1024 && !failed; i++)
+    failed = fputc('a', file) == EOF;
+  if (!failed)
+    failed = fputs(suffix, file) == EOF;
+  return fclose(file) != 0 || failed;
+}
+
+int test_reject_overlong_ids() {
+  char ref_path[] = "/tmp/mmdoc-ref-XXXXXX.html";
+  if (write_overlong_id(ref_path, "[page](#", ")") != 0)
+    return 1;
+
+  Array refs;
+  int refs_result = mmdoc_refs(&refs, ref_path);
+  unlink(ref_path);
+  free_array(&refs);
+
+  char anchor_path[] = "/tmp/mmdoc-anchor-XXXXXX.html";
+  if (write_overlong_id(anchor_path, "{#", "}") != 0)
+    return 1;
+
+  Array anchors;
+  init_array(&anchors, 1);
+  int anchors_result = mmdoc_anchors(&anchors, anchor_path);
+  unlink(anchor_path);
+  free_array(&anchors);
+
+  if (refs_result == 0 || anchors_result == 0) {
+    printf("overlong anchor rejection test failed\n");
+    return 1;
+  }
+  printf("overlong anchors rejected\n");
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
@@ -317,6 +366,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_copy_nested_image();
   num_tests++;
   num_failed += test_zero_capacity_arrays();
+  num_tests++;
+  num_failed += test_reject_overlong_ids();
   num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);

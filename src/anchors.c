@@ -1,19 +1,22 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "inputs.h"
+#include "anchors.h"
 #include "mkdir_p.h"
 #include "render.h"
-#include "types.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 enum ref_parse_state { NONE, L, REF };
 
-void mmdoc_anchors(Array *md_anchors, char *path) {
+int mmdoc_anchors(Array *md_anchors, char *path) {
   char ref[1024];
-  int refpos = 0;
-  FILE *file;
-  file = fopen(path, "r");
+  size_t refpos = 0;
+  FILE *file = fopen(path, "r");
+  if (file == NULL) {
+    fprintf(stderr, "Error opening %s: %s\n", path, strerror(errno));
+    return 1;
+  }
   int c;
   enum ref_parse_state state = NONE;
 
@@ -33,6 +36,12 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
     }
     if (state == REF && (c == '\n' || c == '\r')) {
     } else if (state == REF && c != '}') {
+      if (refpos >= sizeof(ref) - 1) {
+        fprintf(stderr, "Anchor in %s exceeds %zu bytes.\n", path,
+                sizeof(ref) - 1);
+        fclose(file);
+        return 1;
+      }
       ref[refpos] = c;
       refpos += 1;
       continue;
@@ -45,6 +54,7 @@ void mmdoc_anchors(Array *md_anchors, char *path) {
     continue;
   }
   fclose(file);
+  return 0;
 }
 
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
@@ -57,7 +67,10 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
   for (int i = 0; i < md_files->used; i++) {
     Array anchors;
     init_array(&anchors, 500);
-    mmdoc_anchors(&anchors, md_files->array[i]);
+    if (mmdoc_anchors(&anchors, md_files->array[i]) != 0) {
+      free_array(&anchors);
+      return -1;
+    }
     for (int j = 0; j < anchors.used; j++) {
       AnchorLocation *al = malloc(sizeof *al);
       al->anchor = anchors.array[j];
