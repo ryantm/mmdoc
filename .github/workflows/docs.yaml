@@ -16,7 +16,7 @@ jobs:
       - uses: cachix/install-nix-action@v24
       - run: nix run .#mmdoc -- mmdoc doc out
       - if: success()
-        uses: crazy-max/ghaction-github-pages@v4
+        uses: crazy-max/ghaction-github-pages@v5
         with:
           target_branch: gh-pages
           build_dir: out/multi
