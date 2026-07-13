@@ -264,6 +264,33 @@ int test_copy_nested_image() {
   return 0;
 }
 
+int test_zero_capacity_arrays() {
+  Array array;
+  init_array(&array, 0);
+  insert_array(&array, "value");
+  if (array.used != 1 || array.size != 1 ||
+      strcmp(array.array[0], "value") != 0) {
+    printf("zero-capacity string array test failed\n");
+    free_array(&array);
+    return 1;
+  }
+  free_array(&array);
+
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 0);
+  AnchorLocation anchor_location = {.anchor = "#anchor"};
+  insert_anchor_location_array(&anchor_locations, &anchor_location);
+  if (anchor_locations.used != 1 || anchor_locations.size != 1 ||
+      strcmp(anchor_locations.array[0].anchor, "#anchor") != 0) {
+    printf("zero-capacity anchor-location array test failed\n");
+    free_anchor_location_array(&anchor_locations);
+    return 1;
+  }
+  free_anchor_location_array(&anchor_locations);
+  printf("zero-capacity array tests passed\n");
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
@@ -288,6 +315,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_render("e009");
   num_tests++;
   num_failed += test_copy_nested_image();
+  num_tests++;
+  num_failed += test_zero_capacity_arrays();
   num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);

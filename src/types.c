@@ -12,7 +12,7 @@ void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element) {
   if (a->used == a->size) {
-    a->size *= 2;
+    a->size = a->size == 0 ? 1 : a->size * 2;
     a->array = realloc(a->array, a->size * sizeof(*a->array));
   }
   a->array[a->used] = *element;
@@ -33,7 +33,7 @@ void init_array(Array *a, size_t initialSize) {
 
 void insert_array(Array *a, char *element) {
   if (a->used == a->size) {
-    a->size *= 2;
+    a->size = a->size == 0 ? 1 : a->size * 2;
     a->array = realloc(a->array, a->size * sizeof *a->array);
   }
   a->array[a->used] = malloc(strlen(element) + 1);
