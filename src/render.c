@@ -386,6 +386,7 @@ void insert_search_index(FILE *search_index_path, const char *text,
   fjson_object_object_add(obj, "text", obj_text);
   fputs(fjson_object_to_json_string(obj), search_index_path);
   fputs("\n,", search_index_path);
+  fjson_object_put(obj);
 }
 
 /**
