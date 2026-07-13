@@ -347,6 +347,10 @@ int main(int argc, char *argv[]) {
   num_tests++;
   num_failed += test_title("e001", "Header");
   num_tests++;
+  num_failed += test_title("e010", "Formatted title");
+  num_tests++;
+  num_failed += test_title("e011", "");
+  num_tests++;
   num_failed += test_render("e002");
   num_tests++;
   num_failed += test_render("e003");
