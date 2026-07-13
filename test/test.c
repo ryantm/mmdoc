@@ -156,6 +156,31 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   return test_files_match(example, expected_path, got_file_path);
 }
 
+int test_code_block_detection(char *example, int expected) {
+  char input_path[PATH_MAX];
+  snprintf(input_path, sizeof(input_path), "%s%s/input.md", TEST_EXAMPLE_DIR,
+           example);
+  FILE *output = tmpfile();
+  if (output == NULL)
+    return 1;
+
+  AnchorLocationArray empty_anchor_locations;
+  AnchorLocation anchor_location = {.title = "page title"};
+  init_anchor_location_array(&empty_anchor_locations, 0);
+  int got =
+      mmdoc_render_part(input_path, output, RENDER_TYPE_SINGLE,
+                        &anchor_location, empty_anchor_locations, "/", NULL);
+  free_anchor_location_array(&empty_anchor_locations);
+  fclose(output);
+
+  if (got != expected) {
+    printf("%s code block detection failed\n", example);
+    return 1;
+  }
+  printf("%s code block detection passed\n", example);
+  return 0;
+}
+
 int test_e007() {
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 1);
@@ -344,6 +369,10 @@ int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
   num_failed += test_render("e001");
+  num_tests++;
+  num_failed += test_code_block_detection("e001", 0);
+  num_tests++;
+  num_failed += test_code_block_detection("e012", 1);
   num_tests++;
   num_failed += test_title("e001", "Header");
   num_tests++;

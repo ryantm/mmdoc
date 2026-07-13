@@ -82,17 +82,18 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("    </nav>\n", page_file);
 
   fputs("    <nav class='sidebar'>\n", page_file);
-  mmdoc_render_part(inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE,
-                    anchor_location, anchor_locations,
-                    anchor_location->multipage_url, NULL);
+  int has_code_block = mmdoc_render_part(
+      inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
+      anchor_locations, anchor_location->multipage_url, NULL);
   fputs("    </nav>\n", page_file);
   fputs("      <section id='main'>\n", page_file);
   fputs("      <main>\n", page_file);
 
   if (anchor_location->file_path != NULL)
-    mmdoc_render_part(anchor_location->file_path, page_file,
-                      RENDER_TYPE_MULTIPAGE, anchor_location, anchor_locations,
-                      anchor_location->multipage_url, search_index_file);
+    has_code_block |= mmdoc_render_part(
+        anchor_location->file_path, page_file, RENDER_TYPE_MULTIPAGE,
+        anchor_location, anchor_locations, anchor_location->multipage_url,
+        search_index_file);
 
   fputs("      </main>\n", page_file);
   fputs("    <nav class='sidebar2'>\n", page_file);
@@ -103,7 +104,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 
   html_js(page_file);
   html_search_js(page_file);
-  html_highlight_js(page_file);
+  if (has_code_block)
+    html_highlight_js(page_file);
 
   char *html_foot = "  </div>\n"
                     "  </body>\n"

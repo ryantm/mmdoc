@@ -392,10 +392,11 @@ void insert_search_index(FILE *search_index_path, const char *text,
  * Moves custom syntax tokens from AST text nodes into custom data structures
  * attached to the nodes.
  */
-void cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
-                          char *input_file_path, render_type render_type,
-                          AnchorLocationArray anchor_locations) {
+int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
+                         char *input_file_path, render_type render_type,
+                         AnchorLocationArray anchor_locations) {
   cmark_iter *iter = cmark_iter_new(document);
+  int has_code_block = 0;
 
   cmark_event_type event;
   cmark_node *node;
@@ -407,6 +408,9 @@ void cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
     case CMARK_EVENT_DONE:
       break;
     case CMARK_EVENT_ENTER:
+      node = cmark_iter_get_node(iter);
+      if (cmark_node_get_type(node) == CMARK_NODE_CODE_BLOCK)
+        has_code_block = 1;
       break;
     case CMARK_EVENT_EXIT:
       node = cmark_iter_get_node(iter);
@@ -417,6 +421,7 @@ void cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
       break;
   }
   cmark_iter_free(iter);
+  return has_code_block;
 }
 
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
@@ -563,10 +568,10 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
   return cmark_parser_finish(parser);
 }
 
-void mmdoc_render_part(char *file_path, FILE *output_file,
-                       render_type render_type, AnchorLocation *anchor_location,
-                       AnchorLocationArray anchor_locations,
-                       char *multipage_url, FILE *search_index_path) {
+int mmdoc_render_part(char *file_path, FILE *output_file,
+                      render_type render_type, AnchorLocation *anchor_location,
+                      AnchorLocationArray anchor_locations, char *multipage_url,
+                      FILE *search_index_path) {
 
   cmark_mem *mem = cmark_get_default_mem_allocator();
   cmark_parser *parser =
@@ -576,7 +581,8 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   /* printf("BEFORE\n"); */
   /* render_debug_cmark_node(document); */
 
-  cmark_rewrite_syntax(document, mem, file_path, render_type, anchor_locations);
+  int has_code_block = cmark_rewrite_syntax(document, mem, file_path,
+                                            render_type, anchor_locations);
 
   cmark_rewrite(document, mem, file_path, render_type, multipage_url,
                 anchor_locations);
@@ -610,6 +616,7 @@ void mmdoc_render_part(char *file_path, FILE *output_file,
   }
   cmark_node_free(document);
   cmark_parser_free(parser);
+  return has_code_block;
 }
 
 static char *mmdoc_render_get_heading_title(cmark_node *heading) {
