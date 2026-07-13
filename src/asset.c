@@ -16,12 +16,9 @@ extern int errno;
 
 static int asset_write_to_file(FILE *file, unsigned char *asset_array,
                                unsigned int asset_array_length) {
-  for (int i = 0; i < asset_array_length; i++) {
-    int ret = fputc(asset_array[i], file);
-    if (ret == EOF) {
-      printf("Failed to write to file: %s\n", strerror(errno));
-      return -1;
-    }
+  if (fwrite(asset_array, 1, asset_array_length, file) != asset_array_length) {
+    printf("Failed to write to file: %s\n", strerror(errno));
+    return -1;
   }
   return 0;
 }
