@@ -378,6 +378,13 @@ nav.sidebar a:hover {
   background: var(--accent-soft);
 }
 
+nav.sidebar a[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+  font-weight: 700;
+}
+
 .nav-chapter-previous {
   float: left;
 }
