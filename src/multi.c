@@ -75,19 +75,19 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
 
   fputs("    </nav>\n", page_file);
   fputs("    </div>\n", page_file);
-  fputs("    <nav class='nav-search' style='display:none;'>\n", page_file);
-  fputs("        <input type='search' id='search' placeholder='Search'>\n"
-        "        <div id='search-results'></div>\n",
-        page_file);
-  fputs("    </nav>\n", page_file);
-
   fputs("    <nav class='sidebar'>\n", page_file);
   int has_code_block = mmdoc_render_part(
       inputs.toc_path, page_file, RENDER_TYPE_MULTIPAGE, anchor_location,
       anchor_locations, anchor_location->multipage_url, NULL);
   fputs("    </nav>\n", page_file);
-  fputs("      <section id='main'>\n", page_file);
-  fputs("      <main>\n", page_file);
+  fputs("    <section id='main'>\n", page_file);
+  fputs("      <nav class='nav-search' style='display:none;'>\n", page_file);
+  fputs("        <input type='search' id='search' placeholder='Search'>\n"
+        "        <div id='search-results'></div>\n",
+        page_file);
+  fputs("      </nav>\n", page_file);
+  fputs("      <div class='main-scroll'>\n", page_file);
+  fputs("        <main>\n", page_file);
 
   if (anchor_location->file_path != NULL)
     has_code_block |= mmdoc_render_part(
@@ -95,10 +95,9 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         anchor_location, anchor_locations, anchor_location->multipage_url,
         search_index_file);
 
-  fputs("      </main>\n", page_file);
-  fputs("    <nav class='sidebar2'>\n", page_file);
-  fputs("    </nav>\n", page_file);
-  fputs("      </section>\n", page_file);
+  fputs("        </main>\n", page_file);
+  fputs("      </div>\n", page_file);
+  fputs("    </section>\n", page_file);
 
   fputs("<script defer='true' src='search_index.js'></script>\n", page_file);
 
