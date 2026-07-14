@@ -283,9 +283,8 @@ input:checked + .body > nav.sidebar {
 .nav-search {
   z-index: 2;
   flex: 0 0 auto;
-  width: min(100%, var(--content-width));
-  margin: 0 auto;
-  padding: 12px 2rem;
+  width: 100%;
+  padding: 12px max(2rem, calc((100% - var(--content-width)) / 2 + 2rem));
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -317,7 +316,6 @@ input:checked + .body > nav.sidebar {
 #search-results ol {
   margin: 0;
   padding: 0.8rem 0 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
 }
 
 nav.sidebar {
