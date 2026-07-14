@@ -72,7 +72,8 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
                         toc_anchor_locations, "/", NULL);
   fputs("    </nav>\n", index_file);
   fputs("    <section id='main'>\n", index_file);
-  fputs("      <main>\n", index_file);
+  fputs("      <div class='main-scroll'>\n", index_file);
+  fputs("        <main>\n", index_file);
 
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocationArray empty_anchor_locations;
@@ -84,6 +85,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   }
 
   fputs("        </main>\n"
+        "      </div>\n"
         "      </section>\n"
         "    </div>\n",
         index_file);
