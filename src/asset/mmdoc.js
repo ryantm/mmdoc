@@ -21,7 +21,22 @@ function setupSaveSidebar() {
   el.addEventListener('change', saveSidebar)
 }
 
+function closeSidebarOnMobileNavigation() {
+  if (!window.matchMedia('(max-width: 700px)').matches)
+    return
+
+  hideSidebar()
+  saveSidebar()
+}
+
+function setupCloseSidebarOnMobileNavigation() {
+  Array.from(document.querySelectorAll('nav.sidebar a[href]')).forEach(link => {
+    link.addEventListener('click', closeSidebarOnMobileNavigation)
+  })
+}
+
 setupSaveSidebar()
+setupCloseSidebarOnMobileNavigation()
 
 if (getSidebarClosed())
   showSidebar()
