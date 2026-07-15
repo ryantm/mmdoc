@@ -129,6 +129,7 @@ body {
 
 a {
   color: var(--accent);
+  text-decoration-thickness: 0.08em;
   text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
   text-underline-offset: 0.18em;
 }
@@ -172,13 +173,21 @@ input:checked + .body > nav.sidebar {
 }
 
 .nav-top {
-  display: grid;
-  grid-template-columns: repeat(5, 42px);
+  display: flex;
   gap: 5px;
   align-items: center;
   height: 100%;
   padding: 7px 12px;
   overflow: hidden;
+}
+
+.nav-top > :nth-child(4) {
+  margin-left: auto;
+}
+
+.nav-top > span {
+  width: 42px;
+  height: 42px;
 }
 
 .nav-top button, .nav-top a, .nav-top label {
@@ -223,7 +232,7 @@ input:checked + .body > nav.sidebar {
 }
 
 .sidebar-toggle::before {
-  top: 22px;
+  top: 20px;
   left: 12px;
   width: 18px;
   height: 2px;
@@ -233,7 +242,7 @@ input:checked + .body > nav.sidebar {
 }
 
 .search-toggle::before {
-  top: 13px;
+  top: 11px;
   left: 12px;
   width: 14px;
   height: 14px;
@@ -242,7 +251,7 @@ input:checked + .body > nav.sidebar {
 }
 
 .search-toggle::after {
-  top: 26px;
+  top: 24px;
   left: 23px;
   width: 7px;
   height: 2px;
@@ -253,8 +262,8 @@ input:checked + .body > nav.sidebar {
 }
 
 .theme-toggle::before {
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   width: 18px;
   height: 18px;
   border: 2px solid currentColor;
@@ -267,7 +276,7 @@ input:checked + .body > nav.sidebar {
   left: 50%;
   width: 12px;
   height: 12px;
-  margin: -6px 0 0 -6px;
+  margin: -7px 0 0 -7px;
   border: solid currentColor;
   border-width: 0 2px 2px 0;
 }
@@ -323,6 +332,7 @@ nav.sidebar {
   width: clamp(15rem, 23vw, 19rem);
   padding: 1.6rem 1rem 3rem;
   overflow: auto;
+  overscroll-behavior: contain;
   border-right: 1px solid var(--border);
   background: var(--surface-muted);
   scrollbar-width: thin;
@@ -419,6 +429,7 @@ section#main {
   min-height: 0;
   flex: 1 1 auto;
   overflow: auto;
+  overscroll-behavior: contain;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -435,6 +446,7 @@ main :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 720;
   letter-spacing: -0.018em;
   scroll-margin-top: 1.5rem;
+  text-wrap: balance;
 }
 
 main :is(h1, h2, h3, h4, h5, h6) a {
@@ -475,6 +487,10 @@ main h4 {
 main :is(p, ul, ol, dl, pre, table, blockquote) {
   margin-top: 1.15rem;
   margin-bottom: 0;
+}
+
+main p {
+  text-wrap: pretty;
 }
 
 main :is(ul, ol) {
@@ -640,9 +656,12 @@ code.language-console .hljs-meta {
   }
 
   .nav-top {
-    grid-template-columns: repeat(5, 42px);
     justify-content: space-between;
     padding: 6px 8px;
+  }
+
+  .nav-top > :nth-child(4) {
+    margin-left: 0;
   }
 
   input:checked + .body > nav.sidebar {
