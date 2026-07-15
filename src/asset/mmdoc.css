@@ -334,7 +334,6 @@ nav.sidebar > :first-child {
 }
 
 nav.sidebar h1, nav.sidebar h2 {
-  margin: 0 0 1rem;
   padding: 0 0.65rem;
   color: var(--foreground);
   font-size: 0.78rem;
@@ -342,6 +341,22 @@ nav.sidebar h1, nav.sidebar h2 {
   letter-spacing: 0.09em;
   line-height: 1.4;
   text-transform: uppercase;
+}
+
+nav.sidebar h1 {
+  margin: 0 0 0.2rem;
+}
+
+nav.sidebar h1 + p {
+  margin: 0 0 1rem;
+  padding: 0 0.65rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+nav.sidebar h2 {
+  margin: 1.4rem 0 0.35rem;
 }
 
 nav ul {
