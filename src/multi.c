@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "multi.h"
 #include "asset.h"
 #include "html.h"
-#include "inputs.h"
 #include "render.h"
 #include <stdlib.h>
 #include <string.h>
@@ -57,6 +57,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs("    <a id='chapter-previous-button' class='chapter-previous' href='",
           page_file);
     fputs(prev_anchor_location->multipage_url, page_file);
+    fputs(prev_anchor_location->anchor, page_file);
     fputs("' title='", page_file);
     fputs(prev_anchor_location->title, page_file);
     fputs("'>&lt;</a>\n", page_file);
@@ -67,6 +68,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     fputs("    <a id='chapter-next-button' class='chapter-next' href='",
           page_file);
     fputs(next_anchor_location->multipage_url, page_file);
+    fputs(next_anchor_location->anchor, page_file);
     fputs("' title='", page_file);
     fputs(next_anchor_location->title, page_file);
     fputs("'>&gt;</a>\n", page_file);
