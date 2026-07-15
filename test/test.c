@@ -2,6 +2,7 @@
 #include "../src/anchors.h"
 #include "../src/files.h"
 #include "../src/mkdir_p.h"
+#include "../src/multi.h"
 #include "../src/refs.h"
 #include "../src/render.h"
 #include <errno.h>
@@ -318,6 +319,93 @@ int test_zero_capacity_arrays() {
   return 0;
 }
 
+int file_contains(char *path, const char *expected) {
+  FILE *file = fopen(path, "r");
+  if (file == NULL)
+    return 0;
+
+  char *line = NULL;
+  size_t line_size = 0;
+  int found = 0;
+  while (getline(&line, &line_size, file) != -1) {
+    if (strstr(line, expected) != NULL) {
+      found = 1;
+      break;
+    }
+  }
+  free(line);
+  fclose(file);
+  return found;
+}
+
+int test_multipage_navigation_anchor() {
+  char root[] = "/tmp/mmdoc-navigation-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char page_path[PATH_MAX];
+  char toc_path[PATH_MAX];
+  snprintf(page_path, sizeof(page_path), "%s/index.html", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+
+  FILE *toc_file = fopen(toc_path, "w");
+  if (toc_file == NULL)
+    return 1;
+  if (fclose(toc_file) != 0)
+    return 1;
+
+  FILE *search_index_file = tmpfile();
+  if (search_index_file == NULL)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Nixpkgs",
+      .toc_path = toc_path,
+  };
+  AnchorLocation current = {
+      .file_path = NULL,
+      .multipage_output_file_path = page_path,
+      .multipage_base_href = "",
+      .multipage_url = "./",
+      .anchor = "#preface",
+      .title = "Preface",
+  };
+  AnchorLocation previous = {
+      .multipage_url = "./",
+      .anchor = "#preface",
+      .title = "Preface",
+  };
+  AnchorLocation next = {
+      .multipage_url = "preface/",
+      .anchor = "#overview-of-nixpkgs",
+      .title = "Overview of Nixpkgs",
+  };
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 0);
+
+  int render_result = mmdoc_multi_page(
+      inputs, anchor_locations, search_index_file, &current, &previous, &next);
+  int found_previous = file_contains(
+      page_path, "id='chapter-previous-button' class='chapter-previous' "
+                 "href='./#preface'");
+  int found_next =
+      file_contains(page_path, "id='chapter-next-button' class='chapter-next' "
+                               "href='preface/#overview-of-nixpkgs'");
+
+  free_anchor_location_array(&anchor_locations);
+  fclose(search_index_file);
+  unlink(page_path);
+  unlink(toc_path);
+  rmdir(root);
+
+  if (render_result != 0 || !found_previous || !found_next) {
+    printf("multipage navigation anchor test failed\n");
+    return 1;
+  }
+  printf("multipage navigation anchor test passed\n");
+  return 0;
+}
+
 int write_overlong_id(char *path, const char *prefix, const char *suffix) {
   int fd = mkstemps(path, 5);
   if (fd == -1)
@@ -399,6 +487,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_copy_nested_image();
   num_tests++;
   num_failed += test_zero_capacity_arrays();
+  num_tests++;
+  num_failed += test_multipage_navigation_anchor();
   num_tests++;
   num_failed += test_reject_overlong_ids();
   num_tests++;
