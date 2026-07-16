@@ -64,9 +64,9 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
         "aria-label='Toggle table of contents' aria-controls='sidebar' "
         "aria-expanded='true'></button>",
         index_file);
-  fputs("    <button type='button' class='theme-toggle "
-        "emoji' aria-label='Switch to dark theme' "
-        "aria-pressed='false'>🌘&#xFE0E;</button>",
+  fputs("    <button type='button' class='theme-toggle' "
+        "aria-label='Switch to dark theme' "
+        "aria-pressed='false'></button>",
         index_file);
   fputs("    </nav>\n"
         "    </div>\n",

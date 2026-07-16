@@ -54,13 +54,13 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         "aria-label='Toggle table of contents' aria-controls='sidebar' "
         "aria-expanded='true'></button>",
         page_file);
-  fputs("    <button type='button' class='search-toggle "
-        "emoji' aria-label='Open search' aria-controls='search-panel' "
-        "aria-expanded='false'>🔍&#xFE0E;</button>",
+  fputs("    <button type='button' class='search-toggle' "
+        "aria-label='Open search' aria-controls='search-panel' "
+        "aria-expanded='false'></button>",
         page_file);
-  fputs("    <button type='button' class='theme-toggle "
-        "emoji' aria-label='Switch to dark theme' "
-        "aria-pressed='false'>🌘&#xFE0E;</button>",
+  fputs("    <button type='button' class='theme-toggle' "
+        "aria-label='Switch to dark theme' "
+        "aria-pressed='false'></button>",
         page_file);
 
   if (prev_anchor_location != NULL) {
