@@ -6,4 +6,3 @@
 int html_css(FILE *file);
 int html_highlight_js(FILE *file);
 int html_js(FILE *file);
-int html_search_js(FILE *file);

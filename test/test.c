@@ -5,6 +5,7 @@
 #include "../src/multi.h"
 #include "../src/refs.h"
 #include "../src/render.h"
+#include "../src/single.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -338,6 +339,165 @@ int file_contains(char *path, const char *expected) {
   return found;
 }
 
+int file_exists_and_is_not_empty(char *path) {
+  FILE *file = fopen(path, "rb");
+  if (file == NULL)
+    return 0;
+  int first = fgetc(file);
+  fclose(file);
+  return first != EOF;
+}
+
+int write_text_file(char *path, const char *contents) {
+  FILE *file = fopen(path, "w");
+  if (file == NULL)
+    return 1;
+  int failed = fputs(contents, file) == EOF;
+  return fclose(file) != 0 || failed;
+}
+
+int test_multipage_shared_assets_and_accessible_controls() {
+  char root[] = "/tmp/mmdoc-assets-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char page_path[PATH_MAX];
+  char toc_path[PATH_MAX];
+  char index_path[PATH_MAX];
+  snprintf(page_path, sizeof(page_path), "%s/page.md", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  snprintf(index_path, sizeof(index_path), "%s/index.html", root);
+  if (write_text_file(page_path, "# Page {#page}\n\n```c\nint x;\n```\n") !=
+          0 ||
+      write_text_file(toc_path, "") != 0)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Project",
+      .toc_path = toc_path,
+      .out_multi = root,
+  };
+  AnchorLocation page = {
+      .file_path = page_path,
+      .multipage_output_file_path = index_path,
+      .multipage_output_directory_path = root,
+      .multipage_base_href = "",
+      .multipage_url = "./",
+      .anchor = "#page",
+      .title = "Page",
+  };
+  AnchorLocationArray toc_anchor_locations;
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&toc_anchor_locations, 1);
+  init_anchor_location_array(&anchor_locations, 0);
+  insert_anchor_location_array(&toc_anchor_locations, &page);
+
+  int render_result =
+      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+  const char *asset_names[] = {
+      "a11y-dark.css",     "a11y-light.css",  "mmdoc.css",
+      "mmdoc.js",          "mmdoc_search.js", "fuse.basic.min.js",
+      "highlight.pack.js", "search_index.js",
+  };
+  int assets_found = 1;
+  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
+    char asset_path[PATH_MAX];
+    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
+    assets_found &= file_exists_and_is_not_empty(asset_path);
+  }
+
+  int page_is_external = file_contains(index_path, "href='mmdoc.css'") &&
+                         file_contains(index_path, "src='mmdoc.js'") &&
+                         file_contains(index_path, "src='highlight.pack.js'") &&
+                         !file_contains(index_path, "<style>") &&
+                         !file_contains(index_path, "Highlight.js 10.7.1");
+  int page_is_accessible =
+      file_contains(index_path, "class='skip-link' href='#main-content'") &&
+      file_contains(index_path, "aria-controls='sidebar'") &&
+      file_contains(index_path, "aria-label='Open search'") &&
+      file_contains(index_path, "role='status' aria-live='polite'") &&
+      file_contains(index_path, "<main id='main-content' tabindex='-1'>");
+
+  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
+    char asset_path[PATH_MAX];
+    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
+    unlink(asset_path);
+  }
+  int no_code_render_result = 1;
+  int highlighter_is_conditional = 0;
+  if (write_text_file(page_path, "# Page {#page}\n") == 0) {
+    no_code_render_result =
+        mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+    char highlighter_path[PATH_MAX];
+    snprintf(highlighter_path, sizeof(highlighter_path), "%s/highlight.pack.js",
+             root);
+    highlighter_is_conditional =
+        !file_exists_and_is_not_empty(highlighter_path) &&
+        !file_contains(index_path, "src='highlight.pack.js'");
+  }
+  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
+    char asset_path[PATH_MAX];
+    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
+    unlink(asset_path);
+  }
+
+  free_anchor_location_array(&toc_anchor_locations);
+  free_anchor_location_array(&anchor_locations);
+  unlink(index_path);
+  unlink(page_path);
+  unlink(toc_path);
+  rmdir(root);
+
+  if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
+      !page_is_external || !page_is_accessible || !highlighter_is_conditional) {
+    printf("multipage shared asset and accessibility test failed\n");
+    return 1;
+  }
+  printf("multipage shared asset and accessibility test passed\n");
+  return 0;
+}
+
+int test_single_page_accessible_controls() {
+  char root[] = "/tmp/mmdoc-single-accessibility-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char toc_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char index_path[PATH_MAX];
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  snprintf(out_path, sizeof(out_path), "%s/single", root);
+  snprintf(index_path, sizeof(index_path), "%s/index.html", out_path);
+  if (write_text_file(toc_path, "") != 0)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Project",
+      .toc_path = toc_path,
+      .out_single = out_path,
+  };
+  AnchorLocationArray toc_anchor_locations;
+  init_anchor_location_array(&toc_anchor_locations, 0);
+  int render_result = mmdoc_single(inputs, toc_anchor_locations);
+  int controls_found = file_contains(index_path, "<html lang='en'>") &&
+                       file_contains(index_path, "aria-controls='sidebar'") &&
+                       file_contains(index_path, "aria-pressed='false'") &&
+                       file_contains(index_path, "id='main-content'");
+
+  free_anchor_location_array(&toc_anchor_locations);
+  unlink(index_path);
+  unlink(toc_path);
+  rmdir(out_path);
+  rmdir(root);
+
+  if (render_result != 0 || !controls_found) {
+    printf("single-page accessibility test failed\n");
+    return 1;
+  }
+  printf("single-page accessibility test passed\n");
+  return 0;
+}
+
 int test_multipage_navigation_anchor() {
   char root[] = "/tmp/mmdoc-navigation-test-XXXXXX";
   if (mkdtemp(root) == NULL)
@@ -383,8 +543,9 @@ int test_multipage_navigation_anchor() {
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 0);
 
-  int render_result = mmdoc_multi_page(
-      inputs, anchor_locations, search_index_file, &current, &previous, &next);
+  int render_result =
+      mmdoc_multi_page(inputs, anchor_locations, search_index_file, &current,
+                       &previous, &next, NULL);
   int found_previous = file_contains(
       page_path, "id='chapter-previous-button' class='chapter-previous' "
                  "href='./#preface'");
@@ -489,6 +650,10 @@ int main(int argc, char *argv[]) {
   num_failed += test_zero_capacity_arrays();
   num_tests++;
   num_failed += test_multipage_navigation_anchor();
+  num_tests++;
+  num_failed += test_multipage_shared_assets_and_accessible_controls();
+  num_tests++;
+  num_failed += test_single_page_accessible_controls();
   num_tests++;
   num_failed += test_reject_overlong_ids();
   num_tests++;

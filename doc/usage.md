@@ -56,3 +56,12 @@ In order to be useful for Documentation, it uses several CommonMark extensions a
 
   : defintion 2
   ```
+
+## Generated interface
+
+The table of contents, search, and theme controls are available from the top
+navigation bar. Press `/` or <kbd>Control</kbd>/<kbd>Command</kbd>+<kbd>K</kbd>
+to open search, then use the up and down arrow keys to cycle through results.
+Outside interactive controls, the left and right arrow keys move between pages.
+A skip link appears when focused so keyboard users can move directly to the
+main content.

@@ -29,11 +29,13 @@ doc
 └── usage.md
 ```
 
-and ouputs
+and outputs
 
 ```text
 out
 ├── multi
+│   ├── a11y-dark.css
+│   ├── a11y-light.css
 │   ├── development
 │   │   └── index.html
 │   ├── features
@@ -43,15 +45,16 @@ out
 │   ├── index.html
 │   ├── license
 │   │   └── index.html
-│   ├── minimal.css
-│   ├── mono-blue.css
+│   ├── mmdoc.css
+│   ├── mmdoc.js
+│   ├── mmdoc_search.js
 │   ├── search_index.js
-│   ├── search.js
 │   └── usage
 │       └── index.html
 └── single
-    ├── highlight.pack.js
-    ├── index.html
-    ├── minimal.css
-    └── mono-blue.css
+    └── index.html
 ```
+
+The multi-page output uses shared, cacheable assets. The single-page output
+embeds its styling and scripts in `index.html` so it remains portable as one
+file.
