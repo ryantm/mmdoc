@@ -1,47 +1,57 @@
 //// Sidebar
+const sidebarMedia = window.matchMedia('(max-width: 700px)')
+
 function getSidebarClosed() {
   return (localStorage.getItem('sidebar-closed') ?? 'false') === 'true'
 }
 
-function showSidebar() {
-  document.getElementById('sidebar-checkbox').checked = true
+function isSidebarVisible() {
+  const checked = document.getElementById('sidebar-checkbox').checked
+  return sidebarMedia.matches ? checked : !checked
 }
 
-function hideSidebar() {
-  document.getElementById('sidebar-checkbox').checked = false
-}
-
-function saveSidebar() {
-  const sidebarClosed = document.getElementById('sidebar-checkbox').checked
-  localStorage.setItem('sidebar-closed', sidebarClosed)
-}
-
-function setupSaveSidebar() {
-  const el = document.getElementById('sidebar-checkbox')
-  el.addEventListener('change', saveSidebar)
-}
-
-function closeSidebarOnMobileNavigation() {
-  if (!window.matchMedia('(max-width: 700px)').matches)
-    return
-
-  hideSidebar()
-  saveSidebar()
-}
-
-function setupCloseSidebarOnMobileNavigation() {
-  Array.from(document.querySelectorAll('nav.sidebar a[href]')).forEach(link => {
-    link.addEventListener('click', closeSidebarOnMobileNavigation)
+function updateSidebarToggle(visible) {
+  document.querySelectorAll('.sidebar-toggle').forEach(button => {
+    button.setAttribute('aria-expanded', String(visible))
+    button.setAttribute(
+      'aria-label', visible ? 'Hide table of contents' : 'Show table of contents')
   })
 }
 
-setupSaveSidebar()
-setupCloseSidebarOnMobileNavigation()
+function setSidebarVisible(visible) {
+  document.getElementById('sidebar-checkbox').checked =
+    sidebarMedia.matches ? visible : !visible
+  updateSidebarToggle(visible)
+}
 
-if (getSidebarClosed())
-  showSidebar()
-else
-  hideSidebar()
+function toggleSidebar() {
+  setSidebarVisible(!isSidebarVisible())
+  if (!sidebarMedia.matches)
+    localStorage.setItem('sidebar-closed', String(!isSidebarVisible()))
+  showCurrentPageInSidebar()
+}
+
+function closeSidebarOnMobileNavigation() {
+  if (!sidebarMedia.matches)
+    return
+
+  setSidebarVisible(false)
+}
+
+function setupSidebar() {
+  document.querySelectorAll('.sidebar-toggle').forEach(button => {
+    button.addEventListener('click', toggleSidebar)
+  })
+  Array.from(document.querySelectorAll('nav.sidebar a[href]')).forEach(link => {
+    link.addEventListener('click', closeSidebarOnMobileNavigation)
+  })
+  sidebarMedia.addEventListener('change', event => {
+    setSidebarVisible(event.matches ? false : !getSidebarClosed())
+  })
+  setSidebarVisible(sidebarMedia.matches ? false : !getSidebarClosed())
+}
+
+setupSidebar()
 
 function normalizedPagePath(pathname) {
   const withoutIndex = pathname.replace(/\/index\.html?$/i, '')
@@ -93,8 +103,6 @@ function showCurrentPageInSidebar() {
 
 showCurrentPageInSidebar()
 window.addEventListener('hashchange', showCurrentPageInSidebar)
-document.getElementById('sidebar-checkbox').addEventListener(
-  'change', showCurrentPageInSidebar)
 
 //// Theme
 
@@ -126,11 +134,22 @@ function toggleTheme() {
 function setDarkTheme() {
   document.querySelector('html').classList.remove("light-theme")
   document.querySelector('html').classList.add("dark-theme")
+  updateThemeToggle('dark')
 }
 
 function setLightTheme() {
   document.querySelector('html').classList.remove("dark-theme")
   document.querySelector('html').classList.add("light-theme")
+  updateThemeToggle('light')
+}
+
+function updateThemeToggle(theme) {
+  const dark = theme === 'dark'
+  document.querySelectorAll('.theme-toggle').forEach(button => {
+    button.setAttribute('aria-pressed', String(dark))
+    button.setAttribute(
+      'aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme')
+  })
 }
 
 function setupToggleTheme() {
@@ -156,18 +175,28 @@ window.addEventListener('load', (event) => {
   codeElems.forEach(e => e.classList.add('hljs'))
 })
 
-window.addEventListener('keydown', (event) => {
-  e = event || window.event;
+if (typeof hljs !== 'undefined')
+  hljs.highlightAll()
 
-  var button = null
-  if (e.key === 'ArrowLeft') {
+function isInteractiveTarget(target) {
+  return target.closest(
+    'a, button, input, select, textarea, [contenteditable="true"]') !== null
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
+      event.shiftKey || isInteractiveTarget(event.target))
+    return
+
+  let button = null
+  if (event.key === 'ArrowLeft') {
     button = document.getElementById('chapter-previous-button')
   }
-  else if (e.key === 'ArrowRight') {
+  else if (event.key === 'ArrowRight') {
     button = document.getElementById('chapter-next-button')
   }
   if (button !== null) {
+    event.preventDefault()
     button.click()
   }
-
 })

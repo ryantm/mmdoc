@@ -143,6 +143,33 @@ a:hover {
   outline-offset: 2px;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 10;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgb(15 23 42 / 18%);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 button, input {
   color: var(--foreground);
   font: inherit;

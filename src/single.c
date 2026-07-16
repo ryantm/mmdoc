@@ -21,7 +21,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   index_file = fopen(index_path, "w");
 
   fputs("<!doctype html>\n"
-        "<html>\n"
+        "<html lang='en'>\n"
         "  <head>\n"
         "    <meta charset='utf-8'>\n"
         "    <meta name='viewport' content='width=device-width, "
@@ -50,22 +50,30 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
         "  </head>\n"
         "  <body>\n",
         index_file);
-  fputs("  <input type='checkbox' id='sidebar-checkbox' style='display: "
-        "none;'/>\n",
+  fputs("  <a class='skip-link' href='#main-content'>Skip to main "
+        "content</a>\n"
+        "  <input type='checkbox' id='sidebar-checkbox' aria-hidden='true' "
+        "tabindex='-1' style='display: none;'>\n",
         index_file);
   fputs("    <div class='body'>\n"
         "      <div class='nav-top-container'>\n",
         index_file);
-  fputs("    <nav class='nav-top'>\n", index_file);
-  fputs("      <label for='sidebar-checkbox' class='sidebar-toggle'>≡</label>",
+  fputs("    <nav class='nav-top' aria-label='Documentation controls'>\n",
         index_file);
-  fputs("    <button type='button' class='theme-toggle "
-        "emoji'>🌘&#xFE0E;</button>",
+  fputs("      <button type='button' class='sidebar-toggle' "
+        "aria-label='Toggle table of contents' aria-controls='sidebar' "
+        "aria-expanded='true'></button>",
+        index_file);
+  fputs("    <button type='button' class='theme-toggle' "
+        "aria-label='Switch to dark theme' "
+        "aria-pressed='false'></button>",
         index_file);
   fputs("    </nav>\n"
         "    </div>\n",
         index_file);
-  fputs("    <nav class='sidebar'>\n", index_file);
+  fputs("    <nav id='sidebar' class='sidebar' "
+        "aria-label='Table of contents'>\n",
+        index_file);
   AnchorLocation al;
   int has_code_block =
       mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
@@ -73,7 +81,7 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   fputs("    </nav>\n", index_file);
   fputs("    <section id='main'>\n", index_file);
   fputs("      <div class='main-scroll'>\n", index_file);
-  fputs("        <main>\n", index_file);
+  fputs("        <main id='main-content' tabindex='-1'>\n", index_file);
 
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocationArray empty_anchor_locations;
