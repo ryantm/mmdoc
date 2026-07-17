@@ -396,6 +396,10 @@ nav.sidebar h2 {
   margin: 1.4rem 0 0.35rem;
 }
 
+nav.sidebar h2 + ul {
+  margin-left: 0.65rem;
+}
+
 nav ul {
   margin: 0;
   padding-left: 0;
@@ -410,6 +414,10 @@ nav ul ul {
 
 nav.sidebar li + li {
   margin-top: 0.15rem;
+}
+
+nav.sidebar li:not(:has(> a)) {
+  padding-left: 0.65rem;
 }
 
 nav.sidebar a {
