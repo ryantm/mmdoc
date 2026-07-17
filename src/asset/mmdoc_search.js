@@ -25,7 +25,12 @@ function loadSearchAssets() {
     loadSearchScript('search_index.js'),
     loadSearchScript('fuse.basic.min.js')
   ]).then(() => {
-    searchIndex = new Fuse(window.mmdocSearchCorpus, {
+    const searchCorpus = typeof corpus === 'undefined'
+      ? window.mmdocSearchCorpus
+      : corpus
+    if (!Array.isArray(searchCorpus))
+      throw new Error('Search corpus did not load')
+    searchIndex = new Fuse(searchCorpus, {
       keys: ['title', 'text'],
       ignoreLocation: true,
       threshold: 0.01,

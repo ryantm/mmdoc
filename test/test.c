@@ -454,6 +454,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
                     "loadSearchScript('search_index.js')") &&
       file_contains(search_script_path,
                     "loadSearchScript('fuse.basic.min.js')") &&
+      file_contains(search_script_path, "typeof corpus === 'undefined'") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
       file_contains(index_path, "class='skip-link' href='#main-content'") &&
