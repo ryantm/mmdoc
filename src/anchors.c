@@ -142,7 +142,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
     }
     free(title);
   }
-  return 0;
+  return build_anchor_location_index(anchor_locations);
 }
 
 int mmdoc_anchors_find_toc_anchors(AnchorLocationArray *toc_anchor_locations,
@@ -150,16 +150,9 @@ int mmdoc_anchors_find_toc_anchors(AnchorLocationArray *toc_anchor_locations,
                                    AnchorLocationArray *anchor_locations) {
 
   for (int i = 0; i < toc_refs->used; i++) {
-    AnchorLocation *anchor_location;
-    int found = 0;
-    for (int j = 0; j < anchor_locations->used; j++) {
-      if (strcmp(toc_refs->array[i], anchor_locations->array[j].anchor) == 0) {
-        anchor_location = &anchor_locations->array[j];
-        found = 1;
-        break;
-      }
-    }
-    if (!found) {
+    AnchorLocation *anchor_location =
+        find_anchor_location(anchor_locations, toc_refs->array[i]);
+    if (anchor_location == NULL) {
       printf("Anchor \"%s\" referenced in toc.md not found.\n",
              toc_refs->array[i]);
       return -1;

@@ -22,6 +22,8 @@ typedef struct {
   AnchorLocation *array;
   size_t used;
   size_t size;
+  size_t *anchor_index;
+  size_t anchor_index_size;
 } AnchorLocationArray;
 
 typedef struct {
@@ -31,6 +33,9 @@ typedef struct {
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize);
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element);
+int build_anchor_location_index(AnchorLocationArray *a);
+AnchorLocation *find_anchor_location(AnchorLocationArray *a,
+                                     const char *anchor);
 void free_anchor_location_array(AnchorLocationArray *a);
 void init_array(Array *a, size_t initialSize);
 void insert_array(Array *a, char *element);

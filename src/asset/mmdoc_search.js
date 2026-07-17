@@ -1,39 +1,98 @@
 //// Search
 
+const searchResultLimit = 50
+const searchAssetScript = document.currentScript
+const searchIndexSource = searchAssetScript.dataset.searchIndex
+const fuseSource = searchAssetScript.dataset.fuse
+let searchIndex = null
+let searchLoadPromise = null
+let searchPreviousFocus = null
+
+function loadSearchScript(source) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = source
+    script.addEventListener('load', resolve, { once: true })
+    script.addEventListener('error', reject, { once: true })
+    document.head.appendChild(script)
+  })
+}
+
+function loadSearchAssets() {
+  if (searchLoadPromise !== null)
+    return searchLoadPromise
+
+  const statusElem = document.getElementById('search-status')
+  statusElem.textContent = 'Loading search'
+  searchLoadPromise = Promise.all([
+    loadSearchScript(searchIndexSource),
+    loadSearchScript(fuseSource)
+  ]).then(() => {
+    const searchCorpus = window.mmdocSearchCorpus
+    if (!Array.isArray(searchCorpus))
+      throw new Error('Search corpus did not load')
+    searchIndex = new Fuse(searchCorpus, {
+      keys: ['title', 'text'],
+      ignoreLocation: true,
+      threshold: 0.01,
+      minMatchCharLength: 3
+    })
+    if (document.getElementById('search').value === '')
+      statusElem.textContent = ''
+    return true
+  }).catch(() => {
+    statusElem.textContent = 'Search is unavailable'
+    return false
+  })
+  return searchLoadPromise
+}
+
 function setupSearch() {
-  const fuse = new Fuse(corpus, { keys: ['title', 'text'], ignoreLocation: true, threshold: 0.01, minMatchCharLength: 3 })
   const input = document.getElementById('search')
   const resultsElem = document.getElementById('search-results')
   const statusElem = document.getElementById('search-status')
   let timeout = null
+
+  function runSearch() {
+    resultsElem.replaceChildren()
+    statusElem.textContent = ''
+    if (input.value === '' || searchIndex === null)
+      return
+
+    const results = searchIndex.search(
+      input.value, { limit: searchResultLimit })
+    const resultLabel = results.length === 1 ? 'search result' : 'search results'
+    statusElem.textContent = results.length + ' ' + resultLabel
+    const h2 = document.createElement('h2')
+    h2.appendChild(document.createTextNode(results.length + ' ' + resultLabel))
+    resultsElem.appendChild(h2)
+    const ol = document.createElement('ol')
+    resultsElem.appendChild(ol)
+    results.forEach(function (result) {
+      const li = document.createElement('li')
+      const a = document.createElement('a')
+      a.href = result.item.url
+      a.appendChild(document.createTextNode(result.item.title))
+      li.appendChild(a)
+      ol.appendChild(li)
+    })
+  }
+
   input.addEventListener('input', function () {
     clearTimeout(timeout)
-    timeout = setTimeout(function () {
-      resultsElem.innerHTML = ""
-      statusElem.textContent = ""
-      if (input.value === "")
+    if (input.value === '') {
+      resultsElem.replaceChildren()
+      statusElem.textContent = ''
+      return
+    }
+    loadSearchAssets().then(loaded => {
+      if (!loaded)
         return
-      const results = fuse.search(input.value)
-      const resultLabel = results.length === 1 ? 'search result' : 'search results'
-      statusElem.textContent = results.length + ' ' + resultLabel
-      const h2 = document.createElement('h2')
-      h2.appendChild(document.createTextNode(results.length + ' ' + resultLabel))
-      resultsElem.appendChild(h2)
-      const ol = document.createElement('ol')
-      resultsElem.appendChild(ol)
-      results.forEach(function (result) {
-        const li = document.createElement('li')
-        const a = document.createElement('a')
-        a.href = result.item.url
-        a.appendChild(document.createTextNode(result.item.title))
-        li.appendChild(a)
-        ol.appendChild(li)
-      })
-    }, 100)
+      clearTimeout(timeout)
+      timeout = setTimeout(runSearch, 100)
+    })
   })
 }
-
-let searchPreviousFocus = null
 
 function moveSearchResultFocus(direction) {
   const input = document.getElementById('search')
@@ -72,6 +131,7 @@ function setSearchVisible(visible) {
       setSidebarVisible(false)
     input.focus()
     input.select()
+    loadSearchAssets()
   } else if (searchPreviousFocus !== null) {
     searchPreviousFocus.focus()
     searchPreviousFocus = null

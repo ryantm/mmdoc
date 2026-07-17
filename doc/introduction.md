@@ -34,27 +34,28 @@ and outputs
 ```text
 out
 ├── multi
-│   ├── a11y-dark.css
-│   ├── a11y-light.css
+│   ├── a11y-dark.<hash>.css
+│   ├── a11y-light.<hash>.css
 │   ├── development
 │   │   └── index.html
 │   ├── features
 │   │   └── index.html
-│   ├── fuse.basic.min.js
-│   ├── highlight.pack.js
+│   ├── fuse.basic.min.<hash>.js
+│   ├── highlight.pack.<hash>.js
 │   ├── index.html
 │   ├── license
 │   │   └── index.html
-│   ├── mmdoc.css
-│   ├── mmdoc.js
-│   ├── mmdoc_search.js
-│   ├── search_index.js
+│   ├── mmdoc.<hash>.css
+│   ├── mmdoc.<hash>.js
+│   ├── mmdoc_search.<hash>.js
+│   ├── search_index.<hash>.js
 │   └── usage
 │       └── index.html
 └── single
     └── index.html
 ```
 
-The multi-page output uses shared, cacheable assets. The single-page output
+The multi-page output uses shared assets with content hashes in their names so
+browsers can cache them without serving stale content. The single-page output
 embeds its styling and scripts in `index.html` so it remains portable as one
 file.
