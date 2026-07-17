@@ -1,6 +1,9 @@
 //// Search
 
 const searchResultLimit = 50
+const searchAssetScript = document.currentScript
+const searchIndexSource = searchAssetScript.dataset.searchIndex
+const fuseSource = searchAssetScript.dataset.fuse
 let searchIndex = null
 let searchLoadPromise = null
 let searchPreviousFocus = null
@@ -22,8 +25,8 @@ function loadSearchAssets() {
   const statusElem = document.getElementById('search-status')
   statusElem.textContent = 'Loading search'
   searchLoadPromise = Promise.all([
-    loadSearchScript('search_index.js'),
-    loadSearchScript('fuse.basic.min.js')
+    loadSearchScript(searchIndexSource),
+    loadSearchScript(fuseSource)
   ]).then(() => {
     const searchCorpus = typeof corpus === 'undefined'
       ? window.mmdocSearchCorpus

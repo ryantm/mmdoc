@@ -6,6 +6,8 @@
 #include "../src/refs.h"
 #include "../src/render.h"
 #include "../src/single.h"
+#include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -379,6 +381,51 @@ int file_exists_and_is_not_empty(char *path) {
   return first != EOF;
 }
 
+int find_asset_name(char *dir, const char *prefix, const char *suffix,
+                    char *result, size_t result_size) {
+  DIR *directory = opendir(dir);
+  if (directory == NULL)
+    return 0;
+  struct dirent *entry;
+  int found = 0;
+  while ((entry = readdir(directory)) != NULL) {
+    size_t name_length = strlen(entry->d_name);
+    size_t prefix_length = strlen(prefix);
+    size_t suffix_length = strlen(suffix);
+    if (name_length >= prefix_length + suffix_length &&
+        strncmp(entry->d_name, prefix, prefix_length) == 0 &&
+        strcmp(entry->d_name + name_length - suffix_length, suffix) == 0) {
+      snprintf(result, result_size, "%s", entry->d_name);
+      found = 1;
+      break;
+    }
+  }
+  closedir(directory);
+  return found;
+}
+
+int asset_name_has_hash(const char *file_name, const char *stem,
+                        const char *extension) {
+  size_t stem_length = strlen(stem);
+  size_t extension_length = strlen(extension);
+  size_t expected_length = stem_length + 1 + 16 + 1 + extension_length;
+  if (strlen(file_name) != expected_length ||
+      strncmp(file_name, stem, stem_length) != 0 ||
+      file_name[stem_length] != '.' ||
+      strcmp(file_name + expected_length - extension_length, extension) != 0)
+    return 0;
+  for (size_t i = stem_length + 1; i < stem_length + 17; i++)
+    if (!isxdigit((unsigned char)file_name[i]))
+      return 0;
+  return file_name[stem_length + 17] == '.';
+}
+
+void unlink_asset(char *dir, const char *file_name) {
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s/%s", dir, file_name);
+  unlink(path);
+}
+
 int write_text_file(char *path, const char *contents) {
   FILE *file = fopen(path, "w");
   if (file == NULL)
@@ -425,35 +472,59 @@ int test_multipage_shared_assets_and_accessible_controls() {
 
   int render_result =
       mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+  AssetFileNames generated_names;
+  asset_file_names(&generated_names);
+  char search_index_name[ASSET_FILE_NAME_SIZE] = "";
+  int search_index_found =
+      find_asset_name(root, "search_index.", ".js", search_index_name,
+                      sizeof(search_index_name));
+  char first_search_index_name[ASSET_FILE_NAME_SIZE];
+  snprintf(first_search_index_name, sizeof(first_search_index_name), "%s",
+           search_index_name);
   const char *asset_names[] = {
-      "a11y-dark.css",     "a11y-light.css",  "mmdoc.css",
-      "mmdoc.js",          "mmdoc_search.js", "fuse.basic.min.js",
-      "highlight.pack.js", "search_index.js",
+      generated_names.a11y_dark_css,     generated_names.a11y_light_css,
+      generated_names.mmdoc_css,         generated_names.mmdoc_js,
+      generated_names.mmdoc_search_js,   generated_names.fuse_basic_min_js,
+      generated_names.highlight_pack_js,
   };
-  int assets_found = 1;
+  int assets_found = search_index_found;
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
     char asset_path[PATH_MAX];
     snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
     assets_found &= file_exists_and_is_not_empty(asset_path);
   }
 
+  int names_are_hashed =
+      asset_name_has_hash(generated_names.a11y_dark_css, "a11y-dark", "css") &&
+      asset_name_has_hash(generated_names.a11y_light_css, "a11y-light",
+                          "css") &&
+      asset_name_has_hash(generated_names.mmdoc_css, "mmdoc", "css") &&
+      asset_name_has_hash(generated_names.mmdoc_js, "mmdoc", "js") &&
+      asset_name_has_hash(generated_names.mmdoc_search_js, "mmdoc_search",
+                          "js") &&
+      asset_name_has_hash(generated_names.fuse_basic_min_js, "fuse.basic.min",
+                          "js") &&
+      asset_name_has_hash(generated_names.highlight_pack_js, "highlight.pack",
+                          "js") &&
+      asset_name_has_hash(search_index_name, "search_index", "js");
   int page_is_external =
-      file_contains(index_path, "href='mmdoc.css'") &&
-      file_contains(index_path, "src='mmdoc.js'") &&
-      file_contains(index_path, "src='mmdoc_search.js'") &&
-      file_contains(index_path, "src='highlight.pack.js'") &&
-      !file_contains(index_path, "src='search_index.js'") &&
-      !file_contains(index_path, "src='fuse.basic.min.js'") &&
+      file_contains(index_path, generated_names.mmdoc_css) &&
+      file_contains(index_path, generated_names.mmdoc_js) &&
+      file_contains(index_path, generated_names.mmdoc_search_js) &&
+      file_contains(index_path, generated_names.highlight_pack_js) &&
+      file_contains(index_path, search_index_name) &&
+      file_contains(index_path, generated_names.fuse_basic_min_js) &&
+      !file_contains(index_path, "href='mmdoc.css'") &&
+      !file_contains(index_path, "src='mmdoc.js'") &&
       !file_contains(index_path, "<style>") &&
       !file_contains(index_path, "Highlight.js 10.7.1");
   char search_script_path[PATH_MAX];
-  snprintf(search_script_path, sizeof(search_script_path), "%s/mmdoc_search.js",
-           root);
+  snprintf(search_script_path, sizeof(search_script_path), "%s/%s", root,
+           generated_names.mmdoc_search_js);
   int search_is_lazy =
       file_contains(search_script_path,
-                    "loadSearchScript('search_index.js')") &&
-      file_contains(search_script_path,
-                    "loadSearchScript('fuse.basic.min.js')") &&
+                    "loadSearchScript(searchIndexSource)") &&
+      file_contains(search_script_path, "loadSearchScript(fuseSource)") &&
       file_contains(search_script_path, "typeof corpus === 'undefined'") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
@@ -464,26 +535,30 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(index_path, "<main id='main-content' tabindex='-1'>");
 
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    char asset_path[PATH_MAX];
-    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
-    unlink(asset_path);
+    unlink_asset(root, asset_names[i]);
   }
+  unlink_asset(root, search_index_name);
   int no_code_render_result = 1;
   int highlighter_is_conditional = 0;
+  int corpus_hash_changed = 0;
   if (write_text_file(page_path, "# Page {#page}\n") == 0) {
     no_code_render_result =
         mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
     char highlighter_path[PATH_MAX];
-    snprintf(highlighter_path, sizeof(highlighter_path), "%s/highlight.pack.js",
-             root);
+    snprintf(highlighter_path, sizeof(highlighter_path), "%s/%s", root,
+             generated_names.highlight_pack_js);
     highlighter_is_conditional =
         !file_exists_and_is_not_empty(highlighter_path) &&
-        !file_contains(index_path, "src='highlight.pack.js'");
+        !file_contains(index_path, generated_names.highlight_pack_js);
   }
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    char asset_path[PATH_MAX];
-    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
-    unlink(asset_path);
+    unlink_asset(root, asset_names[i]);
+  }
+  if (find_asset_name(root, "search_index.", ".js", search_index_name,
+                      sizeof(search_index_name))) {
+    corpus_hash_changed =
+        strcmp(first_search_index_name, search_index_name) != 0;
+    unlink_asset(root, search_index_name);
   }
 
   free_anchor_location_array(&toc_anchor_locations);
@@ -494,8 +569,8 @@ int test_multipage_shared_assets_and_accessible_controls() {
   rmdir(root);
 
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
-      !page_is_external || !page_is_accessible || !search_is_lazy ||
-      !highlighter_is_conditional) {
+      !names_are_hashed || !page_is_external || !page_is_accessible ||
+      !search_is_lazy || !corpus_hash_changed || !highlighter_is_conditional) {
     printf("multipage shared asset and accessibility test failed\n");
     return 1;
   }
@@ -588,10 +663,13 @@ int test_multipage_navigation_anchor() {
   };
   AnchorLocationArray anchor_locations;
   init_anchor_location_array(&anchor_locations, 0);
+  AssetFileNames generated_names;
+  asset_file_names(&generated_names);
 
   int render_result =
-      mmdoc_multi_page(inputs, anchor_locations, "", 0, search_index_file,
-                       &current, &previous, &next, NULL);
+      mmdoc_multi_page(inputs, anchor_locations, "", 0, &generated_names,
+                       "search_index.0000000000000000.js", search_index_file,
+                       NULL, &current, &previous, &next, NULL);
   int found_previous = file_contains(
       page_path, "id='chapter-previous-button' class='chapter-previous' "
                  "href='./#preface'");
@@ -683,15 +761,20 @@ int test_multipage_cached_toc_current_page_links() {
       file_contains(second_output_path, "href='first/#first'") &&
       file_contains(second_output_path, "href='second/#second'");
 
+  AssetFileNames generated_names;
+  asset_file_names(&generated_names);
   const char *asset_names[] = {
-      "a11y-dark.css",   "a11y-light.css",    "mmdoc.css",       "mmdoc.js",
-      "mmdoc_search.js", "fuse.basic.min.js", "search_index.js",
+      generated_names.a11y_dark_css,   generated_names.a11y_light_css,
+      generated_names.mmdoc_css,       generated_names.mmdoc_js,
+      generated_names.mmdoc_search_js, generated_names.fuse_basic_min_js,
   };
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    char asset_path[PATH_MAX];
-    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
-    unlink(asset_path);
+    unlink_asset(root, asset_names[i]);
   }
+  char search_index_name[ASSET_FILE_NAME_SIZE];
+  if (find_asset_name(root, "search_index.", ".js", search_index_name,
+                      sizeof(search_index_name)))
+    unlink_asset(root, search_index_name);
   free_anchor_location_array(&toc_anchor_locations);
   free_anchor_location_array(&anchor_locations);
   unlink(first_output_path);
