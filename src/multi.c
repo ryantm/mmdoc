@@ -254,6 +254,24 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   return 0;
 }
 
+static size_t collect_page_indices(AnchorLocationArray toc_anchor_locations,
+                                   size_t *page_indices) {
+  size_t page_count = 0;
+  for (size_t i = 0; i < toc_anchor_locations.used; i++) {
+    int page_already_collected = 0;
+    for (size_t j = 0; j < page_count; j++)
+      if (strcmp(toc_anchor_locations.array[i].multipage_output_file_path,
+                 toc_anchor_locations.array[page_indices[j]]
+                     .multipage_output_file_path) == 0) {
+        page_already_collected = 1;
+        break;
+      }
+    if (!page_already_collected)
+      page_indices[page_count++] = i;
+  }
+  return page_count;
+}
+
 int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations) {
   char *out = inputs.out_multi;
@@ -295,20 +313,33 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
   AnchorLocation *next_anchor_location = NULL;
   int has_code_blocks = 0;
   long *search_index_name_offsets = NULL;
+  size_t *page_indices = NULL;
+  size_t page_count = 0;
   if (toc_anchor_locations.used > 0) {
+    page_indices = malloc(toc_anchor_locations.used * sizeof(*page_indices));
+    if (page_indices == NULL) {
+      free(toc_html);
+      fclose(search_index_file);
+      free(search_index_path);
+      return -1;
+    }
+    page_count = collect_page_indices(toc_anchor_locations, page_indices);
     search_index_name_offsets =
-        malloc(toc_anchor_locations.used * sizeof(*search_index_name_offsets));
+        malloc(page_count * sizeof(*search_index_name_offsets));
     if (search_index_name_offsets == NULL) {
+      free(page_indices);
       free(toc_html);
       fclose(search_index_file);
       free(search_index_path);
       return -1;
     }
   }
-  for (int i = 0; i < toc_anchor_locations.used; i++) {
-    AnchorLocation *anchor_location = &toc_anchor_locations.array[i];
-    if (i + 1 < toc_anchor_locations.used) {
-      next_anchor_location = &toc_anchor_locations.array[i + 1];
+  for (size_t i = 0; i < page_count; i++) {
+    AnchorLocation *anchor_location =
+        &toc_anchor_locations.array[page_indices[i]];
+    if (i + 1 < page_count) {
+      next_anchor_location =
+          &toc_anchor_locations.array[page_indices[i + 1]];
     } else {
       next_anchor_location = NULL;
     }
@@ -318,6 +349,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                          anchor_location, prev_anchor_location,
                          next_anchor_location, &has_code_blocks) != 0) {
       free(toc_html);
+      free(page_indices);
       free(search_index_name_offsets);
       fclose(search_index_file);
       free(search_index_path);
@@ -326,7 +358,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     prev_anchor_location = anchor_location;
   }
   free(toc_html);
-  int search_index_failed = toc_anchor_locations.used > 0 &&
+  int search_index_failed = page_count > 0 &&
                             fseek(search_index_file, -1, SEEK_CUR) != 0;
   if (!search_index_failed && fputs("]", search_index_file) == EOF)
     search_index_failed = 1;
@@ -334,6 +366,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     search_index_failed = 1;
   if (search_index_failed) {
     free(search_index_path);
+    free(page_indices);
     free(search_index_name_offsets);
     return -1;
   }
@@ -343,6 +376,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                                        search_index_name,
                                        sizeof(search_index_name)) != 0) {
     free(search_index_path);
+    free(page_indices);
     free(search_index_name_offsets);
     return -1;
   }
@@ -351,20 +385,25 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
       rename(search_index_path, final_search_index_path) != 0) {
     free(final_search_index_path);
     free(search_index_path);
+    free(page_indices);
     free(search_index_name_offsets);
     return -1;
   }
   free(final_search_index_path);
   free(search_index_path);
 
-  for (int i = 0; i < toc_anchor_locations.used; i++)
+  for (size_t i = 0; i < page_count; i++) {
     if (replace_file_name(
-            toc_anchor_locations.array[i].multipage_output_file_path,
+            toc_anchor_locations.array[page_indices[i]]
+                .multipage_output_file_path,
             search_index_name_offsets[i], search_index_placeholder,
             search_index_name) != 0) {
+      free(page_indices);
       free(search_index_name_offsets);
       return -1;
     }
+  }
+  free(page_indices);
   free(search_index_name_offsets);
 
   if (has_code_blocks && asset_write_to_dir_highlight_pack_js(

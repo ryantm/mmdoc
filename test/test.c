@@ -793,6 +793,95 @@ int test_multipage_cached_toc_current_page_links() {
   return 0;
 }
 
+int test_multipage_duplicate_output_paths() {
+  char root[] = "/tmp/mmdoc-duplicate-output-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char toc_path[PATH_MAX];
+  char source_path[PATH_MAX];
+  char output_path[PATH_MAX];
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  snprintf(source_path, sizeof(source_path), "%s/page.md", root);
+  snprintf(output_path, sizeof(output_path), "%s/index.html", root);
+  if (write_text_file(toc_path, "") != 0 ||
+      write_text_file(source_path,
+                      "# First {#first}\n\n## Second {#second}\n") != 0)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Project",
+      .toc_path = toc_path,
+      .out_multi = root,
+  };
+  AnchorLocation first = {
+      .file_path = source_path,
+      .multipage_output_file_path = output_path,
+      .multipage_output_directory_path = root,
+      .multipage_base_href = "",
+      .multipage_url = "./",
+      .anchor = "#first",
+      .title = "First",
+  };
+  AnchorLocation second = {
+      .file_path = source_path,
+      .multipage_output_file_path = output_path,
+      .multipage_output_directory_path = root,
+      .multipage_base_href = "",
+      .multipage_url = "./",
+      .anchor = "#second",
+      .title = "A much longer second title",
+  };
+  AnchorLocationArray toc_anchor_locations;
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&toc_anchor_locations, 2);
+  init_anchor_location_array(&anchor_locations, 2);
+  insert_anchor_location_array(&toc_anchor_locations, &first);
+  insert_anchor_location_array(&toc_anchor_locations, &second);
+  insert_anchor_location_array(&anchor_locations, &first);
+  insert_anchor_location_array(&anchor_locations, &second);
+  int index_result = build_anchor_location_index(&anchor_locations);
+  int render_result =
+      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+
+  AssetFileNames generated_names;
+  asset_file_names(&generated_names);
+  char search_index_name[ASSET_FILE_NAME_SIZE];
+  int search_index_found =
+      find_asset_name(root, "search_index.", ".js", search_index_name,
+                      sizeof(search_index_name));
+  int search_index_replaced =
+      search_index_found && file_contains(output_path, search_index_name) &&
+      !file_contains(output_path, "search_index.0000000000000000.js");
+  int page_navigation_is_unique =
+      !file_contains(output_path, "chapter-previous-button") &&
+      !file_contains(output_path, "chapter-next-button");
+
+  const char *asset_names[] = {
+      generated_names.a11y_dark_css,   generated_names.a11y_light_css,
+      generated_names.mmdoc_css,       generated_names.mmdoc_js,
+      generated_names.mmdoc_search_js, generated_names.fuse_basic_min_js,
+  };
+  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++)
+    unlink_asset(root, asset_names[i]);
+  if (search_index_found)
+    unlink_asset(root, search_index_name);
+  free_anchor_location_array(&toc_anchor_locations);
+  free_anchor_location_array(&anchor_locations);
+  unlink(output_path);
+  unlink(source_path);
+  unlink(toc_path);
+  rmdir(root);
+
+  if (index_result != 0 || render_result != 0 || !search_index_replaced ||
+      !page_navigation_is_unique) {
+    printf("multipage duplicate output paths test failed\n");
+    return 1;
+  }
+  printf("multipage duplicate output paths test passed\n");
+  return 0;
+}
+
 int write_overlong_id(char *path, const char *prefix, const char *suffix) {
   int fd = mkstemps(path, 5);
   if (fd == -1)
@@ -880,6 +969,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_multipage_navigation_anchor();
   num_tests++;
   num_failed += test_multipage_cached_toc_current_page_links();
+  num_tests++;
+  num_failed += test_multipage_duplicate_output_paths();
   num_tests++;
   num_failed += test_multipage_shared_assets_and_accessible_controls();
   num_tests++;
