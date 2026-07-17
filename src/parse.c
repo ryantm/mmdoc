@@ -256,9 +256,10 @@ int parse_dd(const char *text) {
       state = DD_SPACE;
       continue;
     }
-    if (state == DD_SPACE && text[i] != ' ') {
+    if (state == DD_SPACE && text[i] == ' ')
+      continue;
+    if (state == DD_SPACE)
       return i;
-    }
     return -1;
   }
   return -1;

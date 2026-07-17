@@ -178,6 +178,62 @@ int replace_link_bracket_with_span(cmark_node *node) {
   return 1;
 }
 
+int replace_code_link_bracket_with_span(cmark_node *node) {
+  if (cmark_node_get_type(node) != CMARK_NODE_CODE)
+    return 0;
+
+  cmark_node *previous = cmark_node_previous(node);
+  cmark_node *next = cmark_node_next(node);
+  if (previous == NULL || next == NULL ||
+      cmark_node_get_type(previous) != CMARK_NODE_TEXT ||
+      cmark_node_get_type(next) != CMARK_NODE_TEXT)
+    return 0;
+
+  const char *left = cmark_node_get_literal(previous);
+  const char *right = cmark_node_get_literal(next);
+  size_t left_length = strlen(left);
+  if (left_length == 0 || left[left_length - 1] != '[' ||
+      strncmp(right, "]{#", 3) != 0)
+    return 0;
+
+  const char *anchor_end = strchr(right + 3, '}');
+  if (anchor_end == NULL || anchor_end == right + 3)
+    return 0;
+
+  size_t anchor_length = (size_t)(anchor_end - (right + 3));
+  char *start = malloc(strlen("<span id=''></span>") + anchor_length + 1);
+  if (start == NULL)
+    return 0;
+  snprintf(start, strlen("<span id=''></span>") + anchor_length + 1,
+           "<span id='%.*s'>", (int)anchor_length, right + 3);
+
+  char *new_left = malloc(left_length);
+  char *new_right = malloc(strlen(anchor_end + 1) + 1);
+  if (new_left == NULL || new_right == NULL) {
+    free(start);
+    free(new_left);
+    free(new_right);
+    return 0;
+  }
+  memcpy(new_left, left, left_length - 1);
+  new_left[left_length - 1] = '\0';
+  strcpy(new_right, anchor_end + 1);
+  cmark_node_set_literal(previous, new_left);
+  cmark_node_set_literal(next, new_right);
+
+  cmark_node *start_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
+  cmark_node_set_literal(start_node, start);
+  cmark_node_insert_before(node, start_node);
+  cmark_node *end_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
+  cmark_node_set_literal(end_node, "</span>");
+  cmark_node_insert_after(node, end_node);
+
+  free(start);
+  free(new_left);
+  free(new_right);
+  return 1;
+}
+
 int replace_admonition_start(char *multipage_url, cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
   char *admonition_type = malloc(strlen(lit) + 1);
@@ -245,99 +301,143 @@ int replace_admonition_end(cmark_node *node) {
   return 1;
 }
 
-int replace_dd(cmark_node *node) {
-  const char *lit = cmark_node_get_literal(node);
-  int pos = parse_dd(lit);
-  if (-1 == pos)
-    return 0;
+static cmark_node *new_html_block(const char *literal) {
+  cmark_node *node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+  cmark_node_set_literal(node, literal);
+  return node;
+}
 
-  cmark_node *parent = cmark_node_parent(node);
-  parent = cmark_node_previous(parent);
-  if (parent == NULL)
-    return 0;
+static int definition_position_for_text_node(cmark_node *node) {
+  if (node == NULL || cmark_node_get_type(node) != CMARK_NODE_TEXT)
+    return -1;
+  const char *literal = cmark_node_get_literal(node);
+  int position = parse_dd(literal);
+  if (position != -1)
+    return position;
 
-  cmark_node *new_node = NULL;
-  cmark_node *previous = NULL;
+  size_t i = 0;
+  while (literal[i] == ' ')
+    i++;
+  if (literal[i] != ':')
+    return -1;
+  i++;
+  if (literal[i] != ' ')
+    return -1;
+  while (literal[i] == ' ')
+    i++;
+  return literal[i] == '\0' && cmark_node_next(node) != NULL ? (int)i : -1;
+}
 
-  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "<dl>");
-  cmark_node_insert_before(parent, new_node);
+static int paragraph_definition_position(cmark_node *node) {
+  if (node == NULL || cmark_node_get_type(node) != CMARK_NODE_PARAGRAPH)
+    return -1;
+  cmark_node *child = cmark_node_first_child(node);
+  return definition_position_for_text_node(child);
+}
 
+static void split_compact_definition_paragraph(cmark_node *paragraph) {
+  cmark_node *current = paragraph;
   for (;;) {
-    if (parent == NULL)
-      break;
-
-    cmark_node *child = cmark_node_first_child(parent);
-    lit = cmark_node_get_literal(child);
-    pos = parse_dd(lit);
-    if (pos != -1) {
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "<dd>");
-      cmark_node_insert_before(parent, new_node);
-
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "</dd>");
-      cmark_node_insert_after(parent, new_node);
-
-      cmark_node_set_literal(child, lit + pos);
-
-      previous = parent;
-      parent = cmark_node_next(parent);
-      previous = parent;
-      parent = cmark_node_next(parent);
-      continue;
+    cmark_node *line_break = cmark_node_first_child(current);
+    while (line_break != NULL) {
+      cmark_node *next = cmark_node_next(line_break);
+      if (cmark_node_get_type(line_break) == CMARK_NODE_SOFTBREAK &&
+          next != NULL && cmark_node_get_type(next) == CMARK_NODE_TEXT &&
+          definition_position_for_text_node(next) != -1)
+        break;
+      line_break = next;
     }
-    previous = parent;
-    parent = cmark_node_next(parent);
-    if (parent == NULL)
-      break;
+    if (line_break == NULL)
+      return;
 
-    child = cmark_node_first_child(parent);
-    lit = cmark_node_get_literal(child);
-    pos = parse_dd(lit);
-    if (pos != -1) {
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "<dt>");
-      cmark_node_insert_before(previous, new_node);
-
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "</dt>");
-      cmark_node_insert_after(previous, new_node);
-
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "<dd>");
-      cmark_node_insert_before(parent, new_node);
-
-      new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-      cmark_node_set_literal(new_node, "</dd>");
-      cmark_node_insert_after(parent, new_node);
-
-      cmark_node_set_literal(child, lit + pos);
-
-      previous = parent;
-      parent = cmark_node_next(parent);
-      previous = parent;
-      parent = cmark_node_next(parent);
-      continue;
+    cmark_node *definition = cmark_node_new(CMARK_NODE_PARAGRAPH);
+    cmark_node_insert_after(current, definition);
+    cmark_node *child = cmark_node_next(line_break);
+    while (child != NULL) {
+      cmark_node *next = cmark_node_next(child);
+      cmark_node_unlink(child);
+      cmark_node_append_child(definition, child);
+      child = next;
     }
-    break;
+    cmark_node_unlink(line_break);
+    cmark_node_free(line_break);
+    current = definition;
   }
+}
 
-  new_node = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-  cmark_node_set_literal(new_node, "</dl>");
-  cmark_node_insert_before(previous, new_node);
+static void normalize_compact_definition_lists(cmark_node *container) {
+  for (cmark_node *child = cmark_node_first_child(container); child != NULL;) {
+    cmark_node *next = cmark_node_next(child);
+    if (cmark_node_get_type(child) == CMARK_NODE_PARAGRAPH)
+      split_compact_definition_paragraph(child);
+    else
+      normalize_compact_definition_lists(child);
+    child = next;
+  }
+}
 
-  return 1;
+static void wrap_block(cmark_node *node, const char *start, const char *end) {
+  cmark_node *start_node = new_html_block(start);
+  cmark_node *end_node = new_html_block(end);
+  cmark_node_insert_before(node, start_node);
+  cmark_node_insert_after(node, end_node);
+}
+
+static void rewrite_definition_lists_in(cmark_node *container) {
+  cmark_node *cursor = cmark_node_first_child(container);
+  while (cursor != NULL) {
+    cmark_node *first_definition = cmark_node_next(cursor);
+    if (cmark_node_get_type(cursor) != CMARK_NODE_PARAGRAPH ||
+        paragraph_definition_position(first_definition) == -1) {
+      rewrite_definition_lists_in(cursor);
+      cursor = cmark_node_next(cursor);
+      continue;
+    }
+
+    cmark_node *open = new_html_block("<dl>");
+    cmark_node_insert_before(cursor, open);
+    for (;;) {
+      cmark_node *definition = cmark_node_next(cursor);
+      wrap_block(cursor, "<dt>", "</dt>");
+      cursor = definition;
+
+      while (paragraph_definition_position(cursor) != -1) {
+        cmark_node *next = cmark_node_next(cursor);
+        cmark_node *first_child = cmark_node_first_child(cursor);
+        const char *literal = cmark_node_get_literal(first_child);
+        int position = definition_position_for_text_node(first_child);
+        cmark_node_set_literal(first_child, literal + position);
+        wrap_block(cursor, "<dd>", "</dd>");
+        cursor = next;
+      }
+
+      if (cursor == NULL ||
+          cmark_node_get_type(cursor) != CMARK_NODE_PARAGRAPH ||
+          paragraph_definition_position(cmark_node_next(cursor)) == -1)
+        break;
+    }
+
+    cmark_node *close = new_html_block("</dl>");
+    if (cursor == NULL)
+      cmark_node_append_child(container, close);
+    else
+      cmark_node_insert_before(cursor, close);
+  }
+}
+
+static void rewrite_definition_lists(cmark_node *document) {
+  normalize_compact_definition_lists(document);
+  rewrite_definition_lists_in(document);
 }
 
 void replace_link(cmark_node *node, char *input_file_path,
-                  AnchorLocationArray anchor_locations,
-                  render_type render_type) {
+                  AnchorLocationArray anchor_locations, render_type render_type,
+                  char *multipage_url) {
   if (render_type == RENDER_TYPE_SINGLE) {
     return;
   }
   const char *url = cmark_node_get_url(node);
-  if (strlen(url) < 2)
+  if (strlen(url) == 0)
     return;
   if (url[0] != '#')
     return;
@@ -348,6 +448,13 @@ void replace_link(cmark_node *node, char *input_file_path,
   if (anchor_location == NULL) {
     printf("Anchor \"%s\" referenced in %s not found.\n", anchor,
            input_file_path);
+    if (render_type == RENDER_TYPE_MULTIPAGE) {
+      char *new_url = malloc(strlen(multipage_url) + strlen(url) + 1);
+      strcpy(new_url, multipage_url);
+      strcat(new_url, url);
+      cmark_node_set_url(node, new_url);
+      free(new_url);
+    }
     return;
   }
   if (render_type == RENDER_TYPE_MULTIPAGE) {
@@ -418,6 +525,27 @@ int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
   return has_code_block;
 }
 
+void cmark_rewrite_spans(cmark_node *document) {
+  int changed;
+  do {
+    changed = 0;
+    cmark_iter *iter = cmark_iter_new(document);
+    cmark_event_type event;
+    while ((event = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
+      if (event != CMARK_EVENT_ENTER)
+        continue;
+      cmark_node *node = cmark_iter_get_node(iter);
+      if (replace_code_link_bracket_with_span(node) ||
+          (cmark_node_get_type(node) == CMARK_NODE_TEXT &&
+           replace_link_bracket_with_span(node))) {
+        changed = 1;
+        break;
+      }
+    }
+    cmark_iter_free(iter);
+  } while (changed);
+}
+
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
                    render_type render_type, char *multipage_url,
                    AnchorLocationArray anchor_locations) {
@@ -439,18 +567,15 @@ void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
       node = cmark_iter_get_node(iter);
       type = cmark_node_get_type(node);
       if (type == CMARK_NODE_LINK) {
-        replace_link(node, input_file_path, anchor_locations, render_type);
+        replace_link(node, input_file_path, anchor_locations, render_type,
+                     multipage_url);
         continue;
       }
       if (type != CMARK_NODE_TEXT)
         continue;
-      if (replace_link_bracket_with_span(node))
-        continue;
       if (replace_admonition_start(multipage_url, node))
         continue;
       if (replace_admonition_end(node))
-        continue;
-      if (replace_dd(node))
         continue;
     }
     if (CMARK_EVENT_DONE == event)
@@ -562,6 +687,69 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
   return cmark_parser_finish(parser);
 }
 
+static int collect_anchors_from_text(Array *anchors, const char *text,
+                                     const char *file_path) {
+  for (size_t i = 0; text[i] != '\0'; i++) {
+    if (text[i] != '{')
+      continue;
+    size_t close = i + 1;
+    while (text[close] != '\0' && text[close] != '}')
+      close++;
+    if (text[close] != '}')
+      continue;
+
+    size_t hash = i + 1;
+    while (hash < close && text[hash] != '#')
+      hash++;
+    if (hash == close)
+      continue;
+
+    size_t end = hash + 1;
+    while (end < close && !isspace((unsigned char)text[end]))
+      end++;
+    size_t anchor_length = end - hash;
+    if (anchor_length <= 1)
+      continue;
+    if (anchor_length >= 1024) {
+      fprintf(stderr, "Anchor in %s exceeds 1023 bytes.\n", file_path);
+      return -1;
+    }
+    char anchor[1024];
+    memcpy(anchor, text + hash, anchor_length);
+    anchor[anchor_length] = '\0';
+    insert_array(anchors, anchor);
+    i = close;
+  }
+  return 0;
+}
+
+int mmdoc_render_collect_anchors(char *file_path, Array *anchors) {
+  cmark_mem *mem = cmark_get_default_mem_allocator();
+  cmark_parser *parser =
+      cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
+  cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
+  if (document == NULL) {
+    cmark_parser_free(parser);
+    return -1;
+  }
+
+  int failed = 0;
+  cmark_iter *iter = cmark_iter_new(document);
+  cmark_event_type event;
+  while (!failed && (event = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
+    if (event != CMARK_EVENT_ENTER)
+      continue;
+    cmark_node *node = cmark_iter_get_node(iter);
+    if (cmark_node_get_type(node) == CMARK_NODE_TEXT)
+      failed = collect_anchors_from_text(anchors, cmark_node_get_literal(node),
+                                         file_path) != 0;
+  }
+  cmark_iter_free(iter);
+  cmark_node_free(document);
+  cmark_parser_free(parser);
+  return failed ? -1 : 0;
+}
+
 int mmdoc_render_part(char *file_path, FILE *output_file,
                       render_type render_type, AnchorLocation *anchor_location,
                       AnchorLocationArray anchor_locations, char *multipage_url,
@@ -577,6 +765,9 @@ int mmdoc_render_part(char *file_path, FILE *output_file,
 
   int has_code_block = cmark_rewrite_syntax(document, mem, file_path,
                                             render_type, anchor_locations);
+
+  cmark_rewrite_spans(document);
+  rewrite_definition_lists(document);
 
   cmark_rewrite(document, mem, file_path, render_type, multipage_url,
                 anchor_locations);

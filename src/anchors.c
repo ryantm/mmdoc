@@ -7,54 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum ref_parse_state { NONE, L, REF };
-
 int mmdoc_anchors(Array *md_anchors, char *path) {
-  char ref[1024];
-  size_t refpos = 0;
-  FILE *file = fopen(path, "r");
-  if (file == NULL) {
-    fprintf(stderr, "Error opening %s: %s\n", path, strerror(errno));
-    return 1;
-  }
-  int c;
-  enum ref_parse_state state = NONE;
-
-  while (1) {
-    c = fgetc(file);
-    if (c == EOF)
-      break;
-    if (state == NONE && c == '{') {
-      state = L;
-      continue;
-    }
-    if (state == L && c == '#') {
-      state = REF;
-      ref[refpos] = c;
-      refpos += 1;
-      continue;
-    }
-    if (state == REF && (c == '\n' || c == '\r')) {
-    } else if (state == REF && c != '}') {
-      if (refpos >= sizeof(ref) - 1) {
-        fprintf(stderr, "Anchor in %s exceeds %zu bytes.\n", path,
-                sizeof(ref) - 1);
-        fclose(file);
-        return 1;
-      }
-      ref[refpos] = c;
-      refpos += 1;
-      continue;
-    } else if (state == REF && c == '}') {
-      ref[refpos] = '\0';
-      insert_array(md_anchors, ref);
-    }
-    refpos = 0;
-    state = NONE;
-    continue;
-  }
-  fclose(file);
-  return 0;
+  return mmdoc_render_collect_anchors(path, md_anchors);
 }
 
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,

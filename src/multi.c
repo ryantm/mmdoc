@@ -141,8 +141,9 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
         "  </head>\n"
         "  <body>\n",
         page_file);
-  fputs("  <a class='skip-link' href='#main-content'>Skip to main "
-        "content</a>\n"
+  fputs("  <a class='skip-link' href='", page_file);
+  fputs(anchor_location->multipage_url, page_file);
+  fputs("#main-content'>Skip to main content</a>\n"
         "  <input type='checkbox' id='sidebar-checkbox' aria-hidden='true' "
         "tabindex='-1' style='display: none;'>\n",
         page_file);
@@ -338,8 +339,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     AnchorLocation *anchor_location =
         &toc_anchor_locations.array[page_indices[i]];
     if (i + 1 < page_count) {
-      next_anchor_location =
-          &toc_anchor_locations.array[page_indices[i + 1]];
+      next_anchor_location = &toc_anchor_locations.array[page_indices[i + 1]];
     } else {
       next_anchor_location = NULL;
     }
@@ -358,8 +358,8 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     prev_anchor_location = anchor_location;
   }
   free(toc_html);
-  int search_index_failed = page_count > 0 &&
-                            fseek(search_index_file, -1, SEEK_CUR) != 0;
+  int search_index_failed =
+      page_count > 0 && fseek(search_index_file, -1, SEEK_CUR) != 0;
   if (!search_index_failed && fputs("]", search_index_file) == EOF)
     search_index_failed = 1;
   if (fclose(search_index_file) != 0)
@@ -393,11 +393,10 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
   free(search_index_path);
 
   for (size_t i = 0; i < page_count; i++) {
-    if (replace_file_name(
-            toc_anchor_locations.array[page_indices[i]]
-                .multipage_output_file_path,
-            search_index_name_offsets[i], search_index_placeholder,
-            search_index_name) != 0) {
+    if (replace_file_name(toc_anchor_locations.array[page_indices[i]]
+                              .multipage_output_file_path,
+                          search_index_name_offsets[i],
+                          search_index_placeholder, search_index_name) != 0) {
       free(page_indices);
       free(search_index_name_offsets);
       return -1;
