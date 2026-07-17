@@ -320,6 +320,37 @@ int test_zero_capacity_arrays() {
   return 0;
 }
 
+int test_anchor_location_index() {
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 3);
+  AnchorLocation first = {.anchor = "#first", .title = "First"};
+  AnchorLocation second = {.anchor = "#second", .title = "Second"};
+  AnchorLocation duplicate = {.anchor = "#first", .title = "Duplicate"};
+  insert_anchor_location_array(&anchor_locations, &first);
+  insert_anchor_location_array(&anchor_locations, &second);
+  insert_anchor_location_array(&anchor_locations, &duplicate);
+
+  int build_result = build_anchor_location_index(&anchor_locations);
+  AnchorLocation *found_first =
+      find_anchor_location(&anchor_locations, "#first");
+  AnchorLocation *found_second =
+      find_anchor_location(&anchor_locations, "#second");
+  AnchorLocation *not_found =
+      find_anchor_location(&anchor_locations, "#missing");
+  int passed = build_result == 0 && found_first != NULL &&
+               strcmp(found_first->title, "First") == 0 &&
+               found_second != NULL &&
+               strcmp(found_second->title, "Second") == 0 && not_found == NULL;
+  free_anchor_location_array(&anchor_locations);
+
+  if (!passed) {
+    printf("anchor location index test failed\n");
+    return 1;
+  }
+  printf("anchor location index test passed\n");
+  return 0;
+}
+
 int file_contains(char *path, const char *expected) {
   FILE *file = fopen(path, "r");
   if (file == NULL)
@@ -406,11 +437,24 @@ int test_multipage_shared_assets_and_accessible_controls() {
     assets_found &= file_exists_and_is_not_empty(asset_path);
   }
 
-  int page_is_external = file_contains(index_path, "href='mmdoc.css'") &&
-                         file_contains(index_path, "src='mmdoc.js'") &&
-                         file_contains(index_path, "src='highlight.pack.js'") &&
-                         !file_contains(index_path, "<style>") &&
-                         !file_contains(index_path, "Highlight.js 10.7.1");
+  int page_is_external =
+      file_contains(index_path, "href='mmdoc.css'") &&
+      file_contains(index_path, "src='mmdoc.js'") &&
+      file_contains(index_path, "src='mmdoc_search.js'") &&
+      file_contains(index_path, "src='highlight.pack.js'") &&
+      !file_contains(index_path, "src='search_index.js'") &&
+      !file_contains(index_path, "src='fuse.basic.min.js'") &&
+      !file_contains(index_path, "<style>") &&
+      !file_contains(index_path, "Highlight.js 10.7.1");
+  char search_script_path[PATH_MAX];
+  snprintf(search_script_path, sizeof(search_script_path), "%s/mmdoc_search.js",
+           root);
+  int search_is_lazy =
+      file_contains(search_script_path,
+                    "loadSearchScript('search_index.js')") &&
+      file_contains(search_script_path,
+                    "loadSearchScript('fuse.basic.min.js')") &&
+      file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
       file_contains(index_path, "class='skip-link' href='#main-content'") &&
       file_contains(index_path, "aria-controls='sidebar'") &&
@@ -449,7 +493,8 @@ int test_multipage_shared_assets_and_accessible_controls() {
   rmdir(root);
 
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
-      !page_is_external || !page_is_accessible || !highlighter_is_conditional) {
+      !page_is_external || !page_is_accessible || !search_is_lazy ||
+      !highlighter_is_conditional) {
     printf("multipage shared asset and accessibility test failed\n");
     return 1;
   }
@@ -544,8 +589,8 @@ int test_multipage_navigation_anchor() {
   init_anchor_location_array(&anchor_locations, 0);
 
   int render_result =
-      mmdoc_multi_page(inputs, anchor_locations, search_index_file, &current,
-                       &previous, &next, NULL);
+      mmdoc_multi_page(inputs, anchor_locations, "", 0, search_index_file,
+                       &current, &previous, &next, NULL);
   int found_previous = file_contains(
       page_path, "id='chapter-previous-button' class='chapter-previous' "
                  "href='./#preface'");
@@ -564,6 +609,103 @@ int test_multipage_navigation_anchor() {
     return 1;
   }
   printf("multipage navigation anchor test passed\n");
+  return 0;
+}
+
+int test_multipage_cached_toc_current_page_links() {
+  char root[] = "/tmp/mmdoc-cached-toc-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char toc_path[PATH_MAX];
+  char first_source_path[PATH_MAX];
+  char second_source_path[PATH_MAX];
+  char first_output_path[PATH_MAX];
+  char second_output_path[PATH_MAX];
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  snprintf(first_source_path, sizeof(first_source_path), "%s/first.md", root);
+  snprintf(second_source_path, sizeof(second_source_path), "%s/second.md",
+           root);
+  snprintf(first_output_path, sizeof(first_output_path), "%s/first.html", root);
+  snprintf(second_output_path, sizeof(second_output_path), "%s/second.html",
+           root);
+
+  if (write_text_file(toc_path, "# Contents {#contents}\n\n* [](#first)\n* "
+                                "[](#second)\n") != 0 ||
+      write_text_file(first_source_path, "# First {#first}\n") != 0 ||
+      write_text_file(second_source_path, "# Second {#second}\n") != 0)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Project",
+      .toc_path = toc_path,
+      .out_multi = root,
+  };
+  AnchorLocation first = {
+      .file_path = first_source_path,
+      .multipage_output_file_path = first_output_path,
+      .multipage_output_directory_path = root,
+      .multipage_base_href = "",
+      .multipage_url = "first/",
+      .anchor = "#first",
+      .title = "First",
+  };
+  AnchorLocation second = {
+      .file_path = second_source_path,
+      .multipage_output_file_path = second_output_path,
+      .multipage_output_directory_path = root,
+      .multipage_base_href = "",
+      .multipage_url = "second/",
+      .anchor = "#second",
+      .title = "Second",
+  };
+  AnchorLocationArray toc_anchor_locations;
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&toc_anchor_locations, 2);
+  init_anchor_location_array(&anchor_locations, 2);
+  insert_anchor_location_array(&toc_anchor_locations, &first);
+  insert_anchor_location_array(&toc_anchor_locations, &second);
+  insert_anchor_location_array(&anchor_locations, &first);
+  insert_anchor_location_array(&anchor_locations, &second);
+  int index_result = build_anchor_location_index(&anchor_locations);
+  int render_result =
+      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+
+  int links_are_page_specific =
+      file_contains(first_output_path,
+                    "<h1 id='contents'><a href='first/#contents'>") &&
+      file_contains(second_output_path,
+                    "<h1 id='contents'><a href='second/#contents'>");
+  int toc_links_are_resolved =
+      file_contains(first_output_path, "href='first/#first'") &&
+      file_contains(first_output_path, "href='second/#second'") &&
+      file_contains(second_output_path, "href='first/#first'") &&
+      file_contains(second_output_path, "href='second/#second'");
+
+  const char *asset_names[] = {
+      "a11y-dark.css",   "a11y-light.css",    "mmdoc.css",       "mmdoc.js",
+      "mmdoc_search.js", "fuse.basic.min.js", "search_index.js",
+  };
+  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
+    char asset_path[PATH_MAX];
+    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
+    unlink(asset_path);
+  }
+  free_anchor_location_array(&toc_anchor_locations);
+  free_anchor_location_array(&anchor_locations);
+  unlink(first_output_path);
+  unlink(second_output_path);
+  unlink(first_source_path);
+  unlink(second_source_path);
+  unlink(toc_path);
+  rmdir(root);
+
+  if (index_result != 0 || render_result != 0 || !links_are_page_specific ||
+      !toc_links_are_resolved) {
+    printf("multipage cached TOC test failed\n");
+    return 1;
+  }
+  printf("multipage cached TOC test passed\n");
   return 0;
 }
 
@@ -649,7 +791,11 @@ int main(int argc, char *argv[]) {
   num_tests++;
   num_failed += test_zero_capacity_arrays();
   num_tests++;
+  num_failed += test_anchor_location_index();
+  num_tests++;
   num_failed += test_multipage_navigation_anchor();
+  num_tests++;
+  num_failed += test_multipage_cached_toc_current_page_links();
   num_tests++;
   num_failed += test_multipage_shared_assets_and_accessible_controls();
   num_tests++;

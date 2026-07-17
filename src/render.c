@@ -343,33 +343,26 @@ void replace_link(cmark_node *node, char *input_file_path,
     return;
   const char *anchor = url;
 
-  AnchorLocation anchor_location;
-  int found = 0;
-  for (int i = 0; i < anchor_locations.used; i++) {
-    if (strcmp(anchor, anchor_locations.array[i].anchor) == 0) {
-      anchor_location = anchor_locations.array[i];
-      found = 1;
-      break;
-    }
-  }
-  if (!found) {
+  AnchorLocation *anchor_location =
+      find_anchor_location(&anchor_locations, anchor);
+  if (anchor_location == NULL) {
     printf("Anchor \"%s\" referenced in %s not found.\n", anchor,
            input_file_path);
     return;
   }
   if (render_type == RENDER_TYPE_MULTIPAGE) {
     char *new_url =
-        malloc(strlen(anchor_location.multipage_url) + strlen(url) + 1);
-    strcpy(new_url, anchor_location.multipage_url);
+        malloc(strlen(anchor_location->multipage_url) + strlen(url) + 1);
+    strcpy(new_url, anchor_location->multipage_url);
     strcat(new_url, url);
     cmark_node_set_url(node, new_url);
     free(new_url);
   }
-  if (strlen(anchor_location.title) != 0) {
+  if (strlen(anchor_location->title) != 0) {
     cmark_node *child = cmark_node_first_child(node);
     if (child == NULL) {
       cmark_node *new_child = cmark_node_new(CMARK_NODE_TEXT);
-      cmark_node_set_literal(new_child, anchor_location.title);
+      cmark_node_set_literal(new_child, anchor_location->title);
       cmark_node_prepend_child(node, new_child);
     }
   }

@@ -6,6 +6,7 @@
 #include "types.h"
 
 int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
+                     const char *toc_html, int toc_has_code_block,
                      FILE *search_index_file, AnchorLocation *anchor_location,
                      AnchorLocation *prev_anchor_location,
                      AnchorLocation *next_anchor_location,
