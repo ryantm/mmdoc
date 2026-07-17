@@ -63,5 +63,5 @@ with tempfile.NamedTemporaryFile() as f:
     f.write(f"{basename} {new_version}\n\n".encode())
     f.write(shortlog.encode())
     f.flush()
-    subprocess.run(["git", "tag", "-e", "-F", f.name, "-a", new_version])
+    subprocess.run(["git", "tag", "-F", f.name, "-a", new_version])
     print(new_version)
