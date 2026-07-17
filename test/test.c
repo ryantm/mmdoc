@@ -525,7 +525,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(search_script_path,
                     "loadSearchScript(searchIndexSource)") &&
       file_contains(search_script_path, "loadSearchScript(fuseSource)") &&
-      file_contains(search_script_path, "typeof corpus === 'undefined'") &&
+      file_contains(search_script_path, "window.mmdocSearchCorpus") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
       file_contains(index_path, "class='skip-link' href='#main-content'") &&

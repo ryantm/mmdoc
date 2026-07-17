@@ -28,9 +28,7 @@ function loadSearchAssets() {
     loadSearchScript(searchIndexSource),
     loadSearchScript(fuseSource)
   ]).then(() => {
-    const searchCorpus = typeof corpus === 'undefined'
-      ? window.mmdocSearchCorpus
-      : corpus
+    const searchCorpus = window.mmdocSearchCorpus
     if (!Array.isArray(searchCorpus))
       throw new Error('Search corpus did not load')
     searchIndex = new Fuse(searchCorpus, {
