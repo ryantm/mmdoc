@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "multi.h"
 #include "asset.h"
+#include "html.h"
 #include "render.h"
 #include <stdlib.h>
 #include <string.h>
@@ -119,9 +120,10 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("'>\n"
         "    <meta charset='utf-8'>\n"
         "    <meta name='viewport' content='width=device-width, "
-        "initial-scale=1.0'>\n"
-        "    <meta name='description' content='",
+        "initial-scale=1.0'>\n",
         page_file);
+  html_theme_init(page_file);
+  fputs("    <meta name='description' content='", page_file);
   fputs(anchor_location->title, page_file);
   fputs("'>\n"
         "    <link rel='icon' href='favicon.svg'>\n",

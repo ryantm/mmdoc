@@ -414,6 +414,37 @@ int file_contains(char *path, const char *expected) {
   return found;
 }
 
+int file_contains_before(char *path, const char *first, const char *second) {
+  FILE *file = fopen(path, "r");
+  if (file == NULL)
+    return 0;
+
+  if (fseek(file, 0, SEEK_END) != 0) {
+    fclose(file);
+    return 0;
+  }
+  long file_size = ftell(file);
+  if (file_size < 0 || fseek(file, 0, SEEK_SET) != 0) {
+    fclose(file);
+    return 0;
+  }
+
+  char *contents = malloc((size_t)file_size + 1);
+  if (contents == NULL) {
+    fclose(file);
+    return 0;
+  }
+  size_t bytes_read = fread(contents, 1, (size_t)file_size, file);
+  contents[bytes_read] = '\0';
+  char *first_position = strstr(contents, first);
+  char *second_position = strstr(contents, second);
+  int found = first_position != NULL && second_position != NULL &&
+              first_position < second_position;
+  free(contents);
+  fclose(file);
+  return found;
+}
+
 int file_exists_and_is_not_empty(char *path) {
   FILE *file = fopen(path, "rb");
   if (file == NULL)
@@ -575,6 +606,12 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(index_path, "aria-label='Open search'") &&
       file_contains(index_path, "role='status' aria-live='polite'") &&
       file_contains(index_path, "<main id='main-content' tabindex='-1'>");
+  int theme_is_initialized_before_css =
+      file_contains_before(index_path, "localStorage.getItem('theme')",
+                           generated_names.mmdoc_css) &&
+      file_contains(index_path,
+                    "document.documentElement.classList.add(theme + "
+                    "'-theme')");
 
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
     unlink_asset(root, asset_names[i]);
@@ -612,7 +649,8 @@ int test_multipage_shared_assets_and_accessible_controls() {
 
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
       !names_are_hashed || !page_is_external || !page_is_accessible ||
-      !search_is_lazy || !corpus_hash_changed || !highlighter_is_conditional) {
+      !theme_is_initialized_before_css || !search_is_lazy ||
+      !corpus_hash_changed || !highlighter_is_conditional) {
     printf("multipage shared asset and accessibility test failed\n");
     return 1;
   }
@@ -646,6 +684,8 @@ int test_single_page_accessible_controls() {
                        file_contains(index_path, "aria-controls='sidebar'") &&
                        file_contains(index_path, "aria-pressed='false'") &&
                        file_contains(index_path, "id='main-content'");
+  int theme_is_initialized_before_css = file_contains_before(
+      index_path, "localStorage.getItem('theme')", "<style>");
 
   free_anchor_location_array(&toc_anchor_locations);
   unlink(index_path);
@@ -653,7 +693,8 @@ int test_single_page_accessible_controls() {
   rmdir(out_path);
   rmdir(root);
 
-  if (render_result != 0 || !controls_found) {
+  if (render_result != 0 || !controls_found ||
+      !theme_is_initialized_before_css) {
     printf("single-page accessibility test failed\n");
     return 1;
   }

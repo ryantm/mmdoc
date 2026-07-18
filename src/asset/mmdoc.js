@@ -116,17 +116,23 @@ function getDefaultTheme() {
 
 // Returns 'light' or 'dark'
 function getSelectedTheme() {
-  return localStorage.getItem('theme') ?? getDefaultTheme()
+  let theme = null
+  try { theme = localStorage.getItem('theme') } catch (error) {}
+  return theme === 'light' || theme === 'dark' ? theme : getDefaultTheme()
+}
+
+function saveSelectedTheme(theme) {
+  try { localStorage.setItem('theme', theme) } catch (error) {}
 }
 
 function toggleTheme() {
   const theme = getSelectedTheme()
 
   if (theme === 'dark') {
-    localStorage.setItem('theme', 'light')
+    saveSelectedTheme('light')
     setLightTheme()
   } else if (theme === 'light') {
-    localStorage.setItem('theme', 'dark')
+    saveSelectedTheme('dark')
     setDarkTheme()
   }
 }
