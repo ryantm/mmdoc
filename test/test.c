@@ -209,6 +209,14 @@ int test_e007() {
   return retval;
 }
 
+int test_e015() {
+  AnchorLocationArray anchor_locations;
+  init_anchor_location_array(&anchor_locations, 0);
+  int retval = test_multipage_render("e015", anchor_locations);
+  free_anchor_location_array(&anchor_locations);
+  return retval;
+}
+
 int test_title(char *example, char *expected_title) {
   char *example_dir = TEST_EXAMPLE_DIR;
   char *input_filename = "input.md";
@@ -350,6 +358,40 @@ int test_anchor_location_index() {
     return 1;
   }
   printf("anchor location index test passed\n");
+  return 0;
+}
+
+int test_anchor_discovery_uses_markdown_ast() {
+  char path[] = "/tmp/mmdoc-anchor-discovery-XXXXXX.md";
+  int fd = mkstemps(path, 3);
+  if (fd == -1)
+    return 1;
+  FILE *file = fdopen(fd, "w");
+  if (file == NULL)
+    return 1;
+  const char *markdown = "# Page {#page}\n\n"
+                         "`{#not-an-anchor}`\n\n"
+                         "::: {.example #example-anchor}\nExample\n:::\n\n"
+                         "[`lib`]{#lib-anchor}\n\n"
+                         "[]{#first-alias} []{#second-alias}\n";
+  int write_failed = fputs(markdown, file) == EOF || fclose(file) != 0;
+
+  Array anchors;
+  init_array(&anchors, 0);
+  int result = write_failed ? -1 : mmdoc_anchors(&anchors, path);
+  const char *expected[] = {"#page", "#example-anchor", "#lib-anchor",
+                            "#first-alias", "#second-alias"};
+  int passed = result == 0 && anchors.used == 5;
+  for (size_t i = 0; passed && i < 5; i++)
+    passed = strcmp(anchors.array[i], expected[i]) == 0;
+
+  free_array(&anchors);
+  unlink(path);
+  if (!passed) {
+    printf("AST anchor discovery test failed\n");
+    return 1;
+  }
+  printf("AST anchor discovery test passed\n");
   return 0;
 }
 
@@ -528,7 +570,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(search_script_path, "window.mmdocSearchCorpus") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
-      file_contains(index_path, "class='skip-link' href='#main-content'") &&
+      file_contains(index_path, "class='skip-link' href='./#main-content'") &&
       file_contains(index_path, "aria-controls='sidebar'") &&
       file_contains(index_path, "aria-label='Open search'") &&
       file_contains(index_path, "role='status' aria-live='polite'") &&
@@ -960,11 +1002,21 @@ int main(int argc, char *argv[]) {
   num_tests++;
   num_failed += test_render("e009");
   num_tests++;
+  num_failed += test_render("e013");
+  num_tests++;
+  num_failed += test_render("e014");
+  num_tests++;
+  num_failed += test_e015();
+  num_tests++;
+  num_failed += test_render("e016");
+  num_tests++;
   num_failed += test_copy_nested_image();
   num_tests++;
   num_failed += test_zero_capacity_arrays();
   num_tests++;
   num_failed += test_anchor_location_index();
+  num_tests++;
+  num_failed += test_anchor_discovery_uses_markdown_ast();
   num_tests++;
   num_failed += test_multipage_navigation_anchor();
   num_tests++;
