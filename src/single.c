@@ -25,9 +25,10 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
         "  <head>\n"
         "    <meta charset='utf-8'>\n"
         "    <meta name='viewport' content='width=device-width, "
-        "initial-scale=1.0'>\n"
-        "    <link rel='icon' href='favicon.svg'>\n",
+        "initial-scale=1.0'>\n",
         index_file);
+  html_theme_init(index_file);
+  fputs("    <link rel='icon' href='favicon.svg'>\n", index_file);
 
   html_css(index_file);
 

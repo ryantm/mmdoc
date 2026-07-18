@@ -2,6 +2,24 @@
 #include "html.h"
 #include "asset.h"
 
+int html_theme_init(FILE *file) {
+  return fputs("    <script>\n"
+               "      (() => {\n"
+               "        let theme = null\n"
+               "        try { theme = localStorage.getItem('theme') } catch "
+               "(error) {}\n"
+               "        if (theme !== 'light' && theme !== 'dark')\n"
+               "          theme = window.matchMedia('(prefers-color-scheme: "
+               "dark)').matches ? 'dark' : 'light'\n"
+               "        document.documentElement.classList.add(theme + "
+               "'-theme')\n"
+               "      })()\n"
+               "    </script>\n",
+               file) == EOF
+             ? -1
+             : 0;
+}
+
 int html_js(FILE *file) {
   fputs("<script>\n", file);
   if (asset_write_to_file_mmdoc_js(file) != 0)
