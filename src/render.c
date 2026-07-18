@@ -77,6 +77,7 @@ int replace_header_attributes(cmark_node *node, char *input_file_path,
     new_lit[i] = '\0';
     cmark_node *new_node = cmark_node_new(CMARK_NODE_TEXT);
     cmark_node_set_literal(new_node, new_lit);
+    free(new_lit);
     cmark_node_replace(last_child, new_node);
   }
 
@@ -113,6 +114,8 @@ int replace_headers_with_attributes_for_html(char *multipage_url,
   cmark_node *new_node = cmark_node_new(CMARK_NODE_CUSTOM_BLOCK);
   cmark_node_set_on_enter(new_node, on_enter);
   cmark_node_set_on_exit(new_node, on_exit);
+  free(on_enter);
+  free(on_exit);
   cmark_node_replace_with_children(node, new_node);
 
   free(info->anchor);

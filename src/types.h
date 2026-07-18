@@ -36,7 +36,9 @@ void insert_anchor_location_array(AnchorLocationArray *a,
 int build_anchor_location_index(AnchorLocationArray *a);
 AnchorLocation *find_anchor_location(AnchorLocationArray *a,
                                      const char *anchor);
+void free_anchor_location(AnchorLocation *location);
 void free_anchor_location_array(AnchorLocationArray *a);
+void free_anchor_location_array_deep(AnchorLocationArray *a);
 void init_array(Array *a, size_t initialSize);
 void insert_array(Array *a, char *element);
 void free_array(Array *a);
