@@ -35,41 +35,48 @@ int main(int argc, char *argv[]) {
     print_usage();
     return 1;
   }
-  Inputs inputs;
+  int result = 1;
+  Inputs inputs = {0};
+  Array toc_refs = {0};
+  Array md_files = {0};
+  AnchorLocationArray anchor_locations = {0};
+  AnchorLocationArray toc_anchor_locations = {0};
+
   if (0 != mmdoc_inputs_derive(&inputs, argv))
-    return 1;
+    goto cleanup;
 
-  Array toc_refs;
   if (0 != mmdoc_refs(&toc_refs, inputs.toc_path))
-    return 1;
+    goto cleanup;
 
-  Array md_files;
   init_array(&md_files, 100);
   mmdoc_md_files(&md_files, inputs.src);
 
-  AnchorLocationArray anchor_locations;
   if (0 !=
       mmdoc_anchors_locations(&anchor_locations, &md_files, &toc_refs, inputs))
-    return 1;
+    goto cleanup;
 
-  AnchorLocationArray toc_anchor_locations;
   init_anchor_location_array(&toc_anchor_locations, toc_refs.used);
   if (0 != mmdoc_anchors_find_toc_anchors(&toc_anchor_locations, &toc_refs,
                                           &anchor_locations))
-    return 1;
+    goto cleanup;
   free_array(&toc_refs);
 
   if (0 != mmdoc_single(inputs, toc_anchor_locations))
-    return 1;
+    goto cleanup;
 
   if (0 != mmdoc_multi(inputs, toc_anchor_locations, anchor_locations))
-    return 1;
+    goto cleanup;
 
   if (0 != copy_imgs(inputs))
-    return 1;
+    goto cleanup;
 
+  result = 0;
+
+cleanup:
+  free_array(&toc_refs);
   free_array(&md_files);
   free_anchor_location_array(&toc_anchor_locations);
-  free_anchor_location_array(&anchor_locations);
-  return 0;
+  free_anchor_location_array_deep(&anchor_locations);
+  mmdoc_inputs_free(&inputs);
+  return result;
 }

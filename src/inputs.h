@@ -11,3 +11,4 @@ typedef struct {
 } Inputs;
 
 int mmdoc_inputs_derive(Inputs *inputs, char *argv[]);
+void mmdoc_inputs_free(Inputs *inputs);

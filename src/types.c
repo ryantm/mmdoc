@@ -83,6 +83,17 @@ AnchorLocation *find_anchor_location(AnchorLocationArray *a,
   return NULL;
 }
 
+void free_anchor_location(AnchorLocation *location) {
+  free(location->file_path);
+  free(location->multipage_output_file_path);
+  free(location->multipage_output_directory_path);
+  free(location->multipage_url);
+  free(location->multipage_base_href);
+  free(location->anchor);
+  free(location->title);
+  memset(location, 0, sizeof(*location));
+}
+
 void free_anchor_location_array(AnchorLocationArray *a) {
   free(a->anchor_index);
   free(a->array);
@@ -90,6 +101,12 @@ void free_anchor_location_array(AnchorLocationArray *a) {
   a->anchor_index = NULL;
   a->anchor_index_size = 0;
   a->used = a->size = 0;
+}
+
+void free_anchor_location_array_deep(AnchorLocationArray *a) {
+  for (size_t i = 0; i < a->used; i++)
+    free_anchor_location(&a->array[i]);
+  free_anchor_location_array(a);
 }
 
 void init_array(Array *a, size_t initialSize) {
