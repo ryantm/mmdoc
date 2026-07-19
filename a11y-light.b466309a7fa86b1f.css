@@ -1,0 +1,99 @@
+/* a11y-light theme */
+/* Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css */
+/* @author: ericwbailey */
+
+/* Comment */
+.light-theme .hljs-comment,
+.light-theme .hljs-quote {
+  color: #696969;
+}
+
+/* Red */
+.light-theme .hljs-variable,
+.light-theme .hljs-template-variable,
+.light-theme .hljs-tag,
+.light-theme .hljs-name,
+.light-theme .hljs-selector-id,
+.light-theme .hljs-selector-class,
+.light-theme .hljs-regexp,
+.light-theme .hljs-deletion {
+  color: #d91e18;
+}
+
+/* Orange */
+.light-theme .hljs-number,
+.light-theme .hljs-built_in,
+.light-theme .hljs-builtin-name,
+.light-theme .hljs-literal,
+.light-theme .hljs-type,
+.light-theme .hljs-params,
+.light-theme .hljs-meta,
+.light-theme .hljs-link {
+  color: #aa5d00;
+}
+
+/* Yellow */
+.light-theme .hljs-attribute {
+  color: #aa5d00;
+}
+
+/* Green */
+.light-theme .hljs-string,
+.light-theme .hljs-symbol,
+.light-theme .hljs-bullet,
+.light-theme .hljs-addition {
+  color: #008000;
+}
+
+/* Blue */
+.light-theme .hljs-title,
+.light-theme .hljs-section {
+  color: #007faa;
+}
+
+/* Purple */
+.light-theme .hljs-keyword,
+.light-theme .hljs-selector-tag {
+  color: #7928a1;
+}
+
+.light-theme .hljs {
+  /* display: block; */
+  /* overflow-x: auto; */
+  background: #fefefe;
+  color: #545454;
+  /* padding: 0.5em; */
+}
+
+.light-theme .hljs-emphasis {
+  font-style: italic;
+}
+
+.light-theme .hljs-strong {
+  font-weight: bold;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  .light-theme .hljs-addition,
+  .light-theme .hljs-attribute,
+  .light-theme .hljs-built_in,
+  .light-theme .hljs-builtin-name,
+  .light-theme .hljs-bullet,
+  .light-theme .hljs-comment,
+  .light-theme .hljs-link,
+  .light-theme .hljs-literal,
+  .light-theme .hljs-meta,
+  .light-theme .hljs-number,
+  .light-theme .hljs-params,
+  .light-theme .hljs-string,
+  .light-theme .hljs-symbol,
+  .light-theme .hljs-type,
+  .light-theme .hljs-quote {
+        color: highlight;
+    }
+
+    .light-theme .hljs-keyword,
+    .light-theme .hljs-selector-tag {
+        font-weight: bold;
+    }
+}

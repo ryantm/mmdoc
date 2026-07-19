@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang='en'>
+  <head>
+    <base href='../'>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <script>
+      (() => {
+        let theme = null
+        try { theme = localStorage.getItem('theme') } catch (error) {}
+        if (theme !== 'light' && theme !== 'dark')
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.classList.add(theme + '-theme')
+      })()
+    </script>
+    <meta name='description' content='License'>
+    <link rel='icon' href='favicon.svg'>
+    <link rel='stylesheet' href='a11y-dark.1fcafc9d9a306955.css'>
+    <link rel='stylesheet' href='a11y-light.b466309a7fa86b1f.css'>
+    <link rel='stylesheet' href='mmdoc.e4286053b6471af4.css'>
+    <title>License | mmdoc</title>
+  </head>
+  <body>
+  <a class='skip-link' href='license/#main-content'>Skip to main content</a>
+  <input type='checkbox' id='sidebar-checkbox' aria-hidden='true' tabindex='-1' style='display: none;'>
+  <div class='body'>
+    <div class='nav-top-container'>
+    <nav class='nav-top' aria-label='Documentation controls'>
+      <button type='button' class='sidebar-toggle' aria-label='Toggle table of contents' aria-controls='sidebar' aria-expanded='true'></button>    <button type='button' class='search-toggle' aria-label='Open search' aria-controls='search-panel' aria-expanded='false'></button>    <button type='button' class='theme-toggle' aria-label='Switch to dark theme' aria-pressed='false'></button>    <a id='chapter-previous-button' class='chapter-previous' href='contributing/#contributing' title='Contributing' aria-label='Previous: Contributing'>&lt;</a>
+   <span aria-hidden='true'>&nbsp;</span>    </nav>
+    </div>
+    <nav id='sidebar' class='sidebar' aria-label='Table of contents'>
+<h2>mmdoc docs</h2>
+<ul>
+<li><a href="./#introduction">Introduction</a></li>
+<li><a href="features/#features">Features</a></li>
+<li><a href="users/#users">Users of mmdoc</a></li>
+<li><a href="install/#install">Install</a></li>
+<li><a href="usage/#usage">Usage</a></li>
+<li><a href="contributing/#contributing">Contributing</a></li>
+<li><a href="license/#license">License</a></li>
+</ul>
+    </nav>
+    <section id='main'>
+      <div id='search-panel' class='nav-search' role='search' hidden>
+        <label class='visually-hidden' for='search'>Search documentation</label>
+        <input type='search' id='search' placeholder='Search' autocomplete='off' aria-controls='search-results'>
+        <p id='search-status' class='visually-hidden' role='status' aria-live='polite'></p>
+        <div id='search-results'></div>
+      </div>
+      <div class='main-scroll'>
+        <main id='main-content' tabindex='-1'>
+<h1 id='license'><a href='license/#license'>
+License
+</a></h1>
+<p>The mmdoc project is licensed under the &quot;CC0 1.0 Universal&quot;. By contributing to this project, you agree to have your work licensed under that license.</p>
+<p>Other licenses that might be relevant to this project:</p>
+<ul>
+<li>
+<p><a href="https://github.com/highlightjs/highlight.js">highlight.js</a> source code is merged into the mmdoc binary so that it can be used in the HTML outputs.</p>
+</li>
+<li>
+<p><a href="https://github.com/krisk/fuse">fuse.js</a> source code is merged into the mmdoc binary so that it can be used in the HTML outputs.</p>
+</li>
+<li>
+<p>Some styling and HTML DOM object layout are based on <a href="https://github.com/rust-lang/mdBook/">mdBook</a> source code.</p>
+</li>
+</ul>
+        </main>
+      </div>
+    </section>
+<script defer src='mmdoc.367f3e8986e40416.js'></script>
+<script defer src='mmdoc_search.a5b6fc7d7512cdc1.js' data-search-index='search_index.fb2c1c600055eaef.js' data-fuse='fuse.basic.min.bb997c989fa0a28e.js'></script>
+  </div>
+  </body>
+</html>
