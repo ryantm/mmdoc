@@ -128,6 +128,7 @@ static int asset_write_to_dir(char *dir, const char *asset_file_name,
     return -1;
   }
   if (asset_write_to_file(asset_file, asset_array, asset_array_length) != 0) {
+    fclose(asset_file);
     printf("Failed to write to file %s: %s\n", asset_path, strerror(errno));
     free(asset_path);
     return -1;

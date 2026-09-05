@@ -83,6 +83,8 @@ int test_files_match(char *example_name, char *expected_file_path,
   if (ret_val == 0)
     printf("%s passed\n", example_name);
 
+  fclose(got_file);
+  fclose(expected_file);
   return ret_val;
 }
 
@@ -121,7 +123,12 @@ int test_render(char *example) {
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
-  return test_files_match(example, expected_path, got_file_path);
+  int failed = test_files_match(example, expected_path, got_file_path);
+  close(ret);
+  unlink(got_file_path);
+  free(input_path);
+  free(expected_path);
+  return failed;
 }
 
 int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
@@ -157,7 +164,12 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
                     anchor_locations, "/", NULL);
   fclose(got_file);
 
-  return test_files_match(example, expected_path, got_file_path);
+  int failed = test_files_match(example, expected_path, got_file_path);
+  close(ret);
+  unlink(got_file_path);
+  free(input_path);
+  free(expected_path);
+  return failed;
 }
 
 int test_code_block_detection(char *example, int expected) {
@@ -195,6 +207,7 @@ int test_e007() {
   al->multipage_output_directory_path = "output_path/";
   al->multipage_output_file_path = "output_path/index.html";
   insert_anchor_location_array(&anchor_locations, al);
+  free(al);
 
   AnchorLocation *al2 = malloc(sizeof *al2);
   al2->anchor = "#second_section";
@@ -203,6 +216,7 @@ int test_e007() {
   al2->multipage_output_directory_path = "output_path/";
   al2->multipage_output_file_path = "output_path/index.html";
   insert_anchor_location_array(&anchor_locations, al2);
+  free(al2);
 
   int retval = test_multipage_render("e007", anchor_locations);
   free_anchor_location_array(&anchor_locations);
@@ -1012,9 +1026,39 @@ int test_reject_overlong_ids() {
   return 0;
 }
 
+static int test_render_io_and_man_cleanup(void) {
+  AnchorLocationArray locations = {0};
+  Array anchors = {0};
+  FILE *output = tmpfile();
+  if (output == NULL)
+    return 1;
+  char missing[] = "/dev/null/missing.md";
+  int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, NULL,
+                                  locations, "", NULL) != -1;
+  char *title = mmdoc_render_get_title_from_file(missing);
+  failed |= title != NULL;
+  free(title);
+  failed |= mmdoc_render_collect_anchors(missing, &anchors) != -1;
+  free_array(&anchors);
+  failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
+                              RENDER_TYPE_MAN, NULL, locations, "", NULL) < 0;
+  fclose(output);
+  output = fopen("/dev/full", "w");
+  if (output != NULL) {
+    setvbuf(output, NULL, _IONBF, 0);
+    failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
+                                RENDER_TYPE_SINGLE, NULL, locations, "",
+                                NULL) != -1;
+    fclose(output);
+  }
+  return failed;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
+  num_failed += test_render_io_and_man_cleanup();
+  num_tests++;
   num_failed += test_render("e001");
   num_tests++;
   num_failed += test_code_block_detection("e001", 0);

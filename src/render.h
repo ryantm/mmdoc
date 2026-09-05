@@ -10,6 +10,7 @@ typedef enum {
   RENDER_TYPE_EPUB
 } render_type;
 
+/* Returns code-block presence (0/1), or -1 on input/output failure. */
 int mmdoc_render_part(char *file_path, FILE *output_file,
                       render_type render_type, AnchorLocation *anchor_location,
                       AnchorLocationArray anchor_locations, char *multipage_url,

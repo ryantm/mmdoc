@@ -42,6 +42,12 @@ int cmark_node_replace_with_children(cmark_node *oldnode, cmark_node *newnode) {
  * Extracts id attribute from header and attaches it to the node as custom
  * metadata.
  */
+static void free_heading_info(cmark_mem *mem, void *data) {
+  HeadingInfo *info = data;
+  free(info->anchor);
+  free(info);
+}
+
 int replace_header_attributes(cmark_node *node, char *input_file_path,
                               AnchorLocationArray anchor_locations) {
   if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
@@ -63,6 +69,7 @@ int replace_header_attributes(cmark_node *node, char *input_file_path,
   info->anchor = malloc(strlen(id) + 1);
   strcpy(info->anchor, id);
   cmark_node_set_user_data(node, info);
+  cmark_node_set_user_data_free_func(node, free_heading_info);
 
   // TODO: populate anchor_locations here
 
@@ -118,9 +125,6 @@ int replace_headers_with_attributes_for_html(char *multipage_url,
   free(on_exit);
   cmark_node_replace_with_children(node, new_node);
 
-  free(info->anchor);
-  free(info);
-  cmark_node_set_user_data(node, NULL);
   cmark_node_free(node);
   return 1;
 }
@@ -677,6 +681,8 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
       cmark_find_syntax_extension("table");
 
   FILE *file = fopen(file_path, "rb");
+  if (file == NULL)
+    return NULL;
 
   cmark_parser_attach_syntax_extension(parser, table_extension);
   while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
@@ -685,9 +691,10 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
       break;
     }
   }
-  fclose(file);
-
-  return cmark_parser_finish(parser);
+  int failed = ferror(file);
+  if (fclose(file) != 0)
+    failed = 1;
+  return failed ? NULL : cmark_parser_finish(parser);
 }
 
 static int collect_anchors_from_text(Array *anchors, const char *text,
@@ -764,6 +771,10 @@ int mmdoc_render_part(char *file_path, FILE *output_file,
   cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
 
   /* printf("BEFORE\n"); */
+  if (document == NULL) {
+    cmark_parser_free(parser);
+    return -1;
+  }
   /* render_debug_cmark_node(document); */
 
   int has_code_block = cmark_rewrite_syntax(document, mem, file_path,
@@ -804,6 +815,9 @@ int mmdoc_render_part(char *file_path, FILE *output_file,
   }
   cmark_node_free(document);
   cmark_parser_free(parser);
+  if (ferror(output_file) ||
+      (search_index_path != NULL && ferror(search_index_path)))
+    return -1;
   return has_code_block;
 }
 
@@ -862,6 +876,10 @@ char *mmdoc_render_get_title_from_file(char *file_path) {
   cmark_parser *parser =
       cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
   cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
+  if (document == NULL) {
+    cmark_parser_free(parser);
+    return NULL;
+  }
   cmark_iter *iter = cmark_iter_new(document);
   cmark_event_type event;
   cmark_node *node;

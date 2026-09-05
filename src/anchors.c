@@ -99,6 +99,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
     init_array(&anchors, 500);
     if (mmdoc_anchors(&anchors, md_files->array[i]) != 0) {
       free_array(&anchors);
+      free_anchor_location_array_deep(anchor_locations);
       return -1;
     }
     char *title = NULL;
