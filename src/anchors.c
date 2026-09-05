@@ -97,17 +97,9 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
   for (int i = 0; i < md_files->used; i++) {
     Array anchors;
     init_array(&anchors, 500);
-    if (mmdoc_anchors(&anchors, md_files->array[i]) != 0) {
-      free_array(&anchors);
-      free_anchor_location_array_deep(anchor_locations);
-      return -1;
-    }
     char *title = NULL;
-    if (anchors.used > 0)
-      title = mmdoc_render_get_title_from_file(md_files->array[i]);
-    if (anchors.used > 0 && title == NULL) {
-      fprintf(stderr, "Fatal: failed to read the title from %s.\n",
-              md_files->array[i]);
+    if (mmdoc_render_collect_metadata(md_files->array[i], &anchors, &title) !=
+        0) {
       free_array(&anchors);
       free_anchor_location_array_deep(anchor_locations);
       return -1;

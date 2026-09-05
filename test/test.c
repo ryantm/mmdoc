@@ -400,6 +400,15 @@ int test_anchor_discovery_uses_markdown_ast() {
     passed = strcmp(anchors.array[i], expected[i]) == 0;
 
   free_array(&anchors);
+  init_array(&anchors, 0);
+  char *title = NULL;
+  int metadata_result = mmdoc_render_collect_metadata(path, &anchors, &title);
+  passed = passed && metadata_result == 0 && title != NULL &&
+           strcmp(title, "Page") == 0 && anchors.used == 5;
+  for (size_t i = 0; passed && i < 5; i++)
+    passed = strcmp(anchors.array[i], expected[i]) == 0;
+  free(title);
+  free_array(&anchors);
   unlink(path);
   if (!passed) {
     printf("AST anchor discovery test failed\n");

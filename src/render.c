@@ -746,7 +746,12 @@ static int collect_anchors_from_text(Array *anchors, const char *text,
   return 0;
 }
 
-int mmdoc_render_collect_anchors(char *file_path, Array *anchors) {
+static char *mmdoc_render_get_heading_title(cmark_node *heading);
+
+int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
+                                  char **title) {
+  if (title != NULL)
+    *title = NULL;
   cmark_mem *mem = cmark_get_default_mem_allocator();
   cmark_parser *parser =
       cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
@@ -763,14 +768,33 @@ int mmdoc_render_collect_anchors(char *file_path, Array *anchors) {
     if (event != CMARK_EVENT_ENTER)
       continue;
     cmark_node *node = cmark_iter_get_node(iter);
-    if (cmark_node_get_type(node) == CMARK_NODE_TEXT)
+    if (title != NULL && *title == NULL &&
+        cmark_node_get_type(node) == CMARK_NODE_HEADER)
+      *title = mmdoc_render_get_heading_title(node);
+    if (anchors == NULL && title != NULL && *title != NULL)
+      break;
+    if (anchors != NULL && cmark_node_get_type(node) == CMARK_NODE_TEXT)
       failed = collect_anchors_from_text(anchors, cmark_node_get_literal(node),
                                          file_path) != 0;
   }
   cmark_iter_free(iter);
   cmark_node_free(document);
   cmark_parser_free(parser);
+  if (title != NULL) {
+    if (failed) {
+      free(*title);
+      *title = NULL;
+    } else if (*title == NULL) {
+      *title = calloc(1, 1);
+      if (*title == NULL)
+        failed = 1;
+    }
+  }
   return failed ? -1 : 0;
+}
+
+int mmdoc_render_collect_anchors(char *file_path, Array *anchors) {
+  return mmdoc_render_collect_metadata(file_path, anchors, NULL);
 }
 
 int mmdoc_render_part(char *file_path, FILE *output_file,
@@ -885,48 +909,8 @@ static char *mmdoc_render_get_heading_title(cmark_node *heading) {
 }
 
 char *mmdoc_render_get_title_from_file(char *file_path) {
-  cmark_mem *mem = cmark_get_default_mem_allocator();
-  cmark_parser *parser =
-      cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
-  cmark_node *document = mmdoc_render_cmark_document(file_path, parser);
-  if (document == NULL) {
-    cmark_parser_free(parser);
+  char *title = NULL;
+  if (mmdoc_render_collect_metadata(file_path, NULL, &title) != 0)
     return NULL;
-  }
-  cmark_iter *iter = cmark_iter_new(document);
-  cmark_event_type event;
-  cmark_node *node;
-  cmark_node_type type;
-  while ((event = cmark_iter_next(iter))) {
-    switch (event) {
-    case CMARK_EVENT_NONE:
-      break;
-    case CMARK_EVENT_DONE:
-      break;
-    case CMARK_EVENT_EXIT:
-      break;
-    case CMARK_EVENT_ENTER:
-      node = cmark_iter_get_node(iter);
-      type = cmark_node_get_type(node);
-      if (type != CMARK_NODE_HEADER)
-        continue;
-      char *result = mmdoc_render_get_heading_title(node);
-      if (result == NULL)
-        continue;
-      cmark_iter_free(iter);
-      cmark_node_free(document);
-      cmark_parser_free(parser);
-      return result;
-    }
-    if (event == CMARK_EVENT_DONE) {
-      break;
-    }
-  }
-
-  cmark_iter_free(iter);
-  cmark_node_free(document);
-  cmark_parser_free(parser);
-  char *result = malloc(1);
-  result[0] = '\0';
-  return result;
+  return title;
 }
