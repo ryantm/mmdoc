@@ -131,6 +131,8 @@ int replace_headers_with_attributes_for_html(char *multipage_url,
 
 int replace_link_bracket_with_span(cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
+  if (strchr(lit, '[') == NULL)
+    return 0;
   char *id = malloc(strlen(lit) + 1);
   char *span_text = malloc(strlen(lit) + 1);
   int pos = parse_link_bracketed_span_id(lit, span_text, id);
@@ -243,6 +245,11 @@ int replace_code_link_bracket_with_span(cmark_node *node) {
 
 int replace_admonition_start(char *multipage_url, cmark_node *node) {
   const char *lit = cmark_node_get_literal(node);
+  const char *start_token = lit;
+  while (*start_token == ' ')
+    start_token++;
+  if (strncmp(start_token, ":::", 3) != 0)
+    return 0;
   char *admonition_type = malloc(strlen(lit) + 1);
   admonition_type[0] = '\0';
   char *admonition_anchor = malloc(strlen(lit) + 1);
@@ -533,24 +540,30 @@ int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
 }
 
 void cmark_rewrite_spans(cmark_node *document) {
-  int changed;
-  do {
-    changed = 0;
-    cmark_iter *iter = cmark_iter_new(document);
-    cmark_event_type event;
-    while ((event = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
-      if (event != CMARK_EVENT_ENTER)
-        continue;
+  cmark_iter *iter = cmark_iter_new(document);
+  cmark_event_type event = cmark_iter_next(iter);
+  while (event != CMARK_EVENT_DONE) {
+    if (event == CMARK_EVENT_ENTER) {
       cmark_node *node = cmark_iter_get_node(iter);
-      if (replace_code_link_bracket_with_span(node) ||
-          (cmark_node_get_type(node) == CMARK_NODE_TEXT &&
-           replace_link_bracket_with_span(node))) {
-        changed = 1;
-        break;
+      cmark_node *previous = cmark_node_previous(node);
+      cmark_node *parent = cmark_node_parent(node);
+      if (replace_code_link_bracket_with_span(node)) {
+        /* The code node survives; continue through its new siblings. */
+        cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
+      } else if (cmark_node_get_type(node) == CMARK_NODE_TEXT &&
+                 replace_link_bracket_with_span(node)) {
+        /* The text node was freed. Visit its replacements, including any
+         * remaining span syntax, without rescanning earlier paragraphs. */
+        cmark_node *first = previous == NULL ? cmark_node_first_child(parent)
+                                             : cmark_node_next(previous);
+        cmark_iter_reset(iter, first, CMARK_EVENT_ENTER);
+        event = CMARK_EVENT_ENTER;
+        continue;
       }
     }
-    cmark_iter_free(iter);
-  } while (changed);
+    event = cmark_iter_next(iter);
+  }
+  cmark_iter_free(iter);
 }
 
 void cmark_rewrite(cmark_node *document, cmark_mem *mem, char *input_file_path,
