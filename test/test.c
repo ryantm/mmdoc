@@ -1095,6 +1095,8 @@ int main(int argc, char *argv[]) {
   num_tests++;
   num_failed += test_render("e016");
   num_tests++;
+  num_failed += test_render("e017");
+  num_tests++;
   num_failed += test_copy_nested_image();
   num_tests++;
   num_failed += test_zero_capacity_arrays();
