@@ -1,0 +1,99 @@
+/* a11y-dark theme */
+/* Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css */
+/* @author: ericwbailey */
+
+/* Comment */
+.dark-theme .hljs-comment,
+.dark-theme .hljs-quote {
+  color: #d4d0ab;
+}
+
+/* Red */
+.dark-theme .hljs-variable,
+.dark-theme .hljs-template-variable,
+.dark-theme .hljs-tag,
+.dark-theme .hljs-name,
+.dark-theme .hljs-selector-id,
+.dark-theme .hljs-selector-class,
+.dark-theme .hljs-regexp,
+.dark-theme .hljs-deletion {
+  color: #ffa07a;
+}
+
+/* Orange */
+.dark-theme .hljs-number,
+.dark-theme .hljs-built_in,
+.dark-theme .hljs-builtin-name,
+.dark-theme .hljs-literal,
+.dark-theme .hljs-type,
+.dark-theme .hljs-params,
+.dark-theme .hljs-meta,
+.dark-theme .hljs-link {
+  color: #f5ab35;
+}
+
+/* Yellow */
+.dark-theme .hljs-attribute {
+  color: #ffd700;
+}
+
+/* Green */
+.dark-theme .hljs-string,
+.dark-theme .hljs-symbol,
+.dark-theme .hljs-bullet,
+.dark-theme .hljs-addition {
+  color: #abe338;
+}
+
+/* Blue */
+.dark-theme .hljs-title,
+.dark-theme .hljs-section {
+  color: #00e0e0;
+}
+
+/* Purple */
+.dark-theme .hljs-keyword,
+.dark-theme .hljs-selector-tag {
+  color: #dcc6e0;
+}
+
+.dark-theme .hljs {
+  /* display: block; */
+  /* overflow-x: auto; */
+  background: #2b2b2b;
+  color: #f8f8f2;
+  /* padding: 0.5em; */
+}
+
+.dark-theme .hljs-emphasis {
+  font-style: italic;
+}
+
+.dark-theme .hljs-strong {
+  font-weight: bold;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  .dark-theme .hljs-addition,
+  .dark-theme .hljs-attribute,
+  .dark-theme .hljs-built_in,
+  .dark-theme .hljs-builtin-name,
+  .dark-theme .hljs-bullet,
+  .dark-theme .hljs-comment,
+  .dark-theme .hljs-link,
+  .dark-theme .hljs-literal,
+  .dark-theme .hljs-meta,
+  .dark-theme .hljs-number,
+  .dark-theme .hljs-params,
+  .dark-theme .hljs-string,
+  .dark-theme .hljs-symbol,
+  .dark-theme .hljs-type,
+  .dark-theme .hljs-quote {
+        color: highlight;
+    }
+
+    .dark-theme .hljs-keyword,
+    .dark-theme .hljs-selector-tag {
+        font-weight: bold;
+    }
+}
