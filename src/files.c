@@ -187,11 +187,17 @@ int copy_imgs(Inputs inputs) {
       return -1;
     }
 
-    fclose(single);
-    fclose(multi);
-    fclose(source);
+    int failed = fclose(single) != 0;
+    if (fclose(multi) != 0)
+      failed = 1;
+    if (fclose(source) != 0)
+      failed = 1;
     free(single_path);
     free(multi_path);
+    if (failed) {
+      free_array(&img_files);
+      return -1;
+    }
   }
   free_array(&img_files);
   return 0;

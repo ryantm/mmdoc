@@ -4,6 +4,7 @@
 #include "mkdir_p.h"
 #include "render.h"
 #include "types.h"
+#include <stdlib.h>
 #include <string.h>
 
 int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
@@ -14,11 +15,16 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
     return 1;
   }
 
-  char index_path[2048];
+  char *index_path = malloc(strlen(out) + sizeof("/index.html"));
+  if (index_path == NULL)
+    return -1;
   FILE *index_file;
   strcpy(index_path, out);
   strcat(index_path, "/index.html");
   index_file = fopen(index_path, "w");
+  free(index_path);
+  if (index_file == NULL)
+    return -1;
 
   fputs("<!doctype html>\n"
         "<html lang='en'>\n"
@@ -79,6 +85,10 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   int has_code_block =
       mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
                         toc_anchor_locations, "/", NULL);
+  if (has_code_block < 0) {
+    fclose(index_file);
+    return -1;
+  }
   fputs("    </nav>\n", index_file);
   fputs("    <section id='main'>\n", index_file);
   fputs("      <div class='main-scroll'>\n", index_file);
@@ -87,10 +97,15 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   for (int i = 0; i < toc_anchor_locations.used; i++) {
     AnchorLocationArray empty_anchor_locations;
     init_anchor_location_array(&empty_anchor_locations, 0);
-    has_code_block |= mmdoc_render_part(
+    int rendered = mmdoc_render_part(
         toc_anchor_locations.array[i].file_path, index_file, RENDER_TYPE_SINGLE,
         &toc_anchor_locations.array[i], empty_anchor_locations, "/", NULL);
     free_anchor_location_array(&empty_anchor_locations);
+    if (rendered < 0) {
+      fclose(index_file);
+      return -1;
+    }
+    has_code_block |= rendered;
   }
 
   fputs("        </main>\n"
@@ -106,6 +121,8 @@ int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   fputs("  </body>\n"
         "</html>\n",
         index_file);
-  fclose(index_file);
-  return 0;
+  int failed = ferror(index_file);
+  if (fclose(index_file) != 0)
+    failed = 1;
+  return failed ? -1 : 0;
 }

@@ -72,6 +72,10 @@ static int render_toc(Inputs inputs, AnchorLocationArray anchor_locations,
   *has_code_block =
       mmdoc_render_part(inputs.toc_path, toc_file, RENDER_TYPE_MULTIPAGE, NULL,
                         anchor_locations, toc_current_page_url, NULL);
+  if (*has_code_block < 0) {
+    fclose(toc_file);
+    return -1;
+  }
   if (fflush(toc_file) != 0 || fseek(toc_file, 0, SEEK_END) != 0) {
     fclose(toc_file);
     return -1;
@@ -111,6 +115,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   char *page_path = anchor_location->multipage_output_file_path;
   FILE *page_file;
   page_file = fopen(page_path, "w");
+  if (page_file == NULL)
+    return -1;
   char *html_head_top = "<!doctype html>\n"
                         "<html lang='en'>\n"
                         "  <head>\n"
@@ -219,11 +225,17 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   fputs("      <div class='main-scroll'>\n", page_file);
   fputs("        <main id='main-content' tabindex='-1'>\n", page_file);
 
-  if (anchor_location->file_path != NULL)
-    has_code_block |= mmdoc_render_part(
+  if (anchor_location->file_path != NULL) {
+    int rendered = mmdoc_render_part(
         anchor_location->file_path, page_file, RENDER_TYPE_MULTIPAGE,
         anchor_location, anchor_locations, anchor_location->multipage_url,
         search_index_file);
+    if (rendered < 0) {
+      fclose(page_file);
+      return -1;
+    }
+    has_code_block |= rendered;
+  }
 
   fputs("        </main>\n", page_file);
   fputs("      </div>\n", page_file);
@@ -253,8 +265,10 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
                     "  </body>\n"
                     "</html>\n";
   fputs(html_foot, page_file);
-  fclose(page_file);
-  return 0;
+  int failed = ferror(page_file);
+  if (fclose(page_file) != 0)
+    failed = 1;
+  return failed ? -1 : 0;
 }
 
 static size_t collect_page_indices(AnchorLocationArray toc_anchor_locations,

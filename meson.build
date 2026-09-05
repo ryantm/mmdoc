@@ -33,7 +33,7 @@ xxd_prog = find_program('xxd')
 
 embed_c = generator(xxd_prog,
    output : '@PLAINNAME@.h',
-   arguments : [ '-i', '@INPUT@', '@OUTPUT@'])
+   arguments : [ '-i', '-n', '___src_asset_@PLAINNAME@', '@INPUT@', '@OUTPUT@'])
 
 subdir('src/asset')
 subdir('src')
