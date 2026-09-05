@@ -19,3 +19,8 @@ int mmdoc_render_part(char *file_path, FILE *output_file,
 char *mmdoc_render_get_title_from_file(char *file_path);
 
 int mmdoc_render_collect_anchors(char *file_path, Array *anchors);
+
+/* Collect both from one parse. Either output may be NULL; the caller owns
+ * the returned title (an empty string when no anchored heading exists). */
+int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
+                                  char **title);
