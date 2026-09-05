@@ -4,8 +4,8 @@
 #include "mkdir_p.h"
 #include "render.h"
 #include "types.h"
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
   char *out = inputs.out_single;

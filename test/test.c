@@ -1034,7 +1034,7 @@ static int test_render_io_and_man_cleanup(void) {
     return 1;
   char missing[] = "/dev/null/missing.md";
   int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, NULL,
-                                  locations, "", NULL) != -1;
+                                 locations, "", NULL) != -1;
   char *title = mmdoc_render_get_title_from_file(missing);
   failed |= title != NULL;
   free(title);
@@ -1046,9 +1046,9 @@ static int test_render_io_and_man_cleanup(void) {
   output = fopen("/dev/full", "w");
   if (output != NULL) {
     setvbuf(output, NULL, _IONBF, 0);
-    failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
-                                RENDER_TYPE_SINGLE, NULL, locations, "",
-                                NULL) != -1;
+    failed |=
+        mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
+                          RENDER_TYPE_SINGLE, NULL, locations, "", NULL) != -1;
     fclose(output);
   }
   return failed;
