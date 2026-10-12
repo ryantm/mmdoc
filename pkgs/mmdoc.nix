@@ -27,6 +27,7 @@ with lib;
       description = "Minimal Markdown Documentation";
       homepage = "https://github.com/ryantm/mmdoc";
       license = licenses.cc0;
+      mainProgram = "mmdoc";
       maintainers = with maintainers; [ryantm];
       platforms = platforms.unix;
     };
