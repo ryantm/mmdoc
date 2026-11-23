@@ -15,6 +15,9 @@ Both forms keep code examples, tables, and mmdoc's explicit `{#id}` anchors.
 Cross-chapter links in individual chapters point to the corresponding Markdown
 file. In the full manual they point to an anchor within that file.
 
+When publishing from a branch on GitHub Pages, add an empty `.nojekyll` file
+at the published root so Pages serves the Markdown chapters at their original URLs.
+
 ## Extensions beyond CommonMark
 
 In order to be useful for Documentation, it uses several CommonMark extensions available in GitHub-flavored Markdown and [Pandoc](https://pandoc.org/).
