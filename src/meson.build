@@ -4,6 +4,7 @@ src = [
   'html.c',
   'files.c',
   'inputs.c',
+  'markdown.c',
   'mkdir_p.c',
   'multi.c',
   'parse.c',

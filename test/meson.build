@@ -9,3 +9,5 @@ configure_file(input : 'testconfig.h.in',
   configuration : test_conf)
 
 test('unittest', exe)
+test('markdown', import('python').find_installation(),
+     args : [files('markdown.py'), mmdoc])

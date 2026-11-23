@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
     goto cleanup;
 
   init_array(&md_files, 100);
-  mmdoc_md_files(&md_files, inputs.src);
+  if (mmdoc_md_files(&md_files, inputs) != 0)
+    goto cleanup;
 
   if (0 !=
       mmdoc_anchors_locations(&anchor_locations, &md_files, &toc_refs, inputs))

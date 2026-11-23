@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include "inputs.h"
+#include "files.h"
 #include "mkdir_p.h"
 #include "types.h"
 #include <dirent.h>
@@ -7,71 +7,82 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
-int ends_with(const char *str, size_t str_len, const char *suffix,
-              size_t suffix_len) {
-  return (str_len >= suffix_len) &&
-         (!memcmp(str + str_len - suffix_len, suffix, suffix_len));
+char *mmdoc_file_path(const char *directory, const char *name) {
+  char *path = malloc(strlen(directory) + strlen(name) + 2);
+  if (path == NULL)
+    return NULL;
+  sprintf(path, "%s/%s", directory, name);
+  return path;
 }
 
-void mmdoc_md_files(Array *md_files, char *base_path) {
-  struct dirent *dp;
-  DIR *dir = opendir(base_path);
+static const char *const markdown_extensions[] = {".md", NULL};
+static const char *const image_extensions[] = {".svg", ".jpeg", ".jpg", ".webp",
+                                               ".png", ".gif",  ".bmp", NULL};
 
-  if (!dir)
-    return;
+static int collect_files(Array *files, char *path,
+                         const char *const extensions[],
+                         const struct stat excluded[], size_t excluded_count) {
+  DIR *dir = opendir(path);
+  if (dir == NULL) {
+    const char *ext = strrchr(path, '.');
+    for (size_t i = 0; ext != NULL && extensions[i] != NULL; i++)
+      if (strcmp(ext, extensions[i]) == 0) {
+        insert_array(files, path);
+        break;
+      }
+    return 0;
+  }
 
-  while ((dp = readdir(dir)) != NULL) {
-    if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      size_t size = strlen(base_path) + 1 + strlen(dp->d_name) + 1;
-      char *path = malloc(size);
-      strcpy(path, base_path);
-      strcat(path, "/");
-      strcat(path, dp->d_name);
-      if (ends_with(dp->d_name, strlen(dp->d_name), ".md", strlen(".md")))
-        insert_array(md_files, path);
-      mmdoc_md_files(md_files, path);
-      free(path);
-    }
+  struct stat current;
+  if (fstat(dirfd(dir), &current) == 0)
+    for (size_t i = 0; i < excluded_count; i++)
+      if (current.st_dev == excluded[i].st_dev &&
+          current.st_ino == excluded[i].st_ino) {
+        closedir(dir);
+        return 0;
+      }
+
+  struct dirent *entry;
+  int failed = 0;
+  while ((entry = readdir(dir)) != NULL) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+      continue;
+    char *child = mmdoc_file_path(path, entry->d_name);
+    failed = child == NULL || collect_files(files, child, extensions, excluded,
+                                            excluded_count) != 0;
+    free(child);
+    if (failed)
+      break;
   }
   closedir(dir);
-  return;
+  return failed ? -1 : 0;
 }
 
-void mmdoc_img_files(Array *img_files, char *base_path) {
-  struct dirent *dp;
-  DIR *dir = opendir(base_path);
+/* A build below SRC must not read its own chapters or copy its own images. */
+static int source_files(Array *files, Inputs inputs,
+                        const char *const extensions[]) {
+  struct stat excluded[2];
+  size_t count = 0;
+  if (stat(inputs.out_multi, &excluded[count]) == 0)
+    count++;
+  if (stat(inputs.out_single, &excluded[count]) == 0)
+    count++;
+  return collect_files(files, inputs.src, extensions, excluded, count);
+}
 
-  if (!dir)
-    return;
-
-  while ((dp = readdir(dir)) != NULL) {
-    if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      size_t size = strlen(base_path) + 1 + strlen(dp->d_name) + 1;
-      char *path = malloc(size);
-      strcpy(path, base_path);
-      strcat(path, "/");
-      strcat(path, dp->d_name);
-      if (ends_with(dp->d_name, strlen(dp->d_name), ".svg", strlen(".svg")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".jpeg", strlen(".jpeg")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".jpg", strlen(".jpg")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".webp", strlen(".webp")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".png", strlen(".png")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".gif", strlen(".gif")) ||
-          ends_with(dp->d_name, strlen(dp->d_name), ".bmp", strlen(".bmp")))
-        insert_array(img_files, path);
-      mmdoc_img_files(img_files, path);
-      free(path);
-    }
-  }
-  closedir(dir);
-  return;
+int mmdoc_md_files(Array *files, Inputs inputs) {
+  return source_files(files, inputs, markdown_extensions);
 }
 
 int copy_imgs(Inputs inputs) {
   Array img_files;
   init_array(&img_files, 100);
-  mmdoc_img_files(&img_files, inputs.src);
+  if (source_files(&img_files, inputs, image_extensions) != 0) {
+    free_array(&img_files);
+    return -1;
+  }
 
   for (int i = 0; i < img_files.used; i++) {
     char *source_path = img_files.array[i];

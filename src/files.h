@@ -3,6 +3,6 @@
 #include "inputs.h"
 #include "types.h"
 
-void mmdoc_md_files(Array *md_files, char *base_path);
-void mmdoc_img_files(Array *img_files, char *base_path);
+char *mmdoc_file_path(const char *directory, const char *name);
+int mmdoc_md_files(Array *md_files, Inputs inputs);
 int copy_imgs(Inputs inputs);

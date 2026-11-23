@@ -522,6 +522,12 @@ void unlink_asset(char *dir, const char *file_name) {
   unlink(path);
 }
 
+static void unlink_markdown(char *dir) {
+  unlink_asset(dir, "index.md");
+  unlink_asset(dir, "llms.txt");
+  unlink_asset(dir, "llms-full.txt");
+}
+
 int write_text_file(char *path, const char *contents) {
   FILE *file = fopen(path, "w");
   if (file == NULL)
@@ -668,6 +674,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
   unlink(index_path);
   unlink(page_path);
   unlink(toc_path);
+  unlink_markdown(root);
   rmdir(root);
 
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
@@ -888,6 +895,7 @@ int test_multipage_cached_toc_current_page_links() {
   unlink(first_source_path);
   unlink(second_source_path);
   unlink(toc_path);
+  unlink_markdown(root);
   rmdir(root);
 
   if (index_result != 0 || render_result != 0 || !links_are_page_specific ||
@@ -977,6 +985,7 @@ int test_multipage_duplicate_output_paths() {
   unlink(output_path);
   unlink(source_path);
   unlink(toc_path);
+  unlink_markdown(root);
   rmdir(root);
 
   if (index_result != 0 || render_result != 0 || !search_index_replaced ||

@@ -2,7 +2,18 @@
 
 ## toc.md
 
-`toc.md` is a special file for `mmdoc`. The order of the cross references in `toc.md` control the order the sections appear in the single-page HTML and ePub outputs. If a section is not referenced in `toc.md` it does not get included in any of the outputs.
+The cross-references in `toc.md` select the source files to publish and set their reading order.
+
+## Reading the manual as Markdown {#agent-markdown}
+
+The usual `mmdoc PROJECT SRC OUT` command writes `llms.txt` at the root of
+`OUT/multi/`. An agent can read this index and follow a chapter link, such as
+`usage/index.md`, to fetch just the relevant text. For the whole manual in one
+request, fetch `llms-full.txt` from the same directory.
+
+Both forms keep code examples, tables, and mmdoc's explicit `{#id}` anchors.
+Cross-chapter links in individual chapters point to the corresponding Markdown
+file. In the full manual they point to an anchor within that file.
 
 ## Extensions beyond CommonMark
 

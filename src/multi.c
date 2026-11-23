@@ -1,20 +1,15 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "multi.h"
 #include "asset.h"
+#include "files.h"
 #include "html.h"
+#include "markdown.h"
 #include "render.h"
 #include <stdlib.h>
 #include <string.h>
 
 static char toc_current_page_url[] = "__MMDOC_CURRENT_PAGE_URL__";
 static char search_index_placeholder[] = "search_index.0000000000000000.js";
-
-static char *asset_path(const char *dir, const char *file_name) {
-  char *path = malloc(strlen(dir) + 1 + strlen(file_name) + 1);
-  if (path != NULL)
-    sprintf(path, "%s/%s", dir, file_name);
-  return path;
-}
 
 static int replace_file_name(const char *path, long offset,
                              const char *old_file_name,
@@ -307,7 +302,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     return -1;
   }
 
-  char *search_index_path = asset_path(out, "search_index.tmp");
+  char *search_index_path = mmdoc_file_path(out, "search_index.tmp");
   if (search_index_path == NULL)
     return -1;
   FILE *search_index_file = fopen(search_index_path, "w");
@@ -396,7 +391,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     free(search_index_name_offsets);
     return -1;
   }
-  char *final_search_index_path = asset_path(out, search_index_name);
+  char *final_search_index_path = mmdoc_file_path(out, search_index_name);
   if (final_search_index_path == NULL ||
       rename(search_index_path, final_search_index_path) != 0) {
     free(final_search_index_path);
@@ -418,8 +413,13 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
       return -1;
     }
   }
-  free(page_indices);
   free(search_index_name_offsets);
+
+  int markdown_result = mmdoc_markdown(
+      inputs, toc_anchor_locations, page_indices, page_count, anchor_locations);
+  free(page_indices);
+  if (markdown_result != 0)
+    return -1;
 
   if (has_code_blocks && asset_write_to_dir_highlight_pack_js(
                              out, asset_names.highlight_pack_js) != 0)

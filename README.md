@@ -2,4 +2,4 @@
 
 > Minimal Markdown Documentation
 
-Please read the [documentation](https://ryantm.github.io/mmdoc/) (generated with mmdoc).
+Read the [documentation](https://ryantm.github.io/mmdoc/) or browse its [Markdown chapter index](https://ryantm.github.io/mmdoc/llms.txt). Both are generated with mmdoc.

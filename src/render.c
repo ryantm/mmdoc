@@ -48,8 +48,7 @@ static void free_heading_info(cmark_mem *mem, void *data) {
   free(info);
 }
 
-int replace_header_attributes(cmark_node *node, char *input_file_path,
-                              AnchorLocationArray anchor_locations) {
+static int replace_header_attributes(cmark_node *node) {
   if (cmark_node_get_type(node) != CMARK_NODE_HEADER)
     return 0;
   cmark_node *last_child = cmark_node_last_child(node);
@@ -70,8 +69,6 @@ int replace_header_attributes(cmark_node *node, char *input_file_path,
   strcpy(info->anchor, id);
   cmark_node_set_user_data(node, info);
   cmark_node_set_user_data_free_func(node, free_heading_info);
-
-  // TODO: populate anchor_locations here
 
   if (pos == 0) {
     cmark_node_unlink(last_child);
@@ -129,7 +126,27 @@ int replace_headers_with_attributes_for_html(char *multipage_url,
   return 1;
 }
 
-int replace_link_bracket_with_span(cmark_node *node) {
+/* Keep the anchor in mmdoc's bracketed-span syntax for Markdown output. */
+static void wrap_span(cmark_node *node, const char *id, int markdown) {
+  char *marker = malloc(strlen(id) + sizeof("<span id=''>"));
+  sprintf(marker, markdown ? "]{#%s}" : "<span id='%s'>", id);
+  cmark_node_type type =
+      markdown ? CMARK_NODE_CUSTOM_INLINE : CMARK_NODE_HTML_INLINE;
+  cmark_node *open = cmark_node_new(type);
+  cmark_node *close = cmark_node_new(type);
+  if (markdown) {
+    cmark_node_set_on_enter(open, "[");
+    cmark_node_set_on_enter(close, marker);
+  } else {
+    cmark_node_set_literal(open, marker);
+    cmark_node_set_literal(close, "</span>");
+  }
+  cmark_node_insert_before(node, open);
+  cmark_node_insert_after(node, close);
+  free(marker);
+}
+
+static int replace_link_bracket_with_span(cmark_node *node, int markdown) {
   const char *lit = cmark_node_get_literal(node);
   if (strchr(lit, '[') == NULL)
     return 0;
@@ -151,21 +168,10 @@ int replace_link_bracket_with_span(cmark_node *node) {
   cmark_node_set_literal(new_node, new_l_lit);
   cmark_node_insert_before(node, new_node);
 
-  char *first_span = malloc(12 + strlen(lit) + 1);
-  strcpy(first_span, "<span id='");
-  strcat(first_span, id);
-  strcat(first_span, "'>");
-  new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(new_node, first_span);
-  cmark_node_insert_before(node, new_node);
-
   new_node = cmark_node_new(CMARK_NODE_TEXT);
   cmark_node_set_literal(new_node, span_text);
   cmark_node_insert_before(node, new_node);
-
-  new_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(new_node, "</span>");
-  cmark_node_insert_before(node, new_node);
+  wrap_span(new_node, id, markdown);
 
   char *new_r_lit = malloc(strlen(lit) + 1);
   int end_of_span = pos + 1 + strlen(span_text) + 3 + strlen(id) + 1;
@@ -181,13 +187,12 @@ int replace_link_bracket_with_span(cmark_node *node) {
   cmark_node_free(node);
   free(id);
   free(span_text);
-  free(first_span);
   free(new_r_lit);
   free(new_l_lit);
   return 1;
 }
 
-int replace_code_link_bracket_with_span(cmark_node *node) {
+static int replace_code_link_bracket_with_span(cmark_node *node, int markdown) {
   if (cmark_node_get_type(node) != CMARK_NODE_CODE)
     return 0;
 
@@ -210,16 +215,14 @@ int replace_code_link_bracket_with_span(cmark_node *node) {
     return 0;
 
   size_t anchor_length = (size_t)(anchor_end - (right + 3));
-  char *start = malloc(strlen("<span id=''></span>") + anchor_length + 1);
-  if (start == NULL)
+  char *id = strndup(right + 3, anchor_length);
+  if (id == NULL)
     return 0;
-  snprintf(start, strlen("<span id=''></span>") + anchor_length + 1,
-           "<span id='%.*s'>", (int)anchor_length, right + 3);
 
   char *new_left = malloc(left_length);
   char *new_right = malloc(strlen(anchor_end + 1) + 1);
   if (new_left == NULL || new_right == NULL) {
-    free(start);
+    free(id);
     free(new_left);
     free(new_right);
     return 0;
@@ -230,14 +233,8 @@ int replace_code_link_bracket_with_span(cmark_node *node) {
   cmark_node_set_literal(previous, new_left);
   cmark_node_set_literal(next, new_right);
 
-  cmark_node *start_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(start_node, start);
-  cmark_node_insert_before(node, start_node);
-  cmark_node *end_node = cmark_node_new(CMARK_NODE_HTML_INLINE);
-  cmark_node_set_literal(end_node, "</span>");
-  cmark_node_insert_after(node, end_node);
-
-  free(start);
+  wrap_span(node, id, markdown);
+  free(id);
   free(new_left);
   free(new_right);
   return 1;
@@ -507,9 +504,7 @@ void insert_search_index(FILE *search_index_path, const char *text,
  * Moves custom syntax tokens from AST text nodes into custom data structures
  * attached to the nodes.
  */
-int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
-                         char *input_file_path, render_type render_type,
-                         AnchorLocationArray anchor_locations) {
+int cmark_rewrite_syntax(cmark_node *document) {
   cmark_iter *iter = cmark_iter_new(document);
   int has_code_block = 0;
 
@@ -529,7 +524,7 @@ int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
       break;
     case CMARK_EVENT_EXIT:
       node = cmark_iter_get_node(iter);
-      if (replace_header_attributes(node, input_file_path, anchor_locations))
+      if (replace_header_attributes(node))
         continue;
     }
     if (CMARK_EVENT_DONE == event)
@@ -539,7 +534,7 @@ int cmark_rewrite_syntax(cmark_node *document, cmark_mem *mem,
   return has_code_block;
 }
 
-void cmark_rewrite_spans(cmark_node *document) {
+void cmark_rewrite_spans(cmark_node *document, int markdown) {
   cmark_iter *iter = cmark_iter_new(document);
   cmark_event_type event = cmark_iter_next(iter);
   while (event != CMARK_EVENT_DONE) {
@@ -547,11 +542,11 @@ void cmark_rewrite_spans(cmark_node *document) {
       cmark_node *node = cmark_iter_get_node(iter);
       cmark_node *previous = cmark_node_previous(node);
       cmark_node *parent = cmark_node_parent(node);
-      if (replace_code_link_bracket_with_span(node)) {
+      if (replace_code_link_bracket_with_span(node, markdown)) {
         /* The code node survives; continue through its new siblings. */
         cmark_iter_reset(iter, node, CMARK_EVENT_ENTER);
       } else if (cmark_node_get_type(node) == CMARK_NODE_TEXT &&
-                 replace_link_bracket_with_span(node)) {
+                 replace_link_bracket_with_span(node, markdown)) {
         /* The text node was freed. Visit its replacements, including any
          * remaining span syntax, without rescanning earlier paragraphs. */
         cmark_node *first = previous == NULL ? cmark_node_first_child(parent)
@@ -814,10 +809,9 @@ int mmdoc_render_part(char *file_path, FILE *output_file,
   }
   /* render_debug_cmark_node(document); */
 
-  int has_code_block = cmark_rewrite_syntax(document, mem, file_path,
-                                            render_type, anchor_locations);
+  int has_code_block = cmark_rewrite_syntax(document);
 
-  cmark_rewrite_spans(document);
+  cmark_rewrite_spans(document, 0);
   rewrite_definition_lists(document);
 
   cmark_rewrite(document, mem, file_path, render_type, multipage_url,

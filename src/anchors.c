@@ -20,7 +20,7 @@ static char *copy_string(const char *source) {
 
 static int init_anchor_location(AnchorLocation *al, const char *anchor,
                                 const char *file_path, const char *title,
-                                const char *index_anchor, Inputs inputs) {
+                                int is_index_page, Inputs inputs) {
   memset(al, 0, sizeof(*al));
   al->anchor = copy_string(anchor);
   al->file_path = copy_string(file_path);
@@ -28,7 +28,7 @@ static int init_anchor_location(AnchorLocation *al, const char *anchor,
   if (al->anchor == NULL || al->file_path == NULL || al->title == NULL)
     goto allocation_failed;
 
-  if (strcmp(al->anchor, index_anchor) == 0) {
+  if (is_index_page) {
     const char *index_html = "index.html";
     al->multipage_output_file_path =
         malloc(strlen(inputs.out_multi) + 1 + strlen(index_html) + 1);
@@ -91,6 +91,7 @@ allocation_failed:
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
                             Array *md_files, Array *toc_refs, Inputs inputs) {
   char *index_anchor = toc_refs->array[0];
+  int found_index_page = 0;
 
   init_anchor_location_array(anchor_locations, 500);
 
@@ -104,10 +105,17 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       free_anchor_location_array_deep(anchor_locations);
       return -1;
     }
+    int is_index_page = 0;
+    for (size_t j = 0; !found_index_page && j < anchors.used; j++)
+      if (strcmp(anchors.array[j], index_anchor) == 0) {
+        is_index_page = 1;
+        found_index_page = 1;
+      }
+
     for (int j = 0; j < anchors.used; j++) {
       AnchorLocation al;
       if (init_anchor_location(&al, anchors.array[j], md_files->array[i], title,
-                               index_anchor, inputs) != 0) {
+                               is_index_page, inputs) != 0) {
         free(title);
         free_array(&anchors);
         free_anchor_location_array_deep(anchor_locations);
