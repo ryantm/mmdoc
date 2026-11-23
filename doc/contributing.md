@@ -4,13 +4,22 @@ For easy development, `nix` with [flakes support](https://nixos.wiki/wiki/Flakes
 
 ## Test {#development-tests}
 
-Compile and run the test suite with:
+The flake uses [drvc](https://github.com/drvlang/drvc) to build the native Meson project. It reads the source file set, system libraries, and build tools from `drvlang.json`. Enable `nix-command`, `flakes`, `ca-derivations`, `dynamic-derivations`, and `recursive-nix` on the client and daemon. The builder also needs the `recursive-nix` system feature.
+
+Compile mmdoc and run its tests:
 
 ```ShellSession
 $ nix build
+$ nix flake check
 ```
 
-or
+Run the same tests through the drvc CLI:
+
+```ShellSession
+$ nix run github:drvlang/drvc -- test -C .
+```
+
+To use a local Meson development build:
 
 ```ShellSession
 $ mkdir build && cd build
