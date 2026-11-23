@@ -24,8 +24,8 @@ int test_files_match(char *example_name, char *expected_file_path,
   char got_line[4096];
   int ret_val = 0;
   int first_col_diff = -1;
-  char expected;
-  char got;
+  int expected;
+  int got;
 
   FILE *got_file = fopen(got_file_path, "r");
   FILE *expected_file = fopen(expected_file_path, "r");
