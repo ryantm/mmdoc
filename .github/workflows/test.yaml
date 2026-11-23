@@ -1,4 +1,4 @@
-name: docs
+name: test
 
 on:
   push:
@@ -7,15 +7,27 @@ on:
   pull_request:
 jobs:
   test-linux:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = ca-derivations dynamic-derivations recursive-nix
+            extra-system-features = recursive-nix ca-derivations
+            allow-import-from-derivation = false
       - name: List flake structure
         run: nix flake show
       - name: Build and test
-        run: nix build -L
+        run: |
+          nix flake check -L
+          nix build -L .#mmdoc-docs
+          test -s result/multi/index.html
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         uses: DoozyX/clang-format-lint-action@v0.20
         with:
           source: '.'
@@ -25,5 +37,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = ca-derivations dynamic-derivations recursive-nix
+            extra-system-features = recursive-nix ca-derivations
+            allow-import-from-derivation = false
       - name: Build and test
-        run: nix build -L
+        run: |
+          nix flake check -L
+          nix build -L .#mmdoc-docs
+          test -s result/multi/index.html

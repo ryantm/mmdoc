@@ -1,6 +1,6 @@
 # Install {#install}
 
-With Nix, it is not necessary to install:
+To run the flake from source, enable the [Nix features used by drvc](#development-tests):
 
 ```ShellSession
 $ nix run github:ryantm/mmdoc -- <site name> <src> <out>

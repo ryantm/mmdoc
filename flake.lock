@@ -1,5 +1,68 @@
 {
   "nodes": {
+    "drvc": {
+      "inputs": {
+        "drvcpp": "drvcpp",
+        "drvkit": "drvkit",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795430669,
+        "narHash": "sha256-kkQQo5U+PCwj487fdQhEmxXFI+AosDIil6WCJ9feqlM=",
+        "owner": "drvlang",
+        "repo": "drvc",
+        "rev": "d9b8e81604e7cec765e7186c4bef5febae4b63fe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "drvlang",
+        "repo": "drvc",
+        "type": "github"
+      }
+    },
+    "drvcpp": {
+      "inputs": {
+        "drvkit": [
+          "drvc",
+          "drvkit"
+        ],
+        "nixpkgs": [
+          "drvc",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795430345,
+        "narHash": "sha256-gYIg09x6nxL4DmCfUwe9cWk3YJn4zRAkGep35PbzKUk=",
+        "owner": "drvlang",
+        "repo": "drvcpp",
+        "rev": "5e5ebd4d582c31945f50c34efff39a8949f9cdf9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "drvlang",
+        "repo": "drvcpp",
+        "type": "github"
+      }
+    },
+    "drvkit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795430289,
+        "narHash": "sha256-EiVv12FvqQ+QslTqJl3apifaOSZMou+9krn7RSQFsHQ=",
+        "owner": "drvlang",
+        "repo": "drvkit",
+        "rev": "457d3892e9ac699dbf4e5a507c6cffa7ecc8928b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "drvlang",
+        "repo": "drvkit",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1780145889,
@@ -18,6 +81,7 @@
     },
     "root": {
       "inputs": {
+        "drvc": "drvc",
         "nixpkgs": "nixpkgs",
         "systems": "systems"
       }
