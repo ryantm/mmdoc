@@ -208,15 +208,18 @@ static int write_page_head_and_nav(FILE *page_file, Inputs inputs,
             "  <input type='checkbox' id='sidebar-checkbox' aria-hidden='true' "
             "tabindex='-1' style='display: none;'>\n"
             "  <div class='body'>\n"
-            "    <div class='nav-top-container'>\n"
+            "    <header class='nav-top-container'>\n"
             "    <nav class='nav-top' aria-label='Documentation controls'>\n"
             "      <button type='button' class='sidebar-toggle' "
+            "title='Toggle table of contents' "
             "aria-label='Toggle table of contents' aria-controls='sidebar' "
             "aria-expanded='true'></button>"
             "    <button type='button' class='search-toggle' "
+            "title='Open search (/)' "
             "aria-label='Open search' aria-controls='search-panel' "
             "aria-expanded='false'></button>"
             "    <button type='button' class='theme-toggle' "
+            "title='Switch to dark theme' "
             "aria-label='Switch to dark theme' "
             "aria-pressed='false'></button>",
             page_file) == EOF)
@@ -256,7 +259,7 @@ static int write_page_head_and_nav(FILE *page_file, Inputs inputs,
   }
 
   return fputs("    </nav>\n"
-               "    </div>\n"
+               "    </header>\n"
                "    <nav id='sidebar' class='sidebar' "
                "aria-label='Table of contents'>\n",
                page_file) == EOF
@@ -271,7 +274,8 @@ static int write_page_after_toc(FILE *page_file) {
                "hidden>\n"
                "        <label class='visually-hidden' for='search'>Search "
                "documentation</label>\n"
-               "        <input type='search' id='search' placeholder='Search' "
+               "        <input type='search' id='search' placeholder='Search "
+               "documentation (/)' "
                "autocomplete='off' aria-controls='search-results'>\n"
                "        <p id='search-status' class='visually-hidden' "
                "role='status' aria-live='polite'></p>\n"
@@ -284,11 +288,57 @@ static int write_page_after_toc(FILE *page_file) {
              : 0;
 }
 
+static int
+write_chapter_pagination(FILE *page_file,
+                         const AnchorLocation *prev_anchor_location,
+                         const AnchorLocation *next_anchor_location) {
+  if (prev_anchor_location == NULL && next_anchor_location == NULL)
+    return 0;
+
+  if (fputs("\n        <nav class='chapter-pagination' "
+            "aria-label='Chapter pagination'>\n",
+            page_file) == EOF)
+    return -1;
+
+  if (prev_anchor_location != NULL) {
+    if (fputs("          <a class='chapter-pagination-link "
+              "chapter-pagination-previous' href='",
+              page_file) == EOF ||
+        fputs(prev_anchor_location->multipage_url, page_file) == EOF ||
+        html_write_escaped(page_file, prev_anchor_location->anchor) != 0 ||
+        fputs("'><span class='chapter-pagination-label'>Previous</span>"
+              "<span class='chapter-pagination-title'>",
+              page_file) == EOF ||
+        html_write_escaped(page_file, prev_anchor_location->title) != 0 ||
+        fputs("</span></a>\n", page_file) == EOF)
+      return -1;
+  }
+
+  if (next_anchor_location != NULL) {
+    if (fputs("          <a class='chapter-pagination-link "
+              "chapter-pagination-next' href='",
+              page_file) == EOF ||
+        fputs(next_anchor_location->multipage_url, page_file) == EOF ||
+        html_write_escaped(page_file, next_anchor_location->anchor) != 0 ||
+        fputs("'><span class='chapter-pagination-label'>Next</span>"
+              "<span class='chapter-pagination-title'>",
+              page_file) == EOF ||
+        html_write_escaped(page_file, next_anchor_location->title) != 0 ||
+        fputs("</span></a>\n", page_file) == EOF)
+      return -1;
+  }
+
+  return fputs("        </nav>\n", page_file) == EOF ? -1 : 0;
+}
+
 static int write_page_footer(FILE *page_file, const AssetFileNames *asset_names,
                              const char *search_index_name,
-                             long *search_index_name_offset,
-                             int has_code_block) {
-  if (fputs("        </main>\n"
+                             long *search_index_name_offset, int has_code_block,
+                             const AnchorLocation *prev_anchor_location,
+                             const AnchorLocation *next_anchor_location) {
+  if (write_chapter_pagination(page_file, prev_anchor_location,
+                               next_anchor_location) != 0 ||
+      fputs("        </main>\n"
             "      </div>\n"
             "    </section>\n",
             page_file) == EOF)
@@ -343,7 +393,8 @@ static int write_multipage_from_buffer(
                (body_html->len > 0 && fwrite(body_html->data, 1, body_html->len,
                                              page_file) != body_html->len) ||
                write_page_footer(page_file, asset_names, search_index_name,
-                                 NULL, has_code_block) != 0;
+                                 NULL, has_code_block, prev_anchor_location,
+                                 next_anchor_location) != 0;
 
   if (ferror(page_file))
     failed = 1;
@@ -792,7 +843,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
   }
 
   if (write_page_footer(page_file, asset_names, search_index_name,
-                        search_index_name_offset, has_code_block) != 0) {
+                        search_index_name_offset, has_code_block,
+                        prev_anchor_location, next_anchor_location) != 0) {
     fclose(page_file);
     return -1;
   }

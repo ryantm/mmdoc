@@ -633,6 +633,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
   int page_is_accessible =
       file_contains(index_path, "viewport-fit=cover") &&
       file_contains(index_path, "mobile-top-nav") &&
+      file_contains(index_path, "<header class='nav-top-container'>") &&
       file_contains(index_path, "class='skip-link' href='./#main-content'") &&
       file_contains(index_path, "aria-controls='sidebar'") &&
       file_contains(index_path, "aria-label='Open search'") &&
@@ -787,11 +788,18 @@ int test_multipage_navigation_anchor() {
       mmdoc_multi_page(inputs, anchor_locations, "", 0, &generated_names,
                        "search_index.0000000000000000.js", search_index_file,
                        NULL, &current, &previous, &next, NULL);
-  int found_previous = file_contains(
-      page_path, "id='chapter-previous-button' class='chapter-previous' "
-                 "href='./#preface'");
+  int found_previous =
+      file_contains(page_path,
+                    "id='chapter-previous-button' class='chapter-previous' "
+                    "href='./#preface'") &&
+      file_contains(page_path,
+                    "class='chapter-pagination-link "
+                    "chapter-pagination-previous' href='./#preface'");
   int found_next =
       file_contains(page_path, "id='chapter-next-button' class='chapter-next' "
+                               "href='preface/#overview-of-nixpkgs'") &&
+      file_contains(page_path, "class='chapter-pagination-link "
+                               "chapter-pagination-next' "
                                "href='preface/#overview-of-nixpkgs'");
 
   free_anchor_location_array(&anchor_locations);

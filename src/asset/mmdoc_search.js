@@ -66,6 +66,13 @@ function setupSearch() {
     const h2 = document.createElement('h2')
     h2.appendChild(document.createTextNode(results.length + ' ' + resultLabel))
     resultsElem.appendChild(h2)
+    if (results.length === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'search-empty'
+      empty.textContent = 'No matching results.'
+      resultsElem.appendChild(empty)
+      return
+    }
     const ol = document.createElement('ol')
     resultsElem.appendChild(ol)
     results.forEach(function (result) {
@@ -73,6 +80,9 @@ function setupSearch() {
       const a = document.createElement('a')
       a.href = result.item.url
       a.appendChild(document.createTextNode(result.item.title))
+      a.addEventListener('click', () => {
+        setSearchVisible(false, false)
+      })
       li.appendChild(a)
       ol.appendChild(li)
     })
@@ -114,7 +124,7 @@ function moveSearchResultFocus(direction) {
     links[nextIndex].focus()
 }
 
-function setSearchVisible(visible) {
+function setSearchVisible(visible, restoreFocus = true) {
   const root = document.querySelector('html')
   const panel = document.getElementById('search-panel')
   const input = document.getElementById('search')
@@ -123,6 +133,8 @@ function setSearchVisible(visible) {
   document.querySelectorAll('.search-toggle').forEach(button => {
     button.setAttribute('aria-expanded', String(visible))
     button.setAttribute('aria-label', visible ? 'Close search' : 'Open search')
+    button.setAttribute(
+      'title', visible ? 'Close search (Esc)' : 'Open search (/)')
   })
 
   if (visible) {
@@ -132,8 +144,9 @@ function setSearchVisible(visible) {
     input.focus()
     input.select()
     loadSearchAssets()
-  } else if (searchPreviousFocus !== null) {
-    searchPreviousFocus.focus()
+  } else {
+    if (restoreFocus && searchPreviousFocus !== null)
+      searchPreviousFocus.focus()
     searchPreviousFocus = null
   }
 }
@@ -144,6 +157,7 @@ function toggleSearch() {
 }
 
 function setupToggleSearch() {
+  const panel = document.getElementById('search-panel')
   Array.from(document.querySelectorAll('.search-toggle')).forEach(el => {
     el.addEventListener('click', toggleSearch)
   })
@@ -158,7 +172,13 @@ function setupToggleSearch() {
     event.preventDefault()
     setSearchVisible(true)
   })
-  document.getElementById('search-panel').addEventListener('keydown', event => {
+  document.addEventListener('click', event => {
+    if (panel.hidden)
+      return
+    if (event.target.closest('#search-panel, .search-toggle') === null)
+      setSearchVisible(false, false)
+  })
+  panel.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       event.preventDefault()
       setSearchVisible(false)

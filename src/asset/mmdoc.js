@@ -35,11 +35,15 @@ function isSidebarVisible() {
 }
 
 function updateSidebarToggle(visible) {
+  const label = visible ? 'Hide table of contents' : 'Show table of contents'
   document.querySelectorAll('.sidebar-toggle').forEach(button => {
     button.setAttribute('aria-expanded', String(visible))
-    button.setAttribute(
-      'aria-label', visible ? 'Hide table of contents' : 'Show table of contents')
+    button.setAttribute('aria-label', label)
+    button.setAttribute('title', label)
   })
+  const mainSection = document.getElementById('main')
+  if (mainSection !== null)
+    mainSection.inert = sidebarMedia.matches && visible
 }
 
 function setSidebarVisible(visible) {
@@ -71,6 +75,15 @@ function setupSidebar() {
   })
   sidebarMedia.addEventListener('change', event => {
     setSidebarVisible(event.matches ? false : !getSidebarClosed())
+  })
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !sidebarMedia.matches || !isSidebarVisible())
+      return
+    event.preventDefault()
+    setSidebarVisible(false)
+    const toggle = document.querySelector('.sidebar-toggle')
+    if (toggle !== null)
+      toggle.focus()
   })
   setSidebarVisible(sidebarMedia.matches ? false : !getSidebarClosed())
 }
@@ -175,10 +188,11 @@ function setLightTheme() {
 
 function updateThemeToggle(theme) {
   const dark = theme === 'dark'
+  const label = dark ? 'Switch to light theme' : 'Switch to dark theme'
   document.querySelectorAll('.theme-toggle').forEach(button => {
     button.setAttribute('aria-pressed', String(dark))
-    button.setAttribute(
-      'aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme')
+    button.setAttribute('aria-label', label)
+    button.setAttribute('title', label)
   })
 }
 
@@ -194,6 +208,27 @@ if (getSelectedTheme() === 'dark')
   setDarkTheme();
 else
   setLightTheme();
+
+//// Keyboard-scrollable regions
+function updateScrollableRegions() {
+  document.querySelectorAll('main pre code, main table').forEach(el => {
+    const scrollable = el.scrollWidth > el.clientWidth + 1
+    if (scrollable) {
+      el.setAttribute('tabindex', '0')
+      el.setAttribute('role', 'region')
+      el.setAttribute(
+        'aria-label',
+        el.tagName === 'TABLE' ? 'Scrollable table' : 'Scrollable code block')
+    } else if (el.getAttribute('role') === 'region') {
+      el.removeAttribute('tabindex')
+      el.removeAttribute('role')
+      el.removeAttribute('aria-label')
+    }
+  })
+}
+
+window.addEventListener('load', updateScrollableRegions)
+window.addEventListener('resize', updateScrollableRegions)
 
 // Highlight
 window.addEventListener('load', (event) => {
