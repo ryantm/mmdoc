@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "anchors.h"
-#include "mkdir_p.h"
+#include "html.h"
 #include "render.h"
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,92 +11,148 @@ int mmdoc_anchors(Array *md_anchors, char *path) {
 }
 
 static char *copy_string(const char *source) {
-  char *copy = malloc(strlen(source) + 1);
+  size_t len = strlen(source) + 1;
+  char *copy = malloc(len);
   if (copy != NULL)
-    strcpy(copy, source);
+    memcpy(copy, source, len);
   return copy;
 }
 
-static int init_anchor_location(AnchorLocation *al, const char *anchor,
-                                const char *file_path, const char *title,
-                                int is_index_page, Inputs inputs) {
-  memset(al, 0, sizeof(*al));
-  al->anchor = copy_string(anchor);
-  al->file_path = copy_string(file_path);
-  al->title = copy_string(title);
-  if (al->anchor == NULL || al->file_path == NULL || al->title == NULL)
-    goto allocation_failed;
+typedef struct {
+  char *output_file_path;
+  char *output_directory_path;
+  char *multipage_url;
+  char *multipage_base_href;
+} PagePaths;
 
+static void free_page_paths(PagePaths *p) {
+  free(p->output_file_path);
+  free(p->output_directory_path);
+  free(p->multipage_url);
+  free(p->multipage_base_href);
+  memset(p, 0, sizeof(*p));
+}
+
+static int compute_page_paths(PagePaths *p, const char *file_path,
+                              int is_index_page, Inputs inputs) {
+  memset(p, 0, sizeof(*p));
   if (is_index_page) {
     const char *index_html = "index.html";
-    al->multipage_output_file_path =
+    p->output_file_path =
         malloc(strlen(inputs.out_multi) + 1 + strlen(index_html) + 1);
-    al->multipage_output_directory_path = copy_string(inputs.out_multi);
-    al->multipage_url = copy_string("./");
-    al->multipage_base_href = copy_string("");
-    if (al->multipage_output_file_path == NULL ||
-        al->multipage_output_directory_path == NULL ||
-        al->multipage_url == NULL || al->multipage_base_href == NULL)
-      goto allocation_failed;
-    sprintf(al->multipage_output_file_path, "%s/%s", inputs.out_multi,
-            index_html);
+    p->output_directory_path = copy_string(inputs.out_multi);
+    p->multipage_url = copy_string("./");
+    p->multipage_base_href = copy_string("");
+    if (p->output_file_path == NULL || p->output_directory_path == NULL ||
+        p->multipage_url == NULL || p->multipage_base_href == NULL) {
+      free_page_paths(p);
+      return -1;
+    }
+    sprintf(p->output_file_path, "%s/%s", inputs.out_multi, index_html);
     return 0;
   }
 
+  size_t src_len = strlen(inputs.src);
+  const char *rel = file_path + src_len;
+  int need_slash = rel[0] != '/';
   char *page_path =
-      malloc(strlen(inputs.out_multi) + strlen(al->file_path) + 12);
-  if (page_path == NULL)
-    goto allocation_failed;
-  strcpy(page_path, inputs.out_multi);
-  strcat(page_path, al->file_path + strlen(inputs.src));
+      malloc(strlen(inputs.out_multi) + (size_t)need_slash + strlen(rel) + 13);
+  if (page_path == NULL) {
+    free_page_paths(p);
+    return -1;
+  }
+  sprintf(page_path, "%s%s%s", inputs.out_multi, need_slash ? "/" : "", rel);
+
   char *last_slash = strrchr(page_path, '/');
   char *last_ext = strrchr(page_path, '.');
-  while (last_ext != NULL && (last_slash == NULL || last_ext > last_slash)) {
+  while (last_ext != NULL && (last_slash == NULL ? last_ext > page_path
+                                                 : last_ext > last_slash + 1)) {
     *last_ext = '\0';
     last_ext = strrchr(page_path, '.');
   }
   strcat(page_path, "/");
 
-  al->multipage_output_directory_path = copy_string(page_path);
+  p->output_directory_path = copy_string(page_path);
   strcat(page_path, "index.html");
-  al->multipage_output_file_path = page_path;
-  if (al->multipage_output_directory_path == NULL)
-    goto allocation_failed;
+  p->output_file_path = page_path;
+  if (p->output_directory_path == NULL) {
+    free_page_paths(p);
+    return -1;
+  }
 
-  al->multipage_url = copy_string(al->multipage_output_directory_path +
-                                  strlen(inputs.out_multi) + 1);
-  if (al->multipage_url == NULL)
-    goto allocation_failed;
+  const char *raw_url = p->output_directory_path + strlen(inputs.out_multi) + 1;
+  p->multipage_url = mmdoc_url_encode_path(raw_url);
+  if (p->multipage_url == NULL) {
+    free_page_paths(p);
+    return -1;
+  }
 
   size_t directory_depth = 0;
-  for (size_t i = 0; al->multipage_url[i] != '\0'; i++)
-    if (al->multipage_url[i] == '/')
+  for (size_t i = 0; raw_url[i] != '\0'; i++)
+    if (raw_url[i] == '/')
       directory_depth++;
 
-  al->multipage_base_href = malloc(3 * directory_depth + 1);
-  if (al->multipage_base_href == NULL)
-    goto allocation_failed;
-  al->multipage_base_href[0] = '\0';
+  p->multipage_base_href = malloc(3 * directory_depth + 1);
+  if (p->multipage_base_href == NULL) {
+    free_page_paths(p);
+    return -1;
+  }
   for (size_t i = 0; i < directory_depth; i++)
-    strcat(al->multipage_base_href, "../");
+    memcpy(p->multipage_base_href + 3 * i, "../", 3);
+  p->multipage_base_href[3 * directory_depth] = '\0';
   return 0;
+}
 
-allocation_failed:
-  fprintf(stderr, "Fatal: failed to allocate an anchor location.\n");
-  free_anchor_location(al);
-  return -1;
+int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
+                           const char *file_path, const Array *anchors,
+                           const char *title, int is_index_page,
+                           Inputs inputs) {
+  if (anchors->used == 0)
+    return 0;
+
+  PagePaths paths;
+  if (compute_page_paths(&paths, file_path, is_index_page, inputs) != 0) {
+    fprintf(stderr, "Fatal: failed to allocate page paths.\n");
+    return -1;
+  }
+
+  for (size_t j = 0; j < anchors->used; j++) {
+    AnchorLocation al;
+    memset(&al, 0, sizeof(al));
+    al.anchor = copy_string(anchors->array[j]);
+    al.file_path = copy_string(file_path);
+    al.title = copy_string(title);
+    al.multipage_output_file_path = copy_string(paths.output_file_path);
+    al.multipage_output_directory_path =
+        copy_string(paths.output_directory_path);
+    al.multipage_url = copy_string(paths.multipage_url);
+    al.multipage_base_href = copy_string(paths.multipage_base_href);
+
+    if (al.anchor == NULL || al.file_path == NULL || al.title == NULL ||
+        al.multipage_output_file_path == NULL ||
+        al.multipage_output_directory_path == NULL ||
+        al.multipage_url == NULL || al.multipage_base_href == NULL) {
+      fprintf(stderr, "Fatal: failed to allocate an anchor location.\n");
+      free_anchor_location(&al);
+      free_page_paths(&paths);
+      return -1;
+    }
+    insert_anchor_location_array(anchor_locations, &al);
+  }
+  free_page_paths(&paths);
+  return 0;
 }
 
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
                             Array *md_files, Array *toc_refs, Inputs inputs) {
-  char *index_anchor = toc_refs->array[0];
+  const char *index_anchor = toc_refs->used > 0 ? toc_refs->array[0] : NULL;
   int found_index_page = 0;
 
   init_anchor_location_array(anchor_locations, 500);
 
-  for (int i = 0; i < md_files->used; i++) {
+  for (size_t i = 0; i < md_files->used; i++) {
     Array anchors;
-    init_array(&anchors, 500);
+    init_array(&anchors, 64);
     char *title = NULL;
     if (mmdoc_render_collect_metadata(md_files->array[i], &anchors, &title) !=
         0) {
@@ -106,33 +161,19 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
       return -1;
     }
     int is_index_page = 0;
-    for (size_t j = 0; !found_index_page && j < anchors.used; j++)
+    for (size_t j = 0;
+         !found_index_page && index_anchor != NULL && j < anchors.used; j++)
       if (strcmp(anchors.array[j], index_anchor) == 0) {
         is_index_page = 1;
         found_index_page = 1;
       }
 
-    for (int j = 0; j < anchors.used; j++) {
-      AnchorLocation al;
-      if (init_anchor_location(&al, anchors.array[j], md_files->array[i], title,
-                               is_index_page, inputs) != 0) {
-        free(title);
-        free_array(&anchors);
-        free_anchor_location_array_deep(anchor_locations);
-        return -1;
-      }
-
-      if (mkdir_p(al.multipage_output_directory_path) != 0) {
-        printf("Error recursively making directory %s",
-               al.multipage_output_directory_path);
-        free_anchor_location(&al);
-        free(title);
-        free_array(&anchors);
-        free_anchor_location_array_deep(anchor_locations);
-        return -1;
-      }
-
-      insert_anchor_location_array(anchor_locations, &al);
+    if (mmdoc_anchors_add_file(anchor_locations, md_files->array[i], &anchors,
+                               title, is_index_page, inputs) != 0) {
+      free(title);
+      free_array(&anchors);
+      free_anchor_location_array_deep(anchor_locations);
+      return -1;
     }
     free(title);
     free_array(&anchors);
@@ -147,8 +188,7 @@ int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
 int mmdoc_anchors_find_toc_anchors(AnchorLocationArray *toc_anchor_locations,
                                    Array *toc_refs,
                                    AnchorLocationArray *anchor_locations) {
-
-  for (int i = 0; i < toc_refs->used; i++) {
+  for (size_t i = 0; i < toc_refs->used; i++) {
     AnchorLocation *anchor_location =
         find_anchor_location(anchor_locations, toc_refs->array[i]);
     if (anchor_location == NULL) {

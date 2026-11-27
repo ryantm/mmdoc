@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #pragma once
 #include "types.h"
+#include <cmark-gfm.h>
+#include <stddef.h>
 #include <stdio.h>
 
 typedef enum {
@@ -9,6 +11,30 @@ typedef enum {
   RENDER_TYPE_MAN,
   RENDER_TYPE_EPUB
 } render_type;
+
+typedef struct {
+  char *data;
+  size_t len;
+  size_t cap;
+} MmdocBuf;
+
+void mmdoc_buf_init(MmdocBuf *buf, size_t initial_cap);
+void mmdoc_buf_free(MmdocBuf *buf);
+int mmdoc_buf_append(MmdocBuf *buf, const char *data, size_t len);
+int mmdoc_buf_append_str(MmdocBuf *buf, const char *str);
+int mmdoc_buf_append_char(MmdocBuf *buf, char c);
+
+typedef struct {
+  MmdocBuf single_html;
+  MmdocBuf multi_html;
+  MmdocBuf full_md;
+  MmdocBuf chapter_md;
+  MmdocBuf search_json;
+  MmdocBuf warnings;
+  int has_code_block;
+} ChapterOutputs;
+
+void chapter_outputs_free(ChapterOutputs *out);
 
 /* Returns code-block presence (0/1), or -1 on input/output failure. */
 int mmdoc_render_part(char *file_path, FILE *output_file,
@@ -24,3 +50,15 @@ int mmdoc_render_collect_anchors(char *file_path, Array *anchors);
  * the returned title (an empty string when no anchored heading exists). */
 int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
                                   char **title);
+
+/* Extract anchors and/or title from an already-parsed document AST. */
+int mmdoc_extract_metadata_from_doc(cmark_node *document, const char *file_path,
+                                    Array *anchors, char **title);
+
+/* Render all outputs (Markdown, search JSON, single HTML, multi HTML) for one
+ * chapter from a single already-parsed document AST. */
+int mmdoc_render_chapter_from_doc(cmark_node *document, cmark_parser *parser,
+                                  cmark_mem *mem, const AnchorLocation *chapter,
+                                  AnchorLocationArray *anchors,
+                                  AnchorLocationArray *chapters_by_source,
+                                  ChapterOutputs *out);

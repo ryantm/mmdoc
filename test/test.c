@@ -3,6 +3,7 @@
 #include "../src/files.h"
 #include "../src/mkdir_p.h"
 #include "../src/multi.h"
+#include "../src/parse.h"
 #include "../src/refs.h"
 #include "../src/render.h"
 #include "../src/single.h"
@@ -1072,10 +1073,284 @@ static int test_render_io_and_man_cleanup(void) {
   return failed;
 }
 
+static int test_parse_edge_cases(void) {
+  char id[64];
+  char span[64];
+
+  /* Heading attributes: multiple spaces, empty ID rejection, preceding braces
+   */
+  if (parse_heading_bracketed_span_id("Heading  {#two-spaces}", id) != 7 ||
+      strcmp(id, "two-spaces") != 0) {
+    printf("heading two-spaces parse test failed\n");
+    return 1;
+  }
+  if (parse_heading_bracketed_span_id("Heading {#}", id) != -1) {
+    printf("heading empty-id rejection test failed\n");
+    return 1;
+  }
+  if (parse_heading_bracketed_span_id("Heading {foo} {#valid}", id) != 13 ||
+      strcmp(id, "valid") != 0) {
+    printf("heading after-braces parse test failed\n");
+    return 1;
+  }
+
+  /* Link bracketed spans: consecutive brackets, nested [, empty ID */
+  if (parse_link_bracketed_span_id("[foo][bar]{#id}", span, id) != 5 ||
+      strcmp(span, "bar") != 0 || strcmp(id, "id") != 0) {
+    printf("consecutive bracket span parse test failed\n");
+    return 1;
+  }
+  if (parse_link_bracketed_span_id("[[nested]{#nid}", span, id) != 1 ||
+      strcmp(span, "nested") != 0 || strcmp(id, "nid") != 0) {
+    printf("nested bracket span parse test failed\n");
+    return 1;
+  }
+  if (parse_link_bracketed_span_id("[foo]{#}", span, id) != -1) {
+    printf("empty span id rejection test failed\n");
+    return 1;
+  }
+  if (parse_link_bracketed_span_id("[a]{b}[c]{#ok}", span, id) != 6 ||
+      strcmp(span, "c") != 0 || strcmp(id, "ok") != 0) {
+    printf("span after non-id brace test failed\n");
+    return 1;
+  }
+
+  /* Admonition end: only colons + optional trailing whitespace */
+  if (parse_admonition_end(":::") != 0 ||
+      parse_admonition_end("   :::   ") != 0 ||
+      parse_admonition_end("::::") != 0 ||
+      parse_admonition_end("::: foo bar") != -1 ||
+      parse_admonition_end(":::note") != -1) {
+    printf("admonition end parse test failed\n");
+    return 1;
+  }
+
+  printf("parse edge cases test passed\n");
+  return 0;
+}
+
+static int test_admonition_blank_lines_and_safety(void) {
+  char input_path[] = "/tmp/mmdoc-admon-in-XXXXXX.md";
+  char out_path[] = "/tmp/mmdoc-admon-out-XXXXXX.html";
+  int in_fd = mkstemps(input_path, 3);
+  int out_fd = mkstemps(out_path, 5);
+  if (in_fd == -1 || out_fd == -1)
+    return 1;
+  close(in_fd);
+  close(out_fd);
+
+  const char *md = "::: warning\n\nBody text.\n\n:::\n\n"
+                   "::: foo bar\n\n"
+                   "*::: note*\n";
+  if (write_text_file(input_path, md) != 0)
+    return 1;
+
+  FILE *out = fopen(out_path, "w");
+  if (out == NULL)
+    return 1;
+  AnchorLocationArray empty;
+  init_anchor_location_array(&empty, 0);
+  AnchorLocation al = {.title = "Test"};
+  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, empty,
+                             "", NULL);
+  free_anchor_location_array(&empty);
+  fclose(out);
+
+  int passed = rc >= 0 &&
+               file_contains(out_path, "<div class='admonition warning'>") &&
+               file_contains(out_path, "<p>Body text.</p>") &&
+               !file_contains(out_path, "<p></p>") &&
+               file_contains(out_path, "<p>::: foo bar</p>") &&
+               file_contains(out_path, "<em>::: note</em>");
+  unlink(input_path);
+  unlink(out_path);
+  if (!passed) {
+    printf("admonition blank lines and safety test failed\n");
+    return 1;
+  }
+  printf("admonition blank lines and safety test passed\n");
+  return 0;
+}
+
+static int test_refs_uses_markdown_ast(void) {
+  char path[] = "/tmp/mmdoc-refs-ast-XXXXXX.md";
+  int fd = mkstemps(path, 3);
+  if (fd == -1)
+    return 1;
+  close(fd);
+
+  const char *toc = "## Contents\n\n"
+                    "* [Intro][i]\n"
+                    "* [Second](#second \"Title\")\n"
+                    "* `(#not-a-ref)`\n"
+                    "* Plain (#also-not-a-ref)\n"
+                    "<!-- [Commented](#commented) -->\n\n"
+                    "[i]: #intro\n";
+  if (write_text_file(path, toc) != 0)
+    return 1;
+
+  Array refs;
+  int rc = mmdoc_refs(&refs, path);
+  int passed = rc == 0 && refs.used == 2 &&
+               strcmp(refs.array[0], "#intro") == 0 &&
+               strcmp(refs.array[1], "#second") == 0;
+  free_array(&refs);
+  unlink(path);
+  if (!passed) {
+    printf("refs markdown AST test failed\n");
+    return 1;
+  }
+  printf("refs markdown AST test passed\n");
+  return 0;
+}
+
+static int test_single_dedup_and_link_titles(void) {
+  char root[] = "/tmp/mmdoc-single-dedup-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char toc_path[PATH_MAX], p1_path[PATH_MAX], p2_path[PATH_MAX],
+      out_dir[PATH_MAX], index_path[PATH_MAX];
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  snprintf(p1_path, sizeof(p1_path), "%s/p1.md", root);
+  snprintf(p2_path, sizeof(p2_path), "%s/p2.md", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/single", root);
+  snprintf(index_path, sizeof(index_path), "%s/single/index.html", root);
+
+  if (write_text_file(toc_path, "* [](#first)\n* [](#sub)\n* [](#second)\n") !=
+          0 ||
+      write_text_file(p1_path, "# First & <One> {#first}\n\n## Sub {#sub}\n\n"
+                               "See [](#second).\n") != 0 ||
+      write_text_file(p2_path, "# Second's Page {#second}\n\nBody 2.\n") != 0)
+    return 1;
+
+  Inputs inputs = {
+      .project_name = "Proj <1> & '2'",
+      .toc_path = toc_path,
+      .out_single = out_dir,
+  };
+  AnchorLocation l1 = {.file_path = p1_path,
+                       .multipage_output_file_path = "p1/index.html",
+                       .anchor = "#first",
+                       .title = "First & <One>"};
+  AnchorLocation l1b = {.file_path = p1_path,
+                        .multipage_output_file_path = "p1/index.html",
+                        .anchor = "#sub",
+                        .title = "First & <One>"};
+  AnchorLocation l2 = {.file_path = p2_path,
+                       .multipage_output_file_path = "p2/index.html",
+                       .anchor = "#second",
+                       .title = "Second's Page"};
+  AnchorLocationArray toc_locs, all_locs;
+  init_anchor_location_array(&toc_locs, 3);
+  init_anchor_location_array(&all_locs, 3);
+  insert_anchor_location_array(&toc_locs, &l1);
+  insert_anchor_location_array(&toc_locs, &l1b);
+  insert_anchor_location_array(&toc_locs, &l2);
+  insert_anchor_location_array(&all_locs, &l1);
+  insert_anchor_location_array(&all_locs, &l1b);
+  insert_anchor_location_array(&all_locs, &l2);
+  build_anchor_location_index(&all_locs);
+
+  int rc = mmdoc_single_with_anchors(inputs, toc_locs, all_locs);
+
+  /* Count occurrences of id='first' to confirm p1 was rendered only once. */
+  int first_count = 0;
+  FILE *f = fopen(index_path, "r");
+  if (f != NULL) {
+    char *line = NULL;
+    size_t sz = 0;
+    while (getline(&line, &sz, f) != -1) {
+      if (strstr(line, "<h1 id='first'>") != NULL)
+        first_count++;
+    }
+    free(line);
+    fclose(f);
+  }
+
+  int passed =
+      rc == 0 && first_count == 1 &&
+      file_contains(index_path,
+                    "<title>Proj &lt;1&gt; &amp; &#39;2&#39;</title>") &&
+      file_contains(index_path,
+                    "<a href=\"#first\">First &amp; &lt;One&gt;</a>") &&
+      file_contains(index_path, "<a href=\"#second\">Second's Page</a>") &&
+      file_contains(index_path, "<h1 id='first'><a href='#first'>") &&
+      !file_contains(index_path, "href='/#first'");
+
+  free_anchor_location_array(&toc_locs);
+  free_anchor_location_array(&all_locs);
+  unlink(index_path);
+  unlink(toc_path);
+  unlink(p1_path);
+  unlink(p2_path);
+  rmdir(out_dir);
+  rmdir(root);
+
+  if (!passed) {
+    printf("single dedup and link titles test failed\n");
+    return 1;
+  }
+  printf("single dedup and link titles test passed\n");
+  return 0;
+}
+
+static int test_mkdir_p_and_symlink_loop(void) {
+  if (mkdir_p("") != -1) {
+    printf("mkdir_p empty path rejection failed\n");
+    return 1;
+  }
+
+  char root[] = "/tmp/mmdoc-loop-test-XXXXXX";
+  if (mkdtemp(root) == NULL)
+    return 1;
+
+  char file_path[PATH_MAX], md_path[PATH_MAX], loop_path[PATH_MAX];
+  snprintf(file_path, sizeof(file_path), "%s/plain.txt", root);
+  snprintf(md_path, sizeof(md_path), "%s/page.md", root);
+  snprintf(loop_path, sizeof(loop_path), "%s/self-loop", root);
+  if (write_text_file(file_path, "x") != 0 ||
+      write_text_file(md_path, "# Page {#p}\n") != 0 ||
+      symlink(root, loop_path) != 0)
+    return 1;
+
+  int conflict_rejected = mkdir_p(file_path) == -1 && errno == ENOTDIR;
+
+  Array md_files;
+  init_array(&md_files, 4);
+  Inputs inputs = {.src = root, .out_multi = NULL, .out_single = NULL};
+  int walk_rc = mmdoc_md_files(&md_files, inputs);
+  int loop_safe = walk_rc == 0 && md_files.used == 1 &&
+                  strcmp(md_files.array[0], md_path) == 0;
+  free_array(&md_files);
+
+  unlink(loop_path);
+  unlink(md_path);
+  unlink(file_path);
+  rmdir(root);
+
+  if (!conflict_rejected || !loop_safe) {
+    printf("mkdir_p and symlink loop test failed\n");
+    return 1;
+  }
+  printf("mkdir_p and symlink loop test passed\n");
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
   num_failed += test_render_io_and_man_cleanup();
+  num_tests++;
+  num_failed += test_parse_edge_cases();
+  num_tests++;
+  num_failed += test_admonition_blank_lines_and_safety();
+  num_tests++;
+  num_failed += test_refs_uses_markdown_ast();
+  num_tests++;
+  num_failed += test_single_dedup_and_link_titles();
+  num_tests++;
+  num_failed += test_mkdir_p_and_symlink_loop();
   num_tests++;
   num_failed += test_render("e001");
   num_tests++;

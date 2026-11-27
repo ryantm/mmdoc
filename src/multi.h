@@ -4,6 +4,7 @@
 
 #include "asset.h"
 #include "inputs.h"
+#include "render.h"
 #include "types.h"
 
 int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
@@ -17,3 +18,10 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
                      int *has_code_blocks);
 int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
                 AnchorLocationArray anchor_locations);
+int mmdoc_multi_write_from_chapters(Inputs inputs,
+                                    AnchorLocationArray toc_anchor_locations,
+                                    const size_t *page_indices,
+                                    size_t page_count,
+                                    AnchorLocationArray anchor_locations,
+                                    const ChapterOutputs *chapters,
+                                    size_t num_workers);

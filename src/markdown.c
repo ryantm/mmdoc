@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "markdown.h"
+#include "arena.h"
 #include "files.h"
 #include "parse.h"
 #include <ctype.h>
@@ -19,7 +20,8 @@ static int publish(const char *temporary, const char *directory,
   return result;
 }
 
-/* Directory names come from the filesystem and may contain URL delimiters. */
+/* Directory names come from the filesystem and may contain URL delimiters.
+ * If already percent-encoded (from anchors.c), avoid double-encoding %XX. */
 static char *chapter_url(const char *base, const AnchorLocation *chapter,
                          const char *fragment) {
   const char *dir = chapter->multipage_url;
@@ -31,10 +33,13 @@ static char *chapter_url(const char *base, const AnchorLocation *chapter,
     return NULL;
   char *out = stpcpy(url, base);
   for (const unsigned char *p = (const unsigned char *)dir; *p; p++) {
-    if (isalnum(*p) || strchr("-._~/", *p))
-      *out++ = *p;
-    else
+    if (isalnum(*p) || strchr("-._~/", *p)) {
+      *out++ = (char)*p;
+    } else if (*p == '%' && isxdigit(p[1]) && isxdigit(p[2])) {
+      *out++ = (char)*p;
+    } else {
       out += sprintf(out, "%%%02X", *p);
+    }
   }
   strcpy(stpcpy(out, "index.md"), fragment);
   return url;
@@ -49,20 +54,115 @@ static int write_markdown(FILE *file, cmark_node *node) {
   return failed ? -1 : 0;
 }
 
+static int title_needs_markdown_escaping(const char *s) {
+  for (const unsigned char *p = (const unsigned char *)s; *p != '\0'; p++) {
+    if (*p < 0x20 || *p == '[' || *p == ']' || *p == '\\' || *p == '*' ||
+        *p == '_' || *p == '`' || *p == '<' || *p == '>' || *p == '&' ||
+        *p == '~' || *p == '!' || *p == '"')
+      return 1;
+  }
+  return 0;
+}
+
 static int write_index_entry(FILE *index, const AnchorLocation *chapter) {
   char *url = chapter_url("", chapter, "");
   if (url == NULL)
     return -1;
+  const char *label = *chapter->title ? chapter->title : chapter->anchor + 1;
+  if (!title_needs_markdown_escaping(label)) {
+    int failed = fprintf(index, "- [%s](%s)\n", label, url) < 0;
+    free(url);
+    return failed ? -1 : 0;
+  }
   cmark_node *link = cmark_node_new(CMARK_NODE_LINK);
   cmark_node_set_url(link, url);
   free(url);
   cmark_node *text = cmark_node_new(CMARK_NODE_TEXT);
-  cmark_node_set_literal(text, *chapter->title ? chapter->title
-                                               : chapter->anchor + 1);
+  cmark_node_set_literal(text, label);
   cmark_node_append_child(link, text);
   int failed = fputs("- ", index) == EOF || write_markdown(index, link) != 0;
   cmark_node_free(link);
   return failed ? -1 : 0;
+}
+
+int mmdoc_markdown_write_index_entry(FILE *index,
+                                     const AnchorLocation *chapter) {
+  return write_index_entry(index, chapter);
+}
+
+static int write_buffer_file(const char *path, const char *data, size_t len) {
+  FILE *file = fopen(path, "wb");
+  if (file == NULL)
+    return -1;
+  int failed = len > 0 && fwrite(data, 1, len, file) != len;
+  if (fclose(file) != 0)
+    failed = 1;
+  return failed ? -1 : 0;
+}
+
+int mmdoc_markdown_write_from_chapters(Inputs inputs, AnchorLocationArray toc,
+                                       const size_t *page_indices,
+                                       size_t page_count,
+                                       const ChapterOutputs *chapters) {
+  char *staging = mmdoc_file_path(inputs.out_multi, ".mmdoc-XXXXXX");
+  if (staging == NULL || mkdtemp(staging) == NULL) {
+    free(staging);
+    return -1;
+  }
+  char *index_path = mmdoc_file_path(staging, "llms.txt");
+  char *full_path = mmdoc_file_path(staging, "llms-full.txt");
+  char *chapter_path = mmdoc_file_path(staging, "index.md");
+
+  FILE *index = NULL, *full = NULL;
+  int result = -1;
+  if (!index_path || !full_path || !chapter_path)
+    goto done;
+  index = fopen(index_path, "wb");
+  full = fopen(full_path, "wb");
+  if (index == NULL || full == NULL ||
+      fprintf(index, "# %s\n\n[Full manual](llms-full.txt)\n\n## Chapters\n\n",
+              inputs.project_name) < 0)
+    goto done;
+
+  char full_buf[65536];
+  setvbuf(full, full_buf, _IOFBF, sizeof(full_buf));
+
+  for (size_t i = 0; i < page_count; i++) {
+    const AnchorLocation *chapter = &toc.array[page_indices[i]];
+    if (write_index_entry(index, chapter) != 0 ||
+        (i > 0 && fputc('\n', full) == EOF) ||
+        (chapters[i].full_md.len > 0 &&
+         fwrite(chapters[i].full_md.data, 1, chapters[i].full_md.len, full) !=
+             chapters[i].full_md.len) ||
+        write_buffer_file(chapter_path, chapters[i].chapter_md.data,
+                          chapters[i].chapter_md.len) != 0 ||
+        publish(chapter_path, chapter->multipage_output_directory_path,
+                "index.md") != 0)
+      goto done;
+  }
+  result = 0;
+
+done:
+  if (index != NULL && fclose(index) != 0)
+    result = -1;
+  if (full != NULL && fclose(full) != 0)
+    result = -1;
+  if (result == 0)
+    result = publish(full_path, inputs.out_multi, "llms-full.txt");
+  if (result == 0)
+    result = publish(index_path, inputs.out_multi, "llms.txt");
+  if (chapter_path != NULL)
+    unlink(chapter_path);
+  if (full_path != NULL)
+    unlink(full_path);
+  if (index_path != NULL)
+    unlink(index_path);
+  rmdir(staging);
+  free(chapter_path);
+  free(full_path);
+  free(index_path);
+  free(staging);
+  return result;
 }
 
 static int has_relative_path(const char *url) {
@@ -99,7 +199,6 @@ static int resolve_link(cmark_node *node, const AnchorLocation *chapter,
     new_url = chapter_url(chapter->multipage_base_href, page, url);
   } else if (chapter != NULL && *chapter->multipage_base_href &&
              has_relative_path(url)) {
-    /* HTML pages use the site root as their base for authored URLs. */
     new_url = malloc(strlen(chapter->multipage_base_href) + strlen(url) + 1);
     if (new_url != NULL)
       sprintf(new_url, "%s%s", chapter->multipage_base_href, url);
@@ -113,7 +212,6 @@ static int resolve_link(cmark_node *node, const AnchorLocation *chapter,
   return ok ? 0 : -1;
 }
 
-/* cmark would escape the # in these mmdoc attributes as ordinary text. */
 static int preserve_attributes(cmark_node *node) {
   if (cmark_node_get_type(node) == CMARK_NODE_HEADING) {
     HeadingInfo *info = cmark_node_get_user_data(node);
@@ -136,7 +234,7 @@ static int preserve_attributes(cmark_node *node) {
     const char *end = strchr(attrs, '}');
     if (*attrs != '{' || end == NULL || !memchr(attrs, '#', end - attrs))
       return 0;
-    char *prefix = strndup(literal, end + 1 - literal);
+    char *prefix = strndup(literal, (size_t)(end + 1 - literal));
     if (prefix == NULL)
       return -1;
     cmark_node *marker = cmark_node_new(CMARK_NODE_CUSTOM_INLINE);
@@ -148,8 +246,6 @@ static int preserve_attributes(cmark_node *node) {
   return 0;
 }
 
-/* First render the combined manual with local fragments. Then rebase only
- * links and images on the same tree for the standalone chapter. */
 static int prepare_document(cmark_node *document, const AnchorLocation *chapter,
                             AnchorLocationArray *anchors,
                             AnchorLocationArray *chapters_by_source) {
@@ -203,8 +299,6 @@ done:
 int mmdoc_markdown(Inputs inputs, AnchorLocationArray toc,
                    const size_t *page_indices, size_t page_count,
                    AnchorLocationArray anchors) {
-  /* Keep each published file readable while rebuilding. Publish the index
-   * last so that every chapter it advertises already exists. */
   char *staging = mmdoc_file_path(inputs.out_multi, ".mmdoc-XXXXXX");
   if (staging == NULL || mkdtemp(staging) == NULL) {
     free(staging);

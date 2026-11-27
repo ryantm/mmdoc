@@ -56,6 +56,33 @@ with tempfile.TemporaryDirectory() as directory:
     assert full.count("# Welcome {#start}") == full.count("# `Tips` {#tip}") == 1
     assert full.index("# Welcome") < full.index("# `Tips`")
     assert (out / "index.html").is_file() and tips_path.with_suffix(".html").is_file()
+    assert not (out / "private").exists()
+
+    # HTML links and search index percent-encode special characters in directory names.
+    root_html = (out / "index.html").read_text()
+    assert "guide/tips%20%231/#warning" in root_html, root_html
+    assert "guide/tips #1/" not in root_html, root_html
+    search_files = list(out.glob("search_index.*.js"))
+    assert len(search_files) == 1
+    search_text = search_files[0].read_text()
+    assert '"url": "guide/tips%20%231/"' in search_text, search_text
+    assert "Welcome\\n\\nRoot" in search_text, search_text
+
+    # Single-page output deduplicates chapters, fills empty cross-ref titles,
+    # and uses local #anchor heading links.
+    single_html = (src / "build" / "single" / "index.html").read_text()
+    assert single_html.count("<h1 id='start'>") == 1
+    assert single_html.count("<h1 id='tip'>") == 1
+    assert '<a href="#start">Welcome</a>' in single_html
+    assert '<a href="#tip">Tips</a>' in single_html
+    assert "<h1 id='start'><a href='#start'>" in single_html
+    assert "href='/#start'" not in single_html
+
+    # CLI help/version flags and trailing slashes work cleanly.
+    assert subprocess.run([mmdoc, "--help"], stdout=subprocess.DEVNULL).returncode == 0
+    assert subprocess.run([mmdoc, "-v"], stdout=subprocess.DEVNULL).returncode == 0
+    subprocess.run([mmdoc, "My Manual", "./", "build/"], cwd=src, check=True)
+    assert (out / "llms-full.txt").read_text() == full
 
     # Rebuilding into SRC must not rediscover previously generated chapters.
     subprocess.run(args, cwd=src, check=True)

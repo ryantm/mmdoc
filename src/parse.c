@@ -18,37 +18,64 @@ int parse_heading_bracketed_span_id(const char *text, char *id) {
   enum parse_heading_bracketed_span_state state = HEADING_NONE;
 
   for (int i = 0; text[i] != '\0'; i++) {
-    if (state == HEADING_NONE && text[i] == ' ') {
-      state = HEADING_SPACE;
-      bracket_start = i;
+    char c = text[i];
+    if (state == HEADING_NONE) {
+      if (c == ' ') {
+        state = HEADING_SPACE;
+        bracket_start = i;
+      }
       continue;
     }
-    if (state == HEADING_SPACE && text[i] == '{') {
-      state = HEADING_L;
+    if (state == HEADING_SPACE) {
+      if (c == ' ')
+        continue;
+      if (c == '{') {
+        state = HEADING_L;
+        continue;
+      }
+      state = HEADING_NONE;
       continue;
     }
-    if (state == HEADING_L && text[i] == '#') {
-      state = HEADING_ID;
+    if (state == HEADING_L) {
+      if (c == '#') {
+        state = HEADING_ID;
+        id_pos = 0;
+        continue;
+      }
+      if (c == ' ') {
+        state = HEADING_SPACE;
+        bracket_start = i;
+      } else {
+        state = HEADING_NONE;
+      }
       continue;
     }
-    if (state == HEADING_ID && text[i] != '}') {
-      id[id_pos] = text[i];
-      id_pos++;
+    if (state == HEADING_ID) {
+      if (c == '}') {
+        if (id_pos > 0) {
+          id[id_pos] = '\0';
+          bracket_found = 1;
+          break;
+        }
+        state = HEADING_NONE;
+        continue;
+      }
+      if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+        id_pos = 0;
+        if (c == ' ') {
+          state = HEADING_SPACE;
+          bracket_start = i;
+        } else {
+          state = HEADING_NONE;
+        }
+        continue;
+      }
+      id[id_pos++] = c;
       continue;
-    } else if (state == HEADING_ID && text[i] == '}') {
-      id[id_pos] = '\0';
-      bracket_found = 1;
-      break;
     }
-    id_pos = 0;
-    state = HEADING_NONE;
-    continue;
   }
 
-  if (bracket_found == 1)
-    return bracket_start;
-  else
-    return -1;
+  return bracket_found ? bracket_start : -1;
 }
 
 enum parse_link_bracketed_span_state {
@@ -70,48 +97,85 @@ int parse_link_bracketed_span_id(const char *text, char *span_text, char *id) {
   enum parse_link_bracketed_span_state state = LINK_NONE;
 
   for (int i = 0; text[i] != '\0'; i++) {
-    if (state == LINK_NONE && text[i] == '[') {
-      state = LINK_TEXT;
-      bracket_start = i;
+    char c = text[i];
+    if (state == LINK_NONE) {
+      if (c == '[') {
+        state = LINK_TEXT;
+        bracket_start = i;
+        text_pos = 0;
+      }
       continue;
     }
-    if (state == LINK_TEXT && text[i] != ']') {
-      span_text[text_pos] = text[i];
-      text_pos++;
+    if (state == LINK_TEXT) {
+      if (c == '[') {
+        bracket_start = i;
+        text_pos = 0;
+        continue;
+      }
+      if (c == ']') {
+        span_text[text_pos] = '\0';
+        state = LINK_R_SQUARE;
+        continue;
+      }
+      span_text[text_pos++] = c;
       continue;
     }
-    if (state == LINK_TEXT && text[i] == ']') {
-      span_text[text_pos] = '\0';
-      state = LINK_R_SQUARE;
+    if (state == LINK_R_SQUARE) {
+      if (c == '{') {
+        state = LINK_L;
+        continue;
+      }
+      if (c == '[') {
+        state = LINK_TEXT;
+        bracket_start = i;
+        text_pos = 0;
+        continue;
+      }
+      text_pos = 0;
+      state = LINK_NONE;
       continue;
     }
-    if (state == LINK_R_SQUARE && text[i] == '{') {
-      state = LINK_L;
+    if (state == LINK_L) {
+      if (c == '#') {
+        state = LINK_ID;
+        id_pos = 0;
+        continue;
+      }
+      if (c == '[') {
+        state = LINK_TEXT;
+        bracket_start = i;
+        text_pos = 0;
+        continue;
+      }
+      text_pos = 0;
+      state = LINK_NONE;
       continue;
     }
-    if (state == LINK_L && text[i] == '#') {
-      state = LINK_ID;
+    if (state == LINK_ID) {
+      if (c == '}') {
+        if (id_pos > 0) {
+          id[id_pos] = '\0';
+          bracket_found = 1;
+          break;
+        }
+        text_pos = 0;
+        id_pos = 0;
+        state = LINK_NONE;
+        continue;
+      }
+      if (c == '[') {
+        state = LINK_TEXT;
+        bracket_start = i;
+        text_pos = 0;
+        id_pos = 0;
+        continue;
+      }
+      id[id_pos++] = c;
       continue;
     }
-    if (state == LINK_ID && text[i] != '}') {
-      id[id_pos] = text[i];
-      id_pos++;
-      continue;
-    } else if (state == LINK_ID && text[i] == '}') {
-      id[id_pos] = '\0';
-      bracket_found = 1;
-      break;
-    }
-    text_pos = 0;
-    id_pos = 0;
-    state = LINK_NONE;
-    continue;
   }
 
-  if (bracket_found == 1)
-    return bracket_start;
-  else
-    return -1;
+  return bracket_found ? bracket_start : -1;
 }
 
 enum parse_admonition_start_state {
@@ -197,39 +261,22 @@ int parse_admonition_start(const char *text, char *admonition_type,
   return -1;
 }
 
-enum parse_admonition_end_state {
-  ADMONITION_END_NONE,
-  ADMONITION_END_ONE,
-  ADMONITION_END_TWO,
-  ADMONITION_END_THREE
-};
-
 int parse_admonition_end(const char *text) {
   if (text == NULL)
     return -1;
-  enum parse_admonition_end_state state = ADMONITION_END_NONE;
-
-  for (int i = 0; text[i] != '\0'; i++) {
-    if (state == ADMONITION_END_NONE && (text[i] != ':' && text[i] != ' '))
-      return -1;
-    if (state == ADMONITION_END_NONE && text[i] == ' ')
-      continue;
-
-    if (state == ADMONITION_END_NONE && text[i] == ':') {
-      state = ADMONITION_END_ONE;
-      continue;
-    }
-    if (state == ADMONITION_END_ONE && text[i] == ':') {
-      state = ADMONITION_END_TWO;
-      continue;
-    }
-    if (state == ADMONITION_END_TWO && text[i] == ':') {
-      state = ADMONITION_END_THREE;
-      return 0;
-    }
-    return -1;
+  const char *p = text;
+  while (*p == ' ')
+    p++;
+  int colons = 0;
+  while (*p == ':') {
+    colons++;
+    p++;
   }
-  return -1;
+  if (colons < 3)
+    return -1;
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+    p++;
+  return *p == '\0' ? 0 : -1;
 }
 
 enum parse_dd_state {

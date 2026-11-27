@@ -42,3 +42,5 @@ void free_anchor_location_array_deep(AnchorLocationArray *a);
 void init_array(Array *a, size_t initialSize);
 void insert_array(Array *a, char *element);
 void free_array(Array *a);
+size_t mmdoc_collect_unique_page_indices(AnchorLocationArray toc_locations,
+                                         size_t *page_indices);

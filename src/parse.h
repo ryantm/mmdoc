@@ -1,8 +1,13 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #pragma once
 #include <cmark-gfm.h>
+#include <stddef.h>
 
+void mmdoc_cmark_init(void);
+cmark_syntax_extension *mmdoc_table_extension(void);
 cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser);
+cmark_node *mmdoc_parse_cmark_buffer(const char *data, size_t len,
+                                     cmark_parser *parser);
 void cmark_rewrite_spans(cmark_node *document, int markdown);
 int cmark_rewrite_syntax(cmark_node *document);
 

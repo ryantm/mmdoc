@@ -32,8 +32,10 @@ extern unsigned int ___src_asset_mmdoc_js_len;
 extern unsigned char ___src_asset_mmdoc_search_js[];
 extern unsigned int ___src_asset_mmdoc_search_js_len;
 
-static uint64_t asset_hash_update(uint64_t hash, const unsigned char *bytes,
-                                  size_t length) {
+uint64_t asset_hash_init(void) { return UINT64_C(14695981039346656037); }
+
+uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
+                         size_t length) {
   for (size_t i = 0; i < length; i++) {
     hash ^= bytes[i];
     hash *= UINT64_C(1099511628211);
@@ -41,15 +43,22 @@ static uint64_t asset_hash_update(uint64_t hash, const unsigned char *bytes,
   return hash;
 }
 
+void asset_format_hashed_name(const char *stem, const char *extension,
+                              uint64_t hash, char *file_name,
+                              size_t file_name_size) {
+  snprintf(file_name, file_name_size, "%s.%016" PRIx64 ".%s", stem, hash,
+           extension);
+}
+
 static uint64_t asset_hash(const unsigned char *bytes, size_t length) {
-  return asset_hash_update(UINT64_C(14695981039346656037), bytes, length);
+  return asset_hash_feed(asset_hash_init(), bytes, length);
 }
 
 static void asset_hashed_file_name(const char *stem, const char *extension,
                                    const unsigned char *bytes, size_t length,
                                    char *file_name, size_t file_name_size) {
-  snprintf(file_name, file_name_size, "%s.%016" PRIx64 ".%s", stem,
-           asset_hash(bytes, length), extension);
+  asset_format_hashed_name(stem, extension, asset_hash(bytes, length),
+                           file_name, file_name_size);
 }
 
 void asset_file_names(AssetFileNames *names) {
@@ -86,19 +95,18 @@ int asset_hashed_file_name_from_path(const char *path, const char *stem,
   if (file == NULL)
     return -1;
 
-  uint64_t hash = UINT64_C(14695981039346656037);
+  uint64_t hash = asset_hash_init();
   unsigned char buffer[64 * 1024];
   size_t bytes_read;
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
-    hash = asset_hash_update(hash, buffer, bytes_read);
+    hash = asset_hash_feed(hash, buffer, bytes_read);
   int read_failed = ferror(file);
   int close_failed = fclose(file) != 0;
   int failed = read_failed || close_failed;
   if (failed)
     return -1;
 
-  snprintf(file_name, file_name_size, "%s.%016" PRIx64 ".%s", stem, hash,
-           extension);
+  asset_format_hashed_name(stem, extension, hash, file_name, file_name_size);
   return 0;
 }
 

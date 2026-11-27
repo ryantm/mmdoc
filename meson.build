@@ -27,6 +27,7 @@ add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags),
 libcmark_gfm = dependency('libcmark-gfm', required: true)
 libfastjson = dependency('libfastjson', required: true)
 libzip = dependency('libzip', required: true)
+threads = dependency('threads', required: true)
 
 xxd_prog = find_program('xxd')
 

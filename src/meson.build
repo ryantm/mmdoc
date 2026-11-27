@@ -1,5 +1,6 @@
 src = [
   'anchors.c',
+  'arena.c',
   'asset.c',
   'html.c',
   'files.c',
@@ -20,7 +21,7 @@ shared_lib = static_library(
            'shared',
            src,
            dependencies : [
-             libcmark_gfm, libfastjson, libzip
+             libcmark_gfm, libfastjson, libzip, threads
       ])
 
 mmdoc_conf = configuration_data()

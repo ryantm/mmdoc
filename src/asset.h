@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #pragma once
 
+#include <stdint.h>
 #include <stdio.h>
 
 #define ASSET_FILE_NAME_SIZE 96
@@ -16,6 +17,12 @@ typedef struct {
 } AssetFileNames;
 
 void asset_file_names(AssetFileNames *names);
+uint64_t asset_hash_init(void);
+uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
+                         size_t length);
+void asset_format_hashed_name(const char *stem, const char *extension,
+                              uint64_t hash, char *file_name,
+                              size_t file_name_size);
 int asset_hashed_file_name_from_path(const char *path, const char *stem,
                                      const char *extension, char *file_name,
                                      size_t file_name_size);
