@@ -8,6 +8,7 @@ configure_file(input : 'testconfig.h.in',
   output : 'testconfig.h',
   configuration : test_conf)
 
+markdown_exe = executable('markdown_test', ['markdown.c'])
+
 test('unittest', exe)
-test('markdown', import('python').find_installation(),
-     args : [files('markdown.py'), mmdoc])
+test('markdown', markdown_exe, args : [mmdoc])
