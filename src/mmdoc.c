@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "anchors.h"
-#include "arena.h"
 #include "files.h"
 #include "inputs.h"
+#include "md.h"
 #include "multi.h"
-#include "parse.h"
 #include "refs.h"
 #include "render.h"
 #include "single.h"
@@ -53,15 +52,9 @@ static size_t detect_worker_count(size_t item_count) {
 }
 
 typedef struct {
-  MmdocArena arena;
-  cmark_parser *parser;
-  cmark_node *doc;
-  Array anchors;
-  char *title;
+  MdDoc doc;
   size_t file_size;
-  unsigned int syntax_hints;
-  int has_code_block;
-  int arena_live;
+  int doc_live;
 } ParsedFile;
 
 typedef struct {
@@ -89,7 +82,6 @@ typedef struct {
 
 static void *parse_stage_worker(void *arg) {
   ParseStageCtx *ctx = arg;
-  cmark_mem *mem = mmdoc_arena_cmark_mem();
   for (;;) {
     size_t slot = __atomic_fetch_add(&ctx->next_index, 1, __ATOMIC_RELAXED);
     if (slot >= ctx->md_files->used)
@@ -99,29 +91,11 @@ static void *parse_stage_worker(void *arg) {
 
     size_t i = ctx->parse_order != NULL ? ctx->parse_order[slot] : slot;
     ParsedFile *pf = &ctx->parsed[i];
-    size_t slab_size = pf->file_size > 0 ? pf->file_size * 8 : 32768;
-    if (slab_size < 32768)
-      slab_size = 32768;
-    if (slab_size > 16 * 1024 * 1024)
-      slab_size = 16 * 1024 * 1024;
-    mmdoc_arena_init(&pf->arena, slab_size);
-    pf->arena_live = 1;
-    mmdoc_arena_bind(&pf->arena);
-    init_array(&pf->anchors, pf->file_size > 65536 ? 256 : 16);
-
-    pf->parser =
-        cmark_parser_new_with_mem(CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE, mem);
-    if (pf->parser != NULL)
-      pf->doc = mmdoc_render_cmark_document_ex(ctx->md_files->array[i],
-                                               pf->parser, &pf->syntax_hints);
-
-    if (pf->doc == NULL ||
-        mmdoc_prepare_parsed_doc(pf->doc, mem, ctx->md_files->array[i],
-                                 &pf->anchors, &pf->title,
-                                 &pf->has_code_block) != 0) {
+    if (md_parse_file(&pf->doc, ctx->md_files->array[i], 1) != 0) {
       __atomic_store_n(&ctx->failed, 1, __ATOMIC_RELAXED);
+    } else {
+      pf->doc_live = 1;
     }
-    mmdoc_arena_bind(NULL);
   }
   return NULL;
 }
@@ -142,7 +116,6 @@ typedef struct {
 
 static void *render_stage_worker(void *arg) {
   RenderStageCtx *ctx = arg;
-  cmark_mem *mem = mmdoc_arena_cmark_mem();
   MmdocBuf scratch_plain;
   mmdoc_buf_init(&scratch_plain, 65536);
   for (;;) {
@@ -156,21 +129,16 @@ static void *render_stage_worker(void *arg) {
     const AnchorLocation *chapter =
         &ctx->toc_anchor_locations.array[ctx->page_indices[k]];
     ParsedFile *pf = &ctx->parsed[ctx->chapter_file_indices[k]];
-    mmdoc_arena_bind(&pf->arena);
     scratch_plain.len = 0;
 
-    if (mmdoc_render_chapter_from_doc_ex(
-            pf->doc, pf->parser, mem, chapter, ctx->anchor_locations,
-            ctx->chapters_by_source, pf->syntax_hints, 1, pf->has_code_block,
-            pf->file_size, &scratch_plain, &ctx->outputs[k]) != 0) {
+    if (mmdoc_render_chapter_from_mddoc(
+            &pf->doc, chapter, ctx->anchor_locations, ctx->chapters_by_source,
+            &scratch_plain, &ctx->outputs[k]) != 0) {
       __atomic_store_n(&ctx->failed, 1, __ATOMIC_RELAXED);
     }
 
-    mmdoc_arena_bind(NULL);
-    mmdoc_arena_destroy(&pf->arena);
-    pf->arena_live = 0;
-    pf->doc = NULL;
-    pf->parser = NULL;
+    md_doc_free(&pf->doc);
+    pf->doc_live = 0;
   }
   mmdoc_buf_free(&scratch_plain);
   return NULL;
@@ -261,7 +229,6 @@ int main(int argc, char *argv[]) {
   ChapterOutputs *outputs = NULL;
   size_t page_count = 0;
 
-  mmdoc_cmark_init();
 #ifdef __GLIBC__
   /* Avoid per-buffer mmap/munmap page-fault churn across worker threads. */
   mallopt(M_MMAP_THRESHOLD, 32 * 1024 * 1024);
@@ -280,7 +247,8 @@ int main(int argc, char *argv[]) {
     goto cleanup;
 
   /* Stage A: Parse every Markdown file once (in parallel, largest files first)
-   * and collect anchors + titles while retaining parsed ASTs. */
+   * into compact 32-byte flat-array MdDoc ASTs while collecting anchors+titles.
+   */
   if (md_files.used > 0) {
     parsed = calloc(md_files.used, sizeof(*parsed));
     if (parsed == NULL)
@@ -328,30 +296,24 @@ int main(int argc, char *argv[]) {
   /* Build anchor_locations in deterministic sorted file order. */
   size_t total_anchors = 0;
   for (size_t i = 0; i < md_files.used; i++)
-    total_anchors += parsed[i].anchors.used;
+    total_anchors += parsed[i].doc.anchors.used;
   init_anchor_location_array(&anchor_locations,
                              total_anchors > 0 ? total_anchors : 64);
   const char *index_anchor = toc_refs.array[0];
   int found_index_page = 0;
   for (size_t i = 0; i < md_files.used; i++) {
     int is_index_page = 0;
-    for (size_t j = 0; !found_index_page && j < parsed[i].anchors.used; j++) {
-      if (strcmp(parsed[i].anchors.array[j], index_anchor) == 0) {
+    for (size_t j = 0; !found_index_page && j < parsed[i].doc.anchors.used;
+         j++) {
+      if (strcmp(parsed[i].doc.anchors.array[j], index_anchor) == 0) {
         is_index_page = 1;
         found_index_page = 1;
       }
     }
     if (mmdoc_anchors_add_file(&anchor_locations, md_files.array[i],
-                               &parsed[i].anchors, parsed[i].title,
+                               &parsed[i].doc.anchors, parsed[i].doc.title,
                                is_index_page, inputs) != 0)
       goto cleanup;
-    free(parsed[i].title);
-    parsed[i].title = NULL;
-    /* Anchor strings live inside parsed[i].arena; only free the pointer table.
-     */
-    free(parsed[i].anchors.array);
-    parsed[i].anchors.array = NULL;
-    parsed[i].anchors.used = parsed[i].anchors.size = 0;
   }
   if (build_anchor_location_index(&anchor_locations) != 0)
     goto cleanup;
@@ -370,8 +332,6 @@ int main(int argc, char *argv[]) {
         mmdoc_collect_unique_page_indices(toc_anchor_locations, page_indices);
   }
 
-  /* Map each unique published chapter to its parsed file index and release
-   * arenas of unlisted files immediately. */
   unsigned char *used_file =
       md_files.used > 0 ? calloc(md_files.used, 1) : NULL;
   if (page_count > 0) {
@@ -403,19 +363,15 @@ int main(int argc, char *argv[]) {
   }
 
   for (size_t i = 0; i < md_files.used; i++) {
-    if (used_file == NULL || !used_file[i]) {
-      if (parsed[i].arena_live) {
-        mmdoc_arena_destroy(&parsed[i].arena);
-        parsed[i].arena_live = 0;
-        parsed[i].doc = NULL;
-        parsed[i].parser = NULL;
-      }
+    if ((used_file == NULL || !used_file[i]) && parsed[i].doc_live) {
+      md_doc_free(&parsed[i].doc);
+      parsed[i].doc_live = 0;
     }
   }
   free(used_file);
 
-  /* Stage B: Render all outputs (Markdown, search JSON, single HTML, multi
-   * HTML) per chapter in parallel (largest files first) from the single AST. */
+  /* Stage B: Render all outputs (HTML, search JSON, Markdown) per chapter in
+   * parallel (largest files first) from the flat MdDoc AST. */
   if (page_count > 0) {
     size_t *render_order = NULL;
     if (page_count > 1) {
@@ -456,7 +412,6 @@ int main(int argc, char *argv[]) {
       goto cleanup;
   }
 
-  /* Emit any unresolved-anchor warnings in deterministic chapter order. */
   for (size_t k = 0; k < page_count; k++) {
     if (outputs[k].warnings.len > 0)
       fwrite(outputs[k].warnings.data, 1, outputs[k].warnings.len, stdout);
@@ -503,10 +458,8 @@ cleanup:
   }
   if (parsed != NULL) {
     for (size_t i = 0; i < md_files.used; i++) {
-      free(parsed[i].title);
-      free(parsed[i].anchors.array);
-      if (parsed[i].arena_live)
-        mmdoc_arena_destroy(&parsed[i].arena);
+      if (parsed[i].doc_live)
+        md_doc_free(&parsed[i].doc);
     }
     free(parsed);
   }

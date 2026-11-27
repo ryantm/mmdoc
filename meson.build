@@ -24,13 +24,9 @@ cc = meson.get_compiler('c')
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language : 'c')
 add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags), language : 'c')
 
-libcmark_gfm = dependency('libcmark-gfm', required: true)
-libfastjson = dependency('libfastjson', required: true)
-libzip = dependency('libzip', required: true)
 threads = dependency('threads', required: true)
 
 xxd_prog = find_program('xxd')
-
 
 embed_c = generator(xxd_prog,
    output : '@PLAINNAME@.h',

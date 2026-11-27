@@ -1,7 +1,7 @@
 {
   "drvc": {
     "files": ["meson.build", "src", "test"],
-    "libraries": ["cmark-gfm", "libfastjson", "libzip"],
+    "libraries": [],
     "tools": ["xxd"],
     "program": "mmdoc"
   }

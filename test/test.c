@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "../src/anchors.h"
 #include "../src/files.h"
+#include "../src/md.h"
 #include "../src/mkdir_p.h"
 #include "../src/multi.h"
 #include "../src/parse.h"
@@ -14,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <testconfig.h>
 
@@ -1453,6 +1455,283 @@ static int test_definition_list_continuations(void) {
   return 0;
 }
 
+static int test_markdown_engine_commonmark_and_gfm(void) {
+  char input_path[] = "/tmp/mmdoc-cm-in-XXXXXX.md";
+  char out_path[] = "/tmp/mmdoc-cm-out-XXXXXX.html";
+  int in_fd = mkstemps(input_path, 3);
+  int out_fd = mkstemps(out_path, 5);
+  if (in_fd == -1 || out_fd == -1) {
+    if (in_fd != -1) {
+      close(in_fd);
+      unlink(input_path);
+    }
+    if (out_fd != -1) {
+      close(out_fd);
+      unlink(out_path);
+    }
+    return 1;
+  }
+  close(in_fd);
+  close(out_fd);
+
+  const char *md =
+      "Setext Title\n"
+      "============\n\n"
+      "## `opt.\\_name\\_` {#opt-a.\\_name\\_.b}\n\n"
+      "Keep foo_bar_baz literal, *em*, **strong**, ***both***, `` `code` "
+      "``.\n\n"
+      "Entities: &mdash; &#65; &#x42; &#0; &copy;\n\n"
+      "Auto: <https://example.org> and <user@example.org> and [Ref][r1].\n\n"
+      "[r1]: https://nixos.org \"NixOS\"\n\n"
+      "Intro line directly before table:\n"
+      "| Left | Center | Right |\n"
+      "| :--- | :----: | ----: |\n"
+      "| `a\\|b` | x\\|y | 42 |\n\n"
+      "::::{.example #ex-four}\n"
+      "Outer example.\n\n"
+      ":::{.note}\n"
+      "Nested note.\n"
+      ":::\n"
+      "::::\n\n"
+      "> Lazy quote line 1\n"
+      "lazy line 2.\n\n"
+      "- Tight outer 1\n"
+      "- Tight outer 2\n"
+      "  - Sub 1\n\n"
+      "    Sub para 2\n";
+
+  if (write_text_file(input_path, md) != 0) {
+    unlink(input_path);
+    unlink(out_path);
+    return 1;
+  }
+
+  Array anchors;
+  init_array(&anchors, 4);
+  int arc = mmdoc_render_collect_anchors(input_path, &anchors);
+  int has_unesc_opt = 0, has_ex4 = 0;
+  for (size_t i = 0; i < anchors.used; i++) {
+    if (strcmp(anchors.array[i], "#opt-a._name_.b") == 0)
+      has_unesc_opt = 1;
+    if (strcmp(anchors.array[i], "#ex-four") == 0)
+      has_ex4 = 1;
+  }
+  free_array(&anchors);
+
+  FILE *out = fopen(out_path, "w");
+  if (out == NULL) {
+    unlink(input_path);
+    unlink(out_path);
+    return 1;
+  }
+  AnchorLocationArray locs;
+  init_anchor_location_array(&locs, 0);
+  AnchorLocation al = {0};
+  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, locs, "",
+                             NULL);
+  free_anchor_location_array(&locs);
+  fclose(out);
+
+  int passed =
+      arc == 0 && rc == 0 && has_unesc_opt && has_ex4 &&
+      file_contains(out_path, "<h1>Setext Title</h1>") &&
+      file_contains(out_path, "<h2 id='opt-a._name_.b'>") &&
+      file_contains(out_path, "foo_bar_baz literal, <em>em</em>, "
+                              "<strong>strong</strong>, "
+                              "<em><strong>both</strong></em>, "
+                              "<code>`code`</code>.") &&
+      file_contains(out_path, "\xe2\x80\x94 A B \xef\xbf\xbd \xc2\xa9") &&
+      file_contains(
+          out_path,
+          "<a href=\"https://example.org\">https://example.org</a>") &&
+      file_contains(
+          out_path,
+          "<a href=\"mailto:user@example.org\">user@example.org</a>") &&
+      file_contains(out_path,
+                    "<a href=\"https://nixos.org\" title=\"NixOS\">Ref</a>") &&
+      file_contains_before(out_path,
+                           "<p>Intro line directly before table:</p>\n"
+                           "<table>\n<thead>\n<tr>\n"
+                           "<th align=\"left\">Left</th>\n"
+                           "<th align=\"center\">Center</th>\n"
+                           "<th align=\"right\">Right</th>",
+                           "<td align=\"left\"><code>a|b</code></td>") &&
+      file_contains(out_path, "<td align=\"center\">x|y</td>") &&
+      file_contains(out_path, "<div class='admonition example'>"
+                              "<h3 id='ex-four' class='title'>") &&
+      file_contains(out_path, "<div class='admonition note'>"
+                              "<h3 class='title'>Note</h3>") &&
+      file_contains_before(out_path,
+                           "<blockquote>\n<p>Lazy quote line 1\n"
+                           "lazy line 2.</p>\n</blockquote>",
+                           "<li>Tight outer 1</li>");
+
+  unlink(input_path);
+  unlink(out_path);
+  if (!passed) {
+    printf("markdown engine CommonMark and GFM test failed\n");
+    return 1;
+  }
+  printf("markdown engine CommonMark and GFM test passed\n");
+  return 0;
+}
+
+static int test_markdown_engine_linear_time_dos(void) {
+  const size_t n = 50000;
+  char *buf = malloc(n * 3 + 16);
+  if (buf == NULL)
+    return 1;
+
+  struct timespec t0, t1;
+  clock_gettime(CLOCK_MONOTONIC, &t0);
+
+  /* 1. Unclosed '[' */
+  memset(buf, '[', n);
+  buf[n] = '\0';
+  MdDoc doc;
+  if (md_parse_buffer(&doc, buf, n, "dos-brackets.md", 1) != 0) {
+    free(buf);
+    return 1;
+  }
+  md_doc_free(&doc);
+
+  /* 2. Unclosed backticks */
+  for (size_t i = 0; i < n; i++) {
+    buf[i * 2] = '`';
+    buf[i * 2 + 1] = 'a';
+  }
+  if (md_parse_buffer(&doc, buf, n * 2, "dos-ticks.md", 0) != 0) {
+    free(buf);
+    return 1;
+  }
+  md_doc_free(&doc);
+
+  /* 3. Unmatched emphasis openers */
+  for (size_t i = 0; i < n; i++) {
+    buf[i * 3] = '*';
+    buf[i * 3 + 1] = 'a';
+    buf[i * 3 + 2] = ' ';
+  }
+  if (md_parse_buffer(&doc, buf, n * 3, "dos-emph.md", 0) != 0) {
+    free(buf);
+    return 1;
+  }
+  md_doc_free(&doc);
+
+  /* 4. Deeply nested blockquotes (exercises recursion depth cap) */
+  for (size_t i = 0; i < 500; i++) {
+    buf[i * 2] = '>';
+    buf[i * 2 + 1] = ' ';
+  }
+  memcpy(buf + 1000, "deep", 4);
+  if (md_parse_buffer(&doc, buf, 1004, "dos-quote.md", 0) != 0) {
+    free(buf);
+    return 1;
+  }
+  md_doc_free(&doc);
+
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  free(buf);
+
+  double elapsed_ms = (double)(t1.tv_sec - t0.tv_sec) * 1000.0 +
+                      (double)(t1.tv_nsec - t0.tv_nsec) / 1e6;
+  if (elapsed_ms > 2000.0) {
+    printf("linear-time DoS test too slow: %.1f ms\n", elapsed_ms);
+    return 1;
+  }
+  printf("markdown engine linear-time DoS test passed (%.1f ms)\n", elapsed_ms);
+  return 0;
+}
+
+static int assert_md_html_eq(const char *label, const char *md,
+                             const char *expected) {
+  MdDoc doc;
+  if (md_parse_buffer(&doc, md, strlen(md), "spec.md", 0) != 0) {
+    printf("spec test '%s': parse failed\n", label);
+    return 1;
+  }
+  AnchorLocation chap = {.anchor = "#top",
+                         .file_path = "spec.md",
+                         .title = "Spec",
+                         .multipage_url = "./",
+                         .multipage_base_href = ""};
+  AnchorLocationArray empty = {0};
+  ChapterOutputs out = {0};
+  int rc =
+      mmdoc_render_chapter_from_mddoc(&doc, &chap, &empty, &empty, NULL, &out);
+  int failed =
+      (rc != 0 || out.single_html.len != strlen(expected) ||
+       memcmp(out.single_html.data, expected, out.single_html.len) != 0);
+  if (failed) {
+    printf("spec test '%s' failed\n  expected: %s\n       got: %.*s\n", label,
+           expected, (int)out.single_html.len,
+           out.single_html.data ? out.single_html.data : "");
+  }
+  chapter_outputs_free(&out);
+  md_doc_free(&doc);
+  return failed;
+}
+
+static int test_markdown_engine_fuzz_spec_regressions(void) {
+  int f = 0;
+  /* Trailing tab before newline is stripped (never a hard break) */
+  f += assert_md_html_eq("trailing-tab-nl", ")\t\n[", "<p>)\n[</p>\n");
+  /* Empty list item cannot lazy-continue or span a blank line */
+  f += assert_md_html_eq("empty-ol-no-lazy", "2.\nt",
+                         "<ol start=\"2\">\n<li></li>\n</ol>\n<p>t</p>\n");
+  f += assert_md_html_eq("empty-ol-blank", "1.\n\n   )",
+                         "<ol>\n<li></li>\n</ol>\n<p>)</p>\n");
+  /* Unclosed fenced code block at EOF terminates content with newline */
+  f += assert_md_html_eq("fence-eof-nl", "```\n]",
+                         "<pre><code>]\n</code></pre>\n");
+  /* List marker tab-stop math & partial tab stripping */
+  f += assert_md_html_eq("list-marker-tab",
+                         "- \t=", "<ul>\n<li>=</li>\n</ul>\n");
+  f += assert_md_html_eq("list-partial-tab", "*\n\tb",
+                         "<ul>\n<li>b</li>\n</ul>\n");
+  /* GFM table delim vs list marker & body rows without pipe / list stop */
+  f += assert_md_html_eq("table-vs-list", "A | B\n- | -",
+                         "<p>A | B</p>\n<ul>\n<li>| -</li>\n</ul>\n");
+  f += assert_md_html_eq(
+      "table-body-no-pipe", "A | B\n-- | --\nx\n3.",
+      "<table>\n<thead>\n<tr>\n<th>A</th>\n<th>B</th>\n</tr>\n</thead>\n"
+      "<tbody>\n<tr>\n<td>x</td>\n<td></td>\n</tr>\n</tbody>\n</table>\n"
+      "<ol start=\"3\">\n<li></li>\n</ol>\n");
+  f += assert_md_html_eq(
+      "table-code-esc-pipe", "| H |\n| - |\n| `a\\|b` |",
+      "<table>\n<thead>\n<tr>\n<th>H</th>\n</tr>\n</thead>\n"
+      "<tbody>\n<tr>\n<td><code>a|b</code></td>\n</tr>\n</tbody>\n</table>\n");
+  /* Lazy continuation lines cannot be setext underlines or table delims */
+  f += assert_md_html_eq("lazy-no-setext-list",
+                         "- a\n=", "<ul>\n<li>a\n=</li>\n</ul>\n");
+  f += assert_md_html_eq("lazy-no-setext-quote",
+                         ">a\n=", "<blockquote>\n<p>a\n=</p>\n</blockquote>\n");
+  f += assert_md_html_eq("lazy-no-table", "2) a|b\n-|-",
+                         "<ol start=\"2\">\n<li>a|b\n-|-</li>\n</ol>\n");
+  /* Lazy continuation stops after empty nested containers & HTML blocks */
+  f += assert_md_html_eq(
+      "lazy-stop-empty-nested", "- *\nn",
+      "<ul>\n<li>\n<ul>\n<li></li>\n</ul>\n</li>\n</ul>\n<p>n</p>\n");
+  f += assert_md_html_eq(
+      "lazy-stop-quote-list", ">*\n=",
+      "<blockquote>\n<ul>\n<li></li>\n</ul>\n</blockquote>\n<p>=</p>\n");
+  f += assert_md_html_eq("lazy-stop-html", "+ c\n<v>",
+                         "<ul>\n<li>c</li>\n</ul>\n<v>\n");
+  /* Tab expansion after '>' in blockquote */
+  f += assert_md_html_eq("quote-tab", ">\t~",
+                         "<blockquote>\n<p>~</p>\n</blockquote>\n");
+  /* Short HTML comments <!--> and <!---> */
+  f += assert_md_html_eq("short-comments", "a<!-->b<!--->",
+                         "<p>a<!-->b<!---></p>\n");
+  /* HTML block Type 4 requires uppercase ASCII after '<!' */
+  f += assert_md_html_eq("html-type4-lower", "<!a", "<p>&lt;!a</p>\n");
+  f += assert_md_html_eq("html-type4-upper", "<!DOCTYPE html>",
+                         "<!DOCTYPE html>\n");
+  if (f == 0)
+    printf("markdown engine fuzz spec regressions test passed\n");
+  return f ? 1 : 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
@@ -1527,6 +1806,12 @@ int main(int argc, char *argv[]) {
   num_failed += test_single_page_accessible_controls();
   num_tests++;
   num_failed += test_reject_overlong_ids();
+  num_tests++;
+  num_failed += test_markdown_engine_commonmark_and_gfm();
+  num_tests++;
+  num_failed += test_markdown_engine_linear_time_dos();
+  num_tests++;
+  num_failed += test_markdown_engine_fuzz_spec_regressions();
   num_tests++;
 
   printf("%d of %d tests passed.", num_tests - num_failed, num_tests);

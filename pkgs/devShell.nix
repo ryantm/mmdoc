@@ -3,10 +3,6 @@
   lib,
   writeScriptBin,
   mkShell,
-  cmark-gfm,
-  libfastjson,
-  libzip,
-  pkg-config,
   meson,
   ninja,
   xxd,
@@ -48,15 +44,10 @@
 in
   mkShell {
     name = "mmdoc";
-    buildInputs = [
-      cmark-gfm
-      libfastjson
-      libzip.dev
-    ];
+    buildInputs = [];
 
     nativeBuildInputs =
       [
-        pkg-config
         meson
         ninja
         xxd

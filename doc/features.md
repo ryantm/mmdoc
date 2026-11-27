@@ -1,7 +1,7 @@
 # Features {#features}
 
 * No options.
-* Fast: written in C, using cmark a very fast Markdown parser/renderer.
+* Fast and dependency-free: written in pure C11 with an in-tree linear-time CommonMark/GFM Markdown engine and zero external runtime libraries.
 * The HTML documents have syntax highlighting via [highlight.js](https://highlightjs.org/).
 * The multi-page HTML documents have full-text search via [fuse.js](https://fusejs.io/).
 * The multi-page documents share cacheable style and script assets, while the single-page document is self-contained.

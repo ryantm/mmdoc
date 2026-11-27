@@ -6,6 +6,7 @@ src = [
   'files.c',
   'inputs.c',
   'markdown.c',
+  'md.c',
   'mkdir_p.c',
   'multi.c',
   'parse.c',
@@ -21,7 +22,7 @@ shared_lib = static_library(
            'shared',
            src,
            dependencies : [
-             libcmark_gfm, libfastjson, libzip, threads
+             threads
       ])
 
 mmdoc_conf = configuration_data()
