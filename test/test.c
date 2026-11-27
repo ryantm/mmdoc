@@ -1337,6 +1337,111 @@ static int test_mkdir_p_and_symlink_loop(void) {
   return 0;
 }
 
+static int test_definition_list_continuations(void) {
+  char input_path[] = "/tmp/mmdoc-deflist-in-XXXXXX.md";
+  char out_path[] = "/tmp/mmdoc-deflist-out-XXXXXX.html";
+  int in_fd = mkstemps(input_path, 3);
+  int out_fd = mkstemps(out_path, 5);
+  if (in_fd == -1 || out_fd == -1)
+    return 1;
+  close(in_fd);
+  close(out_fd);
+
+  const char *md = "# Config {#sec-config}\n\n"
+                   "Strings\n\n"
+                   ":   Strings are enclosed in double quotes, e.g.\n\n"
+                   "    ```nix\n"
+                   "    {\n"
+                   "      networking.hostName = \"dexter\";\n"
+                   "    }\n"
+                   "    ```\n\n"
+                   "    Special characters can be escaped (e.g. `\\\"`).\n\n"
+                   "    See [](#sec-config) and [span]{#dd-span}.\n\n"
+                   "Booleans\n\n"
+                   ":   These can be `true` or `false`, e.g.\n\n"
+                   "    ```nix\n"
+                   "    {\n"
+                   "      networking.firewall.enable = true;\n"
+                   "    }\n"
+                   "    ```\n\n"
+                   "Nested\n\n"
+                   ":   Outer def.\n\n"
+                   "    InnerTerm\n\n"
+                   "    :   Inner def.\n\n"
+                   "Compact\n"
+                   ":   First line.\n\n"
+                   "    ::: {.note #dd-note}\n"
+                   "    Note body.\n"
+                   "    :::\n\n"
+                   "TwoSpace\n\n"
+                   ": First line.\n\n"
+                   "  - item one\n"
+                   "  - item two\n\n"
+                   "Outside paragraph.\n\n"
+                   "### Type {#sec-type}\n\n"
+                   "    foldl :: a -> b\n";
+  if (write_text_file(input_path, md) != 0)
+    return 1;
+
+  Array anchors;
+  init_array(&anchors, 8);
+  int anchor_rc = mmdoc_render_collect_anchors(input_path, &anchors);
+  int found_dd_span = 0;
+  int found_dd_note = 0;
+  for (size_t i = 0; i < anchors.used; i++) {
+    if (strcmp(anchors.array[i], "#dd-span") == 0)
+      found_dd_span = 1;
+    if (strcmp(anchors.array[i], "#dd-note") == 0)
+      found_dd_note = 1;
+  }
+  free_array(&anchors);
+
+  FILE *out = fopen(out_path, "w");
+  if (out == NULL)
+    return 1;
+  AnchorLocationArray locations;
+  init_anchor_location_array(&locations, 1);
+  AnchorLocation al = {.anchor = "#sec-config",
+                       .file_path = input_path,
+                       .title = "Config",
+                       .multipage_url = "config/"};
+  insert_anchor_location_array(&locations, &al);
+  build_anchor_location_index(&locations);
+  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al,
+                             locations, "", NULL);
+  free_anchor_location_array(&locations);
+  fclose(out);
+
+  int passed =
+      anchor_rc == 0 && found_dd_span && found_dd_note && rc == 1 &&
+      !file_contains(out_path, "```nix") &&
+      file_contains(out_path, "<pre><code class=\"language-nix\">{") &&
+      file_contains(out_path, "  networking.hostName = &quot;dexter&quot;;") &&
+      file_contains(out_path, "<p>Special characters can be escaped (e.g. "
+                              "<code>\\&quot;</code>).</p>") &&
+      file_contains(out_path, "<a href=\"#sec-config\">Config</a>") &&
+      file_contains(out_path, "<span id='dd-span'>span</span>") &&
+      file_contains(out_path, "<p>Booleans</p>") &&
+      file_contains(out_path, "<p>InnerTerm</p>") &&
+      file_contains(out_path, "<p>Inner def.</p>") &&
+      file_contains_before(out_path, "<p>Outer def.</p>\n<dl>",
+                           "<p>InnerTerm</p>") &&
+      file_contains(out_path, "<div class='admonition note'>"
+                              "<h3 id='dd-note' class='title'>") &&
+      file_contains(out_path, "<li>item one</li>") &&
+      file_contains_before(out_path, "</dd>\n</dl>\n<p>Outside paragraph.</p>",
+                           "<pre><code>foldl :: a -&gt; b") &&
+      file_contains(out_path, "<pre><code>foldl :: a -&gt; b");
+  unlink(input_path);
+  unlink(out_path);
+  if (!passed) {
+    printf("definition list continuations test failed\n");
+    return 1;
+  }
+  printf("definition list continuations test passed\n");
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
@@ -1345,6 +1450,8 @@ int main(int argc, char *argv[]) {
   num_failed += test_parse_edge_cases();
   num_tests++;
   num_failed += test_admonition_blank_lines_and_safety();
+  num_tests++;
+  num_failed += test_definition_list_continuations();
   num_tests++;
   num_failed += test_refs_uses_markdown_ast();
   num_tests++;

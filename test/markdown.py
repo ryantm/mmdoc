@@ -21,6 +21,8 @@ with tempfile.TemporaryDirectory() as directory:
         "# `Tips` {#tip}\n\n[Return][home] or [stay](#term).\n\n[home]: #root-alias\n\n"
         "[`value`]{#term}\n\n::: {.warning #warning}\nKeep a backup.\n:::\n\n"
         "* Run `help`.\n\nTerm\n: Meaning\n\n| Key | Value |\n| --- | --- |\n| a | 42 |\n\n"
+        "Multi\n\n:   Lead paragraph.\n\n    ```nix\n    { ok = true; }\n    ```\n\n"
+        "    Back to [](#start).\n\n"
         "![Diagram](images/diagram.png) and [example](https://example.org/a#b)\n\n"
         "```sh\nprintf '%s\\n' '[literal](#start)'\n```\n"
     )
@@ -51,6 +53,12 @@ with tempfile.TemporaryDirectory() as directory:
                     "printf '%s\\n' '[literal](#start)'"):
         assert snippet in tips and snippet in full, snippet
     assert "``` sh\n" in tips and "``` sh\n" in full
+    assert "``` nix\n{ ok = true; }\n```" in tips and "``` nix\n{ ok = true; }\n```" in full
+    assert "Back to [Welcome](../../index.md#start)." in tips, tips
+    assert "Back to [Welcome](#start)." in full, full
+    tips_html = tips_path.with_suffix(".html").read_text()
+    assert '<code class="language-nix">{ ok = true; }' in tips_html, tips_html
+    assert "```nix" not in tips_html, tips_html
     assert all(tag not in full for tag in ("<nav", "<script", "<style", "<html"))
     assert "Unlisted chapter." not in full and not (out / "private/index.md").exists()
     assert full.count("# Welcome {#start}") == full.count("# `Tips` {#tip}") == 1

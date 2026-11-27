@@ -765,11 +765,28 @@ static void rewrite_admonitions_in(cmark_node *container,
 
 /* ---- Definition lists ---- */
 
+int mmdoc_render_cmark_options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
+
+static const char dd_continuation_marker = 0;
+
 static cmark_node *new_html_block(const char *literal, cmark_mem *mem) {
   cmark_node *node = cmark_node_new_with_mem(CMARK_NODE_HTML_BLOCK, mem);
   if (node != NULL)
     cmark_node_set_literal(node, literal);
   return node;
+}
+
+static int is_indented_code_block(cmark_node *node) {
+  if (node == NULL || cmark_node_get_type(node) != CMARK_NODE_CODE_BLOCK)
+    return 0;
+  int len = 0, offset = 0;
+  char ch = 0;
+  return !cmark_node_get_fenced(node, &len, &offset, &ch);
+}
+
+static int is_dd_continuation_wrapper(cmark_node *node) {
+  return node != NULL && cmark_node_get_type(node) == CMARK_NODE_CUSTOM_BLOCK &&
+         cmark_node_get_user_data(node) == (void *)&dd_continuation_marker;
 }
 
 static int definition_position_for_text_node(cmark_node *node) {
@@ -786,9 +803,9 @@ static int definition_position_for_text_node(cmark_node *node) {
   if (literal[i] != ':')
     return -1;
   i++;
-  if (literal[i] != ' ')
+  if (literal[i] != ' ' && literal[i] != '\t')
     return -1;
-  while (literal[i] == ' ')
+  while (literal[i] == ' ' || literal[i] == '\t')
     i++;
   return literal[i] == '\0' && cmark_node_next(node) != NULL ? (int)i : -1;
 }
@@ -798,6 +815,131 @@ static int paragraph_definition_position(cmark_node *node) {
     return -1;
   cmark_node *child = cmark_node_first_child(node);
   return definition_position_for_text_node(child);
+}
+
+static int paragraph_has_compact_definition(cmark_node *node) {
+  if (node == NULL || cmark_node_get_type(node) != CMARK_NODE_PARAGRAPH)
+    return 0;
+  for (cmark_node *child = cmark_node_first_child(node); child != NULL;
+       child = cmark_node_next(child)) {
+    if (cmark_node_get_type(child) == CMARK_NODE_SOFTBREAK) {
+      cmark_node *next = cmark_node_next(child);
+      if (definition_position_for_text_node(next) != -1)
+        return 1;
+    }
+  }
+  return 0;
+}
+
+static void expand_definition_continuations(cmark_node *container,
+                                            cmark_mem *mem, int depth);
+
+static cmark_node *expand_indented_continuation(cmark_node *code_block,
+                                                cmark_mem *mem, int depth) {
+  const char *lit = cmark_node_get_literal(code_block);
+  if (lit == NULL)
+    return code_block;
+  size_t len = strlen(lit);
+
+  cmark_parser *sub_parser =
+      cmark_parser_new_with_mem(mmdoc_render_cmark_options, mem);
+  if (sub_parser == NULL)
+    return code_block;
+  cmark_syntax_extension *table_extension = mmdoc_table_extension();
+  if (table_extension != NULL)
+    cmark_parser_attach_syntax_extension(sub_parser, table_extension);
+  if (len > 0)
+    cmark_parser_feed(sub_parser, lit, len);
+  cmark_node *sub_doc = cmark_parser_finish(sub_parser);
+  if (sub_doc == NULL) {
+    cmark_parser_free(sub_parser);
+    return code_block;
+  }
+
+  cmark_node *wrapper = cmark_node_new_with_mem(CMARK_NODE_CUSTOM_BLOCK, mem);
+  if (wrapper == NULL) {
+    cmark_node_free(sub_doc);
+    cmark_parser_free(sub_parser);
+    return code_block;
+  }
+  cmark_node_set_on_enter(wrapper, "");
+  cmark_node_set_on_exit(wrapper, "");
+  cmark_node_set_user_data(wrapper, (void *)&dd_continuation_marker);
+
+  cmark_node *child;
+  while ((child = cmark_node_first_child(sub_doc)) != NULL) {
+    cmark_node_unlink(child);
+    cmark_node_append_child(wrapper, child);
+  }
+  cmark_node_replace(code_block, wrapper);
+  cmark_node_free(code_block);
+  cmark_node_free(sub_doc);
+  cmark_parser_free(sub_parser);
+
+  if (depth < 16)
+    expand_definition_continuations(wrapper, mem, depth + 1);
+  return wrapper;
+}
+
+static cmark_node *expand_dd_continuations(cmark_node *first_cont, int dd_col,
+                                           cmark_mem *mem, int depth) {
+  cmark_node *cont = first_cont;
+  while (cont != NULL) {
+    if (is_indented_code_block(cont)) {
+      cmark_node *wrapper = expand_indented_continuation(cont, mem, depth);
+      cont = cmark_node_next(wrapper);
+    } else if (cmark_node_get_start_column(cont) > dd_col) {
+      if (is_block_container(cmark_node_get_type(cont)) && depth < 16)
+        expand_definition_continuations(cont, mem, depth + 1);
+      cont = cmark_node_next(cont);
+    } else {
+      break;
+    }
+  }
+  return cont;
+}
+
+static void expand_definition_continuations(cmark_node *container,
+                                            cmark_mem *mem, int depth) {
+  cmark_node *cursor = cmark_node_first_child(container);
+  while (cursor != NULL) {
+    cmark_node_type ctype = cmark_node_get_type(cursor);
+    if (ctype == CMARK_NODE_PARAGRAPH) {
+      if (paragraph_has_compact_definition(cursor)) {
+        int term_col = cmark_node_get_start_column(cursor);
+        if (term_col <= 0)
+          term_col = 1;
+        cmark_node *after = expand_dd_continuations(cmark_node_next(cursor),
+                                                    term_col, mem, depth);
+        while (paragraph_definition_position(after) != -1) {
+          int col = cmark_node_get_start_column(after);
+          int dd_col = col > 0 ? col : term_col;
+          after = expand_dd_continuations(cmark_node_next(after), dd_col, mem,
+                                          depth);
+        }
+        cursor = after;
+        continue;
+      }
+      cmark_node *next = cmark_node_next(cursor);
+      if (paragraph_definition_position(next) != -1) {
+        int term_col = cmark_node_get_start_column(cursor);
+        if (term_col <= 0)
+          term_col = 1;
+        cmark_node *def = next;
+        while (paragraph_definition_position(def) != -1) {
+          int col = cmark_node_get_start_column(def);
+          int dd_col = col > 0 ? col : term_col;
+          def =
+              expand_dd_continuations(cmark_node_next(def), dd_col, mem, depth);
+        }
+        cursor = def;
+        continue;
+      }
+    } else if (is_block_container(ctype) && depth < 16) {
+      expand_definition_continuations(cursor, mem, depth + 1);
+    }
+    cursor = cmark_node_next(cursor);
+  }
 }
 
 static void split_compact_definition_paragraph(cmark_node *paragraph,
@@ -856,6 +998,8 @@ static void wrap_block(cmark_node *node, const char *start, const char *end,
     cmark_node_insert_after(node, end_node);
 }
 
+static void rewrite_definition_lists(cmark_node *document, cmark_mem *mem);
+
 static void rewrite_definition_lists_in(cmark_node *container, cmark_mem *mem) {
   cmark_node *cursor = cmark_node_first_child(container);
   while (cursor != NULL) {
@@ -873,11 +1017,18 @@ static void rewrite_definition_lists_in(cmark_node *container, cmark_mem *mem) {
     if (open != NULL)
       cmark_node_insert_before(cursor, open);
     for (;;) {
+      int term_col = cmark_node_get_start_column(cursor);
+      if (term_col <= 0)
+        term_col = 1;
       cmark_node *definition = cmark_node_next(cursor);
       wrap_block(cursor, "<dt>", "</dt>", mem);
       cursor = definition;
 
       while (paragraph_definition_position(cursor) != -1) {
+        int col = cmark_node_get_start_column(cursor);
+        int dd_col = col > 0 ? col : term_col;
+        cmark_node *first_in_dd = cursor;
+        cmark_node *last_in_dd = cursor;
         cmark_node *next = cmark_node_next(cursor);
         cmark_node *first_child = cmark_node_first_child(cursor);
         const char *literal = cmark_node_get_literal(first_child);
@@ -893,7 +1044,36 @@ static void rewrite_definition_lists_in(cmark_node *container, cmark_mem *mem) {
           if (copy != stack_copy)
             free(copy);
         }
-        wrap_block(cursor, "<dd>", "</dd>", mem);
+
+        while (next != NULL) {
+          if (is_dd_continuation_wrapper(next)) {
+            cmark_node *after_wrap = cmark_node_next(next);
+            rewrite_definition_lists(next, mem);
+            cmark_node *child;
+            while ((child = cmark_node_first_child(next)) != NULL) {
+              cmark_node_unlink(child);
+              cmark_node_insert_before(next, child);
+              last_in_dd = child;
+            }
+            cmark_node_unlink(next);
+            cmark_node_free(next);
+            next = after_wrap;
+          } else if (cmark_node_get_start_column(next) > dd_col) {
+            if (is_block_container(cmark_node_get_type(next)))
+              rewrite_definition_lists_in(next, mem);
+            last_in_dd = next;
+            next = cmark_node_next(next);
+          } else {
+            break;
+          }
+        }
+
+        cmark_node *dd_open = new_html_block("<dd>", mem);
+        cmark_node *dd_close = new_html_block("</dd>", mem);
+        if (dd_open != NULL)
+          cmark_node_insert_before(first_in_dd, dd_open);
+        if (dd_close != NULL)
+          cmark_node_insert_after(last_in_dd, dd_close);
         cursor = next;
       }
 
@@ -1181,8 +1361,6 @@ static void cmark_rewrite_html_with_mem(const char *multipage_url,
 
 /* ---- Document parsing ---- */
 
-int mmdoc_render_cmark_options = CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE;
-
 cmark_node *mmdoc_parse_cmark_buffer(const char *data, size_t len,
                                      cmark_parser *parser) {
   cmark_syntax_extension *table_extension = mmdoc_table_extension();
@@ -1190,7 +1368,10 @@ cmark_node *mmdoc_parse_cmark_buffer(const char *data, size_t len,
     cmark_parser_attach_syntax_extension(parser, table_extension);
   if (len > 0)
     cmark_parser_feed(parser, data, len);
-  return cmark_parser_finish(parser);
+  cmark_node *doc = cmark_parser_finish(parser);
+  if (doc != NULL)
+    expand_definition_continuations(doc, mmdoc_arena_current_cmark_mem(), 0);
+  return doc;
 }
 
 cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
@@ -1234,7 +1415,12 @@ cmark_node *mmdoc_render_cmark_document(char *file_path, cmark_parser *parser) {
 
   if (fclose(file) != 0)
     failed = 1;
-  return failed ? NULL : cmark_parser_finish(parser);
+  if (failed)
+    return NULL;
+  cmark_node *doc = cmark_parser_finish(parser);
+  if (doc != NULL)
+    expand_definition_continuations(doc, mmdoc_arena_current_cmark_mem(), 0);
+  return doc;
 }
 
 /* ---- Metadata extraction (anchors + title) ---- */

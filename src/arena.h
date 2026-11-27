@@ -24,3 +24,4 @@ void mmdoc_arena_destroy(MmdocArena *arena);
 /* Bind arena to the current thread for mmdoc_arena_cmark_mem callbacks. */
 MmdocArena *mmdoc_arena_bind(MmdocArena *arena);
 cmark_mem *mmdoc_arena_cmark_mem(void);
+cmark_mem *mmdoc_arena_current_cmark_mem(void);

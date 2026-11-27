@@ -170,3 +170,8 @@ static cmark_mem arena_allocator = {
 };
 
 cmark_mem *mmdoc_arena_cmark_mem(void) { return &arena_allocator; }
+
+cmark_mem *mmdoc_arena_current_cmark_mem(void) {
+  return current_thread_arena != NULL ? &arena_allocator
+                                      : cmark_get_default_mem_allocator();
+}

@@ -299,11 +299,11 @@ int parse_dd(const char *text) {
       state = DD_COLON;
       continue;
     }
-    if (state == DD_COLON && text[i] == ' ') {
+    if (state == DD_COLON && (text[i] == ' ' || text[i] == '\t')) {
       state = DD_SPACE;
       continue;
     }
-    if (state == DD_SPACE && text[i] == ' ')
+    if (state == DD_SPACE && (text[i] == ' ' || text[i] == '\t'))
       continue;
     if (state == DD_SPACE)
       return i;
