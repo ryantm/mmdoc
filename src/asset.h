@@ -16,7 +16,21 @@ typedef struct {
   char mmdoc_search_js[ASSET_FILE_NAME_SIZE];
 } AssetFileNames;
 
+typedef struct {
+  uint64_t total_len;
+  uint64_t v1;
+  uint64_t v2;
+  uint64_t v3;
+  uint64_t v4;
+  unsigned char buf[32];
+  size_t buf_len;
+} AssetHashState;
+
 void asset_file_names(AssetFileNames *names);
+void asset_hash_state_init(AssetHashState *state);
+void asset_hash_state_feed(AssetHashState *state, const unsigned char *bytes,
+                           size_t length);
+uint64_t asset_hash_state_final(const AssetHashState *state);
 uint64_t asset_hash_init(void);
 uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
                          size_t length);

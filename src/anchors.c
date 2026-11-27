@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "anchors.h"
+#include "arena.h"
 #include "html.h"
 #include "render.h"
 #include <stdio.h>
@@ -110,36 +111,59 @@ int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
   if (anchors->used == 0)
     return 0;
 
+  if (anchor_locations->string_arena == NULL) {
+    MmdocArena *arena = malloc(sizeof(*arena));
+    if (arena == NULL) {
+      fprintf(stderr, "Fatal: failed to allocate anchor string arena.\n");
+      return -1;
+    }
+    mmdoc_arena_init(arena, 256 * 1024);
+    anchor_locations->string_arena = arena;
+  }
+  MmdocArena *arena = anchor_locations->string_arena;
+
   PagePaths paths;
   if (compute_page_paths(&paths, file_path, is_index_page, inputs) != 0) {
     fprintf(stderr, "Fatal: failed to allocate page paths.\n");
     return -1;
   }
 
-  for (size_t j = 0; j < anchors->used; j++) {
-    AnchorLocation al;
-    memset(&al, 0, sizeof(al));
-    al.anchor = copy_string(anchors->array[j]);
-    al.file_path = copy_string(file_path);
-    al.title = copy_string(title);
-    al.multipage_output_file_path = copy_string(paths.output_file_path);
-    al.multipage_output_directory_path =
-        copy_string(paths.output_directory_path);
-    al.multipage_url = copy_string(paths.multipage_url);
-    al.multipage_base_href = copy_string(paths.multipage_base_href);
+  /* Share the 6 per-file strings across every anchor in this file. */
+  char *shared_file_path = mmdoc_arena_strdup(arena, file_path);
+  char *shared_title = mmdoc_arena_strdup(arena, title);
+  char *shared_out_file = mmdoc_arena_strdup(arena, paths.output_file_path);
+  char *shared_out_dir = mmdoc_arena_strdup(arena, paths.output_directory_path);
+  char *shared_url = mmdoc_arena_strdup(arena, paths.multipage_url);
+  char *shared_base_href = mmdoc_arena_strdup(arena, paths.multipage_base_href);
+  free_page_paths(&paths);
 
-    if (al.anchor == NULL || al.file_path == NULL || al.title == NULL ||
-        al.multipage_output_file_path == NULL ||
-        al.multipage_output_directory_path == NULL ||
-        al.multipage_url == NULL || al.multipage_base_href == NULL) {
+  if (shared_file_path == NULL || shared_title == NULL ||
+      shared_out_file == NULL || shared_out_dir == NULL || shared_url == NULL ||
+      shared_base_href == NULL ||
+      reserve_anchor_location_array(anchor_locations, anchors->used) != 0) {
+    fprintf(stderr, "Fatal: failed to allocate anchor location metadata.\n");
+    return -1;
+  }
+
+  free(anchor_locations->anchor_index);
+  anchor_locations->anchor_index = NULL;
+  anchor_locations->anchor_index_size = 0;
+
+  for (size_t j = 0; j < anchors->used; j++) {
+    char *anchor_copy = mmdoc_arena_strdup(arena, anchors->array[j]);
+    if (anchor_copy == NULL) {
       fprintf(stderr, "Fatal: failed to allocate an anchor location.\n");
-      free_anchor_location(&al);
-      free_page_paths(&paths);
       return -1;
     }
-    insert_anchor_location_array(anchor_locations, &al);
+    AnchorLocation *al = &anchor_locations->array[anchor_locations->used++];
+    al->anchor = anchor_copy;
+    al->file_path = shared_file_path;
+    al->title = shared_title;
+    al->multipage_output_file_path = shared_out_file;
+    al->multipage_output_directory_path = shared_out_dir;
+    al->multipage_url = shared_url;
+    al->multipage_base_href = shared_base_href;
   }
-  free_page_paths(&paths);
   return 0;
 }
 

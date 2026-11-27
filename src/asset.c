@@ -10,6 +10,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +33,143 @@ extern unsigned int ___src_asset_mmdoc_js_len;
 extern unsigned char ___src_asset_mmdoc_search_js[];
 extern unsigned int ___src_asset_mmdoc_search_js_len;
 
+/* Fast 64-bit XXH64 streaming hash (4-lane 32 bytes/iter). */
+#define XXH_PRIME1 UINT64_C(0x9E3779B185EBCA87)
+#define XXH_PRIME2 UINT64_C(0xC2B2AE3D27D4EB4F)
+#define XXH_PRIME3 UINT64_C(0x165667B19E3779F9)
+#define XXH_PRIME4 UINT64_C(0x85EBCA77C2B2AE63)
+#define XXH_PRIME5 UINT64_C(0x27D4EB2F165667C5)
+
+static inline uint64_t xxh_rotl64(uint64_t x, int r) {
+  return (x << r) | (x >> (64 - r));
+}
+
+static inline uint64_t xxh_read64(const unsigned char *p) {
+  uint64_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+static inline uint32_t xxh_read32(const unsigned char *p) {
+  uint32_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+static inline uint64_t xxh_round(uint64_t acc, uint64_t input) {
+  acc += input * XXH_PRIME2;
+  acc = xxh_rotl64(acc, 31);
+  acc *= XXH_PRIME1;
+  return acc;
+}
+
+static inline uint64_t xxh_merge_round(uint64_t acc, uint64_t val) {
+  val = xxh_round(0, val);
+  acc ^= val;
+  acc = acc * XXH_PRIME1 + XXH_PRIME4;
+  return acc;
+}
+
+void asset_hash_state_init(AssetHashState *state) {
+  state->total_len = 0;
+  state->v1 = XXH_PRIME1 + XXH_PRIME2;
+  state->v2 = XXH_PRIME2;
+  state->v3 = 0;
+  state->v4 = (uint64_t)(0 - XXH_PRIME1);
+  state->buf_len = 0;
+}
+
+void asset_hash_state_feed(AssetHashState *state, const unsigned char *bytes,
+                           size_t length) {
+  if (length == 0)
+    return;
+  state->total_len += length;
+  const unsigned char *p = bytes;
+  const unsigned char *end = bytes + length;
+
+  if (state->buf_len + length < 32) {
+    memcpy(state->buf + state->buf_len, bytes, length);
+    state->buf_len += length;
+    return;
+  }
+
+  if (state->buf_len > 0) {
+    size_t fill = 32 - state->buf_len;
+    memcpy(state->buf + state->buf_len, p, fill);
+    state->v1 = xxh_round(state->v1, xxh_read64(state->buf));
+    state->v2 = xxh_round(state->v2, xxh_read64(state->buf + 8));
+    state->v3 = xxh_round(state->v3, xxh_read64(state->buf + 16));
+    state->v4 = xxh_round(state->v4, xxh_read64(state->buf + 24));
+    p += fill;
+    state->buf_len = 0;
+  }
+
+  if (p + 32 <= end) {
+    const unsigned char *limit = end - 32;
+    uint64_t v1 = state->v1;
+    uint64_t v2 = state->v2;
+    uint64_t v3 = state->v3;
+    uint64_t v4 = state->v4;
+    do {
+      v1 = xxh_round(v1, xxh_read64(p));
+      v2 = xxh_round(v2, xxh_read64(p + 8));
+      v3 = xxh_round(v3, xxh_read64(p + 16));
+      v4 = xxh_round(v4, xxh_read64(p + 24));
+      p += 32;
+    } while (p <= limit);
+    state->v1 = v1;
+    state->v2 = v2;
+    state->v3 = v3;
+    state->v4 = v4;
+  }
+
+  if (p < end) {
+    state->buf_len = (size_t)(end - p);
+    memcpy(state->buf, p, state->buf_len);
+  }
+}
+
+uint64_t asset_hash_state_final(const AssetHashState *state) {
+  uint64_t h64;
+  if (state->total_len >= 32) {
+    h64 = xxh_rotl64(state->v1, 1) + xxh_rotl64(state->v2, 7) +
+          xxh_rotl64(state->v3, 12) + xxh_rotl64(state->v4, 18);
+    h64 = xxh_merge_round(h64, state->v1);
+    h64 = xxh_merge_round(h64, state->v2);
+    h64 = xxh_merge_round(h64, state->v3);
+    h64 = xxh_merge_round(h64, state->v4);
+  } else {
+    h64 = XXH_PRIME5;
+  }
+  h64 += state->total_len;
+
+  const unsigned char *p = state->buf;
+  const unsigned char *end = state->buf + state->buf_len;
+  while (p + 8 <= end) {
+    uint64_t k1 = xxh_round(0, xxh_read64(p));
+    h64 ^= k1;
+    h64 = xxh_rotl64(h64, 27) * XXH_PRIME1 + XXH_PRIME4;
+    p += 8;
+  }
+  if (p + 4 <= end) {
+    h64 ^= (uint64_t)xxh_read32(p) * XXH_PRIME1;
+    h64 = xxh_rotl64(h64, 23) * XXH_PRIME2 + XXH_PRIME3;
+    p += 4;
+  }
+  while (p < end) {
+    h64 ^= (*p) * XXH_PRIME5;
+    h64 = xxh_rotl64(h64, 11) * XXH_PRIME1;
+    p++;
+  }
+
+  h64 ^= h64 >> 33;
+  h64 *= XXH_PRIME2;
+  h64 ^= h64 >> 29;
+  h64 *= XXH_PRIME3;
+  h64 ^= h64 >> 32;
+  return h64;
+}
+
 uint64_t asset_hash_init(void) { return UINT64_C(14695981039346656037); }
 
 uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
@@ -51,7 +189,10 @@ void asset_format_hashed_name(const char *stem, const char *extension,
 }
 
 static uint64_t asset_hash(const unsigned char *bytes, size_t length) {
-  return asset_hash_feed(asset_hash_init(), bytes, length);
+  AssetHashState state;
+  asset_hash_state_init(&state);
+  asset_hash_state_feed(&state, bytes, length);
+  return asset_hash_state_final(&state);
 }
 
 static void asset_hashed_file_name(const char *stem, const char *extension,
@@ -61,31 +202,41 @@ static void asset_hashed_file_name(const char *stem, const char *extension,
                            file_name, file_name_size);
 }
 
-void asset_file_names(AssetFileNames *names) {
+static pthread_once_t cached_asset_names_once = PTHREAD_ONCE_INIT;
+static AssetFileNames cached_asset_names;
+
+static void init_cached_asset_names(void) {
   asset_hashed_file_name("fuse.basic.min", "js", ___src_asset_fuse_basic_min_js,
                          ___src_asset_fuse_basic_min_js_len,
-                         names->fuse_basic_min_js,
-                         sizeof(names->fuse_basic_min_js));
+                         cached_asset_names.fuse_basic_min_js,
+                         sizeof(cached_asset_names.fuse_basic_min_js));
   asset_hashed_file_name("highlight.pack", "js", ___src_asset_highlight_pack_js,
                          ___src_asset_highlight_pack_js_len,
-                         names->highlight_pack_js,
-                         sizeof(names->highlight_pack_js));
+                         cached_asset_names.highlight_pack_js,
+                         sizeof(cached_asset_names.highlight_pack_js));
   asset_hashed_file_name("a11y-dark", "css", ___src_asset_a11y_dark_css,
-                         ___src_asset_a11y_dark_css_len, names->a11y_dark_css,
-                         sizeof(names->a11y_dark_css));
+                         ___src_asset_a11y_dark_css_len,
+                         cached_asset_names.a11y_dark_css,
+                         sizeof(cached_asset_names.a11y_dark_css));
   asset_hashed_file_name("a11y-light", "css", ___src_asset_a11y_light_css,
-                         ___src_asset_a11y_light_css_len, names->a11y_light_css,
-                         sizeof(names->a11y_light_css));
-  asset_hashed_file_name("mmdoc", "css", ___src_asset_mmdoc_css,
-                         ___src_asset_mmdoc_css_len, names->mmdoc_css,
-                         sizeof(names->mmdoc_css));
+                         ___src_asset_a11y_light_css_len,
+                         cached_asset_names.a11y_light_css,
+                         sizeof(cached_asset_names.a11y_light_css));
+  asset_hashed_file_name(
+      "mmdoc", "css", ___src_asset_mmdoc_css, ___src_asset_mmdoc_css_len,
+      cached_asset_names.mmdoc_css, sizeof(cached_asset_names.mmdoc_css));
   asset_hashed_file_name("mmdoc", "js", ___src_asset_mmdoc_js,
-                         ___src_asset_mmdoc_js_len, names->mmdoc_js,
-                         sizeof(names->mmdoc_js));
+                         ___src_asset_mmdoc_js_len, cached_asset_names.mmdoc_js,
+                         sizeof(cached_asset_names.mmdoc_js));
   asset_hashed_file_name("mmdoc_search", "js", ___src_asset_mmdoc_search_js,
                          ___src_asset_mmdoc_search_js_len,
-                         names->mmdoc_search_js,
-                         sizeof(names->mmdoc_search_js));
+                         cached_asset_names.mmdoc_search_js,
+                         sizeof(cached_asset_names.mmdoc_search_js));
+}
+
+void asset_file_names(AssetFileNames *names) {
+  pthread_once(&cached_asset_names_once, init_cached_asset_names);
+  *names = cached_asset_names;
 }
 
 int asset_hashed_file_name_from_path(const char *path, const char *stem,
@@ -95,18 +246,20 @@ int asset_hashed_file_name_from_path(const char *path, const char *stem,
   if (file == NULL)
     return -1;
 
-  uint64_t hash = asset_hash_init();
+  AssetHashState state;
+  asset_hash_state_init(&state);
   unsigned char buffer[64 * 1024];
   size_t bytes_read;
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
-    hash = asset_hash_feed(hash, buffer, bytes_read);
+    asset_hash_state_feed(&state, buffer, bytes_read);
   int read_failed = ferror(file);
   int close_failed = fclose(file) != 0;
   int failed = read_failed || close_failed;
   if (failed)
     return -1;
 
-  asset_format_hashed_name(stem, extension, hash, file_name, file_name_size);
+  asset_format_hashed_name(stem, extension, asset_hash_state_final(&state),
+                           file_name, file_name_size);
   return 0;
 }
 

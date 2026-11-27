@@ -1,3 +1,27 @@
+//// Viewport
+function syncVisualViewport() {
+  const vv = window.visualViewport
+  if (!vv)
+    return
+
+  const root = document.documentElement.style
+  if (vv.scale > 1.01) {
+    root.removeProperty('--viewport-height')
+    root.removeProperty('--viewport-top')
+    return
+  }
+
+  root.setProperty('--viewport-height', `${vv.height}px`)
+  root.setProperty('--viewport-top', `${Math.max(0, vv.offsetTop)}px`)
+}
+
+if (window.visualViewport) {
+  syncVisualViewport()
+  window.visualViewport.addEventListener('resize', syncVisualViewport)
+  window.visualViewport.addEventListener('scroll', syncVisualViewport)
+  window.addEventListener('orientationchange', syncVisualViewport)
+}
+
 //// Sidebar
 const sidebarMedia = window.matchMedia('(max-width: 700px)')
 

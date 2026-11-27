@@ -13,7 +13,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 
 extern int errno;
 
@@ -54,11 +58,30 @@ typedef struct {
   cmark_node *doc;
   Array anchors;
   char *title;
+  size_t file_size;
+  unsigned int syntax_hints;
+  int has_code_block;
   int arena_live;
 } ParsedFile;
 
 typedef struct {
+  size_t index;
+  size_t size;
+} SizeOrderEntry;
+
+static int compare_size_order_desc(const void *a, const void *b) {
+  const SizeOrderEntry *sa = a;
+  const SizeOrderEntry *sb = b;
+  if (sa->size < sb->size)
+    return 1;
+  if (sa->size > sb->size)
+    return -1;
+  return sa->index < sb->index ? -1 : (sa->index > sb->index ? 1 : 0);
+}
+
+typedef struct {
   const Array *md_files;
+  const size_t *parse_order;
   ParsedFile *parsed;
   size_t next_index;
   int failed;
@@ -68,27 +91,34 @@ static void *parse_stage_worker(void *arg) {
   ParseStageCtx *ctx = arg;
   cmark_mem *mem = mmdoc_arena_cmark_mem();
   for (;;) {
-    size_t i = __atomic_fetch_add(&ctx->next_index, 1, __ATOMIC_RELAXED);
-    if (i >= ctx->md_files->used)
+    size_t slot = __atomic_fetch_add(&ctx->next_index, 1, __ATOMIC_RELAXED);
+    if (slot >= ctx->md_files->used)
       break;
     if (__atomic_load_n(&ctx->failed, __ATOMIC_RELAXED))
       break;
 
+    size_t i = ctx->parse_order != NULL ? ctx->parse_order[slot] : slot;
     ParsedFile *pf = &ctx->parsed[i];
-    mmdoc_arena_init(&pf->arena, 32768);
+    size_t slab_size = pf->file_size > 0 ? pf->file_size * 8 : 32768;
+    if (slab_size < 32768)
+      slab_size = 32768;
+    if (slab_size > 16 * 1024 * 1024)
+      slab_size = 16 * 1024 * 1024;
+    mmdoc_arena_init(&pf->arena, slab_size);
     pf->arena_live = 1;
     mmdoc_arena_bind(&pf->arena);
-    init_array(&pf->anchors, 16);
+    init_array(&pf->anchors, pf->file_size > 65536 ? 256 : 16);
 
     pf->parser =
         cmark_parser_new_with_mem(CMARK_OPT_DEFAULT | CMARK_OPT_UNSAFE, mem);
     if (pf->parser != NULL)
-      pf->doc =
-          mmdoc_render_cmark_document(ctx->md_files->array[i], pf->parser);
+      pf->doc = mmdoc_render_cmark_document_ex(ctx->md_files->array[i],
+                                               pf->parser, &pf->syntax_hints);
 
     if (pf->doc == NULL ||
-        mmdoc_extract_metadata_from_doc(pf->doc, ctx->md_files->array[i],
-                                        &pf->anchors, &pf->title) != 0) {
+        mmdoc_prepare_parsed_doc(pf->doc, mem, ctx->md_files->array[i],
+                                 &pf->anchors, &pf->title,
+                                 &pf->has_code_block) != 0) {
       __atomic_store_n(&ctx->failed, 1, __ATOMIC_RELAXED);
     }
     mmdoc_arena_bind(NULL);
@@ -99,6 +129,7 @@ static void *parse_stage_worker(void *arg) {
 typedef struct {
   AnchorLocationArray toc_anchor_locations;
   const size_t *page_indices;
+  const size_t *render_order;
   size_t page_count;
   const size_t *chapter_file_indices;
   ParsedFile *parsed;
@@ -112,21 +143,26 @@ typedef struct {
 static void *render_stage_worker(void *arg) {
   RenderStageCtx *ctx = arg;
   cmark_mem *mem = mmdoc_arena_cmark_mem();
+  MmdocBuf scratch_plain;
+  mmdoc_buf_init(&scratch_plain, 65536);
   for (;;) {
-    size_t k = __atomic_fetch_add(&ctx->next_index, 1, __ATOMIC_RELAXED);
-    if (k >= ctx->page_count)
+    size_t slot = __atomic_fetch_add(&ctx->next_index, 1, __ATOMIC_RELAXED);
+    if (slot >= ctx->page_count)
       break;
     if (__atomic_load_n(&ctx->failed, __ATOMIC_RELAXED))
       break;
 
+    size_t k = ctx->render_order != NULL ? ctx->render_order[slot] : slot;
     const AnchorLocation *chapter =
         &ctx->toc_anchor_locations.array[ctx->page_indices[k]];
     ParsedFile *pf = &ctx->parsed[ctx->chapter_file_indices[k]];
     mmdoc_arena_bind(&pf->arena);
+    scratch_plain.len = 0;
 
-    if (mmdoc_render_chapter_from_doc(
+    if (mmdoc_render_chapter_from_doc_ex(
             pf->doc, pf->parser, mem, chapter, ctx->anchor_locations,
-            ctx->chapters_by_source, &ctx->outputs[k]) != 0) {
+            ctx->chapters_by_source, pf->syntax_hints, 1, pf->has_code_block,
+            pf->file_size, &scratch_plain, &ctx->outputs[k]) != 0) {
       __atomic_store_n(&ctx->failed, 1, __ATOMIC_RELAXED);
     }
 
@@ -136,6 +172,22 @@ static void *render_stage_worker(void *arg) {
     pf->doc = NULL;
     pf->parser = NULL;
   }
+  mmdoc_buf_free(&scratch_plain);
+  return NULL;
+}
+
+typedef struct {
+  Inputs inputs;
+  AnchorLocationArray anchor_locations;
+  const ChapterOutputs *outputs;
+  size_t page_count;
+  int result;
+} SingleWriteTask;
+
+static void *single_write_thread_fn(void *arg) {
+  SingleWriteTask *task = arg;
+  task->result = mmdoc_single_write_from_chapters(
+      task->inputs, task->anchor_locations, task->outputs, task->page_count);
   return NULL;
 }
 
@@ -210,6 +262,11 @@ int main(int argc, char *argv[]) {
   size_t page_count = 0;
 
   mmdoc_cmark_init();
+#ifdef __GLIBC__
+  /* Avoid per-buffer mmap/munmap page-fault churn across worker threads. */
+  mallopt(M_MMAP_THRESHOLD, 32 * 1024 * 1024);
+  mallopt(M_TRIM_THRESHOLD, -1);
+#endif
 
   if (0 != mmdoc_inputs_derive(&inputs, argv))
     goto cleanup;
@@ -222,27 +279,58 @@ int main(int argc, char *argv[]) {
   if (mmdoc_collect_source_files(&md_files, &img_files, inputs) != 0)
     goto cleanup;
 
-  /* Stage A: Parse every Markdown file once (in parallel) and collect
-   * anchors + titles while retaining the parsed ASTs for published chapters. */
+  /* Stage A: Parse every Markdown file once (in parallel, largest files first)
+   * and collect anchors + titles while retaining parsed ASTs. */
   if (md_files.used > 0) {
     parsed = calloc(md_files.used, sizeof(*parsed));
     if (parsed == NULL)
       goto cleanup;
 
+    size_t *parse_order = NULL;
+    if (md_files.used > 1) {
+      SizeOrderEntry *entries = malloc(md_files.used * sizeof(*entries));
+      parse_order = malloc(md_files.used * sizeof(*parse_order));
+      if (entries != NULL && parse_order != NULL) {
+        for (size_t i = 0; i < md_files.used; i++) {
+          struct stat st;
+          size_t sz = (stat(md_files.array[i], &st) == 0 && st.st_size > 0)
+                          ? (size_t)st.st_size
+                          : 0;
+          parsed[i].file_size = sz;
+          entries[i].index = i;
+          entries[i].size = sz;
+        }
+        qsort(entries, md_files.used, sizeof(*entries),
+              compare_size_order_desc);
+        for (size_t i = 0; i < md_files.used; i++)
+          parse_order[i] = entries[i].index;
+      } else {
+        free(parse_order);
+        parse_order = NULL;
+      }
+      free(entries);
+    }
+
     ParseStageCtx parse_ctx = {
         .md_files = &md_files,
+        .parse_order = parse_order,
         .parsed = parsed,
         .next_index = 0,
         .failed = 0,
     };
     run_parallel(detect_worker_count(md_files.used), parse_stage_worker,
                  &parse_ctx);
+    free(parse_order);
     if (parse_ctx.failed)
       goto cleanup;
   }
 
   /* Build anchor_locations in deterministic sorted file order. */
-  init_anchor_location_array(&anchor_locations, 500);
+  size_t total_anchors = 0;
+  for (size_t i = 0; i < md_files.used; i++)
+    total_anchors += parsed[i].anchors.used;
+  init_anchor_location_array(&anchor_locations,
+                             total_anchors > 0 ? total_anchors : 64);
   const char *index_anchor = toc_refs.array[0];
   int found_index_page = 0;
   for (size_t i = 0; i < md_files.used; i++) {
@@ -259,7 +347,11 @@ int main(int argc, char *argv[]) {
       goto cleanup;
     free(parsed[i].title);
     parsed[i].title = NULL;
-    free_array(&parsed[i].anchors);
+    /* Anchor strings live inside parsed[i].arena; only free the pointer table.
+     */
+    free(parsed[i].anchors.array);
+    parsed[i].anchors.array = NULL;
+    parsed[i].anchors.used = parsed[i].anchors.size = 0;
   }
   if (build_anchor_location_index(&anchor_locations) != 0)
     goto cleanup;
@@ -323,11 +415,31 @@ int main(int argc, char *argv[]) {
   free(used_file);
 
   /* Stage B: Render all outputs (Markdown, search JSON, single HTML, multi
-   * HTML) per chapter in parallel from the single parsed AST. */
+   * HTML) per chapter in parallel (largest files first) from the single AST. */
   if (page_count > 0) {
+    size_t *render_order = NULL;
+    if (page_count > 1) {
+      SizeOrderEntry *entries = malloc(page_count * sizeof(*entries));
+      render_order = malloc(page_count * sizeof(*render_order));
+      if (entries != NULL && render_order != NULL) {
+        for (size_t k = 0; k < page_count; k++) {
+          entries[k].index = k;
+          entries[k].size = parsed[chapter_file_indices[k]].file_size;
+        }
+        qsort(entries, page_count, sizeof(*entries), compare_size_order_desc);
+        for (size_t k = 0; k < page_count; k++)
+          render_order[k] = entries[k].index;
+      } else {
+        free(render_order);
+        render_order = NULL;
+      }
+      free(entries);
+    }
+
     RenderStageCtx render_ctx = {
         .toc_anchor_locations = toc_anchor_locations,
         .page_indices = page_indices,
+        .render_order = render_order,
         .page_count = page_count,
         .chapter_file_indices = chapter_file_indices,
         .parsed = parsed,
@@ -339,6 +451,7 @@ int main(int argc, char *argv[]) {
     };
     run_parallel(detect_worker_count(page_count), render_stage_worker,
                  &render_ctx);
+    free(render_order);
     if (render_ctx.failed)
       goto cleanup;
   }
@@ -349,16 +462,33 @@ int main(int argc, char *argv[]) {
       fwrite(outputs[k].warnings.data, 1, outputs[k].warnings.len, stdout);
   }
 
-  /* Stage C: Write single-page HTML, multi-page HTML + search + Markdown, and
-   * copy images collected in Stage A. */
-  if (0 != mmdoc_single_write_from_chapters(inputs, anchor_locations, outputs,
-                                            page_count))
-    goto cleanup;
+  /* Stage C: Write single-page HTML concurrently with multi-page HTML +
+   * search + Markdown, then copy images collected in Stage A. */
+  {
+    SingleWriteTask single_task = {
+        .inputs = inputs,
+        .anchor_locations = anchor_locations,
+        .outputs = outputs,
+        .page_count = page_count,
+        .result = -1,
+    };
+    pthread_t single_thread;
+    int spawned_single =
+        pthread_create(&single_thread, NULL, single_write_thread_fn,
+                       &single_task) == 0;
+    if (!spawned_single)
+      single_write_thread_fn(&single_task);
 
-  if (0 != mmdoc_multi_write_from_chapters(
-               inputs, toc_anchor_locations, page_indices, page_count,
-               anchor_locations, outputs, detect_worker_count(page_count)))
-    goto cleanup;
+    int multi_rc = mmdoc_multi_write_from_chapters(
+        inputs, toc_anchor_locations, page_indices, page_count,
+        anchor_locations, outputs, detect_worker_count(page_count));
+
+    if (spawned_single)
+      pthread_join(single_thread, NULL);
+
+    if (single_task.result != 0 || multi_rc != 0)
+      goto cleanup;
+  }
 
   if (0 != mmdoc_copy_img_files(&img_files, inputs))
     goto cleanup;
@@ -374,7 +504,7 @@ cleanup:
   if (parsed != NULL) {
     for (size_t i = 0; i < md_files.used; i++) {
       free(parsed[i].title);
-      free_array(&parsed[i].anchors);
+      free(parsed[i].anchors.array);
       if (parsed[i].arena_live)
         mmdoc_arena_destroy(&parsed[i].arena);
     }

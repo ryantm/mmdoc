@@ -24,6 +24,7 @@ typedef struct {
   size_t size;
   size_t *anchor_index;
   size_t anchor_index_size;
+  void *string_arena;
 } AnchorLocationArray;
 
 typedef struct {
@@ -31,6 +32,7 @@ typedef struct {
 } HeadingInfo;
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize);
+int reserve_anchor_location_array(AnchorLocationArray *a, size_t additional);
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element);
 int build_anchor_location_index(AnchorLocationArray *a);

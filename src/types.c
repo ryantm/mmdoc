@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "types.h"
+#include "arena.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -9,6 +10,22 @@ void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
   a->size = a->array != NULL ? initialSize : 0;
   a->anchor_index = NULL;
   a->anchor_index_size = 0;
+  a->string_arena = NULL;
+}
+
+int reserve_anchor_location_array(AnchorLocationArray *a, size_t additional) {
+  size_t needed = a->used + additional;
+  if (needed <= a->size)
+    return 0;
+  size_t next_size = a->size == 0 ? 64 : a->size;
+  while (next_size < needed)
+    next_size *= 2;
+  AnchorLocation *next = realloc(a->array, next_size * sizeof(*a->array));
+  if (next == NULL)
+    return -1;
+  a->array = next;
+  a->size = next_size;
+  return 0;
 }
 
 void insert_anchor_location_array(AnchorLocationArray *a,
@@ -108,8 +125,14 @@ void free_anchor_location_array(AnchorLocationArray *a) {
 }
 
 void free_anchor_location_array_deep(AnchorLocationArray *a) {
-  for (size_t i = 0; i < a->used; i++)
-    free_anchor_location(&a->array[i]);
+  if (a->string_arena != NULL) {
+    mmdoc_arena_destroy(a->string_arena);
+    free(a->string_arena);
+    a->string_arena = NULL;
+  } else {
+    for (size_t i = 0; i < a->used; i++)
+      free_anchor_location(&a->array[i]);
+  }
   free_anchor_location_array(a);
 }
 

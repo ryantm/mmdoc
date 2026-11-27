@@ -24,6 +24,22 @@ int mkdir_p(const char *path) {
     errno = EINVAL;
     return -1;
   }
+
+  /* Fast path: parent already exists or directory already exists. */
+  if (mkdir(path, 0777) == 0)
+    return 0;
+  if (errno == EEXIST) {
+    struct stat st;
+    if (stat(path, &st) != 0)
+      return -1;
+    if (S_ISDIR(st.st_mode))
+      return 0;
+    errno = ENOTDIR;
+    return -1;
+  }
+  if (errno != ENOENT)
+    return -1;
+
   const size_t len = strlen(path);
   char _path[PATH_MAX];
   char *p;

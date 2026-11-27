@@ -631,6 +631,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(search_script_path, "window.mmdocSearchCorpus") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
+      file_contains(index_path, "viewport-fit=cover") &&
       file_contains(index_path, "class='skip-link' href='./#main-content'") &&
       file_contains(index_path, "aria-controls='sidebar'") &&
       file_contains(index_path, "aria-label='Open search'") &&
@@ -712,6 +713,7 @@ int test_single_page_accessible_controls() {
   init_anchor_location_array(&toc_anchor_locations, 0);
   int render_result = mmdoc_single(inputs, toc_anchor_locations);
   int controls_found = file_contains(index_path, "<html lang='en'>") &&
+                       file_contains(index_path, "viewport-fit=cover") &&
                        file_contains(index_path, "aria-controls='sidebar'") &&
                        file_contains(index_path, "aria-pressed='false'") &&
                        file_contains(index_path, "id='main-content'");

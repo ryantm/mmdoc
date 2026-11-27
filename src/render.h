@@ -55,6 +55,12 @@ int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
 int mmdoc_extract_metadata_from_doc(cmark_node *document, const char *file_path,
                                     Array *anchors, char **title);
 
+/* Extract metadata AND rewrite heading attributes / detect code blocks in one
+ * Stage A pass, allocating anchor strings inside the currently bound arena. */
+int mmdoc_prepare_parsed_doc(cmark_node *document, cmark_mem *mem,
+                             const char *file_path, Array *anchors,
+                             char **title, int *has_code_block_out);
+
 /* Render all outputs (Markdown, search JSON, single HTML, multi HTML) for one
  * chapter from a single already-parsed document AST. */
 int mmdoc_render_chapter_from_doc(cmark_node *document, cmark_parser *parser,
@@ -62,3 +68,9 @@ int mmdoc_render_chapter_from_doc(cmark_node *document, cmark_parser *parser,
                                   AnchorLocationArray *anchors,
                                   AnchorLocationArray *chapters_by_source,
                                   ChapterOutputs *out);
+int mmdoc_render_chapter_from_doc_ex(
+    cmark_node *document, cmark_parser *parser, cmark_mem *mem,
+    const AnchorLocation *chapter, AnchorLocationArray *anchors,
+    AnchorLocationArray *chapters_by_source, unsigned int syntax_hints,
+    int already_prepared, int pre_has_code_block, size_t file_size_hint,
+    MmdocBuf *scratch_plain, ChapterOutputs *out);

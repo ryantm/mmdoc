@@ -73,7 +73,7 @@ static void *arena_alloc_raw(MmdocArena *arena, size_t size, int zero) {
 
   if (slab == NULL) {
     size_t next_cap = arena->default_slab_size;
-    if (arena->current != NULL && arena->current->capacity < 1024 * 1024)
+    if (arena->current != NULL && arena->current->capacity < 4 * 1024 * 1024)
       next_cap = arena->current->capacity * 2;
     if (next_cap < total)
       next_cap = total;
@@ -161,6 +161,18 @@ static void arena_cmark_free(void *ptr) {
       slab->last_offset = SIZE_MAX;
     }
   }
+}
+
+void *mmdoc_arena_alloc(MmdocArena *arena, size_t size) {
+  return arena_alloc_raw(arena, size, 0);
+}
+
+char *mmdoc_arena_strdup(MmdocArena *arena, const char *s) {
+  size_t len = strlen(s) + 1;
+  char *copy = arena_alloc_raw(arena, len, 0);
+  if (copy != NULL)
+    memcpy(copy, s, len);
+  return copy;
 }
 
 static cmark_mem arena_allocator = {

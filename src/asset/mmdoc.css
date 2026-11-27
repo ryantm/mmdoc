@@ -106,8 +106,10 @@
 
 html, body {
   overflow: hidden;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
+  height: 100dvh;
+  height: var(--viewport-height, 100dvh);
   margin: 0;
   padding: 0;
   background: var(--background);
@@ -177,13 +179,18 @@ button, input {
 
 .body {
   position: fixed;
-  inset: 0;
+  top: var(--viewport-top, 0px);
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  height: var(--viewport-height, 100dvh);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "navtop navtop"
     "sidebar main";
-  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 input:checked + .body > nav.sidebar {
@@ -193,7 +200,9 @@ input:checked + .body > nav.sidebar {
 .nav-top-container {
   z-index: 3;
   grid-area: navtop;
-  height: var(--topbar-height);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: 0 1px 8px rgb(15 23 42 / 6%);
@@ -203,7 +212,7 @@ input:checked + .body > nav.sidebar {
   display: flex;
   gap: 5px;
   align-items: center;
-  height: 100%;
+  height: var(--topbar-height);
   padding: 7px 12px;
   overflow: hidden;
 }
@@ -346,6 +355,7 @@ input:checked + .body > nav.sidebar {
 
 #search-results {
   max-height: calc(60vh - var(--topbar-height));
+  max-height: calc(60dvh - var(--topbar-height));
   overflow-y: auto;
 }
 
@@ -677,14 +687,19 @@ code.language-console .hljs-meta {
   }
 
   .body {
+    padding-top: env(safe-area-inset-top, 0px);
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "main"
       "navtop";
-    grid-template-rows: minmax(0, 1fr) var(--topbar-height);
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .nav-top-container {
+    padding-top: 0;
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
     border-top: 1px solid var(--border);
     border-bottom: 0;
     box-shadow: 0 -1px 8px rgb(15 23 42 / 8%);

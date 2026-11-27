@@ -15,7 +15,7 @@ static int write_single_header(FILE *index_file, Inputs inputs,
             "  <head>\n"
             "    <meta charset='utf-8'>\n"
             "    <meta name='viewport' content='width=device-width, "
-            "initial-scale=1.0'>\n",
+            "initial-scale=1.0, viewport-fit=cover'>\n",
             index_file) == EOF ||
       html_theme_init(index_file) != 0 ||
       fputs("    <link rel='icon' href='favicon.svg'>\n", index_file) == EOF ||

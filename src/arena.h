@@ -20,6 +20,8 @@ typedef struct {
 void mmdoc_arena_init(MmdocArena *arena, size_t initial_slab_size);
 void mmdoc_arena_reset(MmdocArena *arena);
 void mmdoc_arena_destroy(MmdocArena *arena);
+void *mmdoc_arena_alloc(MmdocArena *arena, size_t size);
+char *mmdoc_arena_strdup(MmdocArena *arena, const char *s);
 
 /* Bind arena to the current thread for mmdoc_arena_cmark_mem callbacks. */
 MmdocArena *mmdoc_arena_bind(MmdocArena *arena);
