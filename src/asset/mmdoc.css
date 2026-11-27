@@ -710,6 +710,22 @@ code.language-console .hljs-meta {
     padding: 6px 8px;
   }
 
+  :root.mobile-top-nav .body {
+    padding-top: 0;
+    grid-template-areas:
+      "navtop"
+      "main";
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  :root.mobile-top-nav .nav-top-container {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: 0;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 8px rgb(15 23 42 / 6%);
+  }
+
   .nav-top > :nth-child(4) {
     margin-left: 0;
   }
@@ -730,7 +746,7 @@ code.language-console .hljs-meta {
     z-index: 2;
     grid-area: main;
     width: 100%;
-    padding: 1.5rem 1rem 4rem;
+    padding: 1.5rem 1rem calc(5rem + env(safe-area-inset-bottom, 0px));
     border-right: 0;
   }
 

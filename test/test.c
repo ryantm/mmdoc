@@ -632,6 +632,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
       file_contains(index_path, "viewport-fit=cover") &&
+      file_contains(index_path, "mobile-top-nav") &&
       file_contains(index_path, "class='skip-link' href='./#main-content'") &&
       file_contains(index_path, "aria-controls='sidebar'") &&
       file_contains(index_path, "aria-label='Open search'") &&
