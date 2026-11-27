@@ -607,19 +607,28 @@ section#main {
   flex: 1 1 auto;
   overflow: auto;
   overscroll-behavior: contain;
-  scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 
 main {
+  --main-padding-top: 2.75rem;
   width: min(100%, var(--content-width));
   margin: 0 auto;
-  padding: 2.75rem 2.25rem 6rem;
+  padding: var(--main-padding-top) 2.25rem 6rem;
+}
+
+main > :first-child {
+  margin-top: 0;
 }
 
 main [id] {
   scroll-margin-top: 1.5rem;
+}
+
+main > :first-child[id],
+main > :first-child > [id]:first-child {
+  scroll-margin-top: calc(var(--main-padding-top) + 1rem);
 }
 
 main :is(h1, h2, h3, h4, h5, h6) {
@@ -1075,7 +1084,8 @@ code.language-console .hljs-meta {
   }
 
   main {
-    padding: 2rem 1.25rem 5rem;
+    --main-padding-top: 2rem;
+    padding: var(--main-padding-top) 1.25rem 5rem;
   }
 
   main h1 {

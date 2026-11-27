@@ -647,6 +647,14 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(index_path,
                     "document.documentElement.classList.add(theme + "
                     "'-theme')");
+  char css_path[PATH_MAX];
+  snprintf(css_path, sizeof(css_path), "%s/%s", root,
+           generated_names.mmdoc_css);
+  int top_anchor_no_jump =
+      file_contains(
+          css_path,
+          "scroll-margin-top: calc(var(--main-padding-top) + 1rem);") &&
+      !file_contains(css_path, "scroll-behavior: smooth;");
 
   for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
     unlink_asset(root, asset_names[i]);
@@ -686,7 +694,8 @@ int test_multipage_shared_assets_and_accessible_controls() {
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
       !names_are_hashed || !page_is_external || !page_is_accessible ||
       !theme_is_initialized_before_css || !search_is_lazy ||
-      !corpus_hash_changed || !highlighter_is_conditional) {
+      !top_anchor_no_jump || !corpus_hash_changed ||
+      !highlighter_is_conditional) {
     printf("multipage shared asset and accessibility test failed\n");
     return 1;
   }
