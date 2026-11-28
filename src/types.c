@@ -1,10 +1,23 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "types.h"
 #include "arena.h"
-#include <stdbit.h>
 #include <stdckdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if __has_include(<stdbit.h>)
+#include <stdbit.h>
+static size_t bit_ceil_size(size_t n) { return stdc_bit_ceil(n); }
+#else
+static size_t bit_ceil_size(size_t n) {
+  size_t pow2 = 1;
+  while (pow2 < n) {
+    if (ckd_mul(&pow2, pow2, 2))
+      return 0;
+  }
+  return pow2;
+}
+#endif
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
   size_t bytes = 0;
@@ -81,7 +94,7 @@ int build_anchor_location_index(AnchorLocationArray *a) {
   size_t min_slots = 0;
   if (ckd_mul(&min_slots, a->used, 2))
     return -1;
-  size_t index_size = stdc_bit_ceil(min_slots);
+  size_t index_size = bit_ceil_size(min_slots);
   if (index_size == 0)
     return -1;
 
@@ -209,7 +222,7 @@ size_t mmdoc_collect_unique_page_indices(AnchorLocationArray toc_locations,
 
   size_t min_slots = 0;
   size_t table_size =
-      ckd_mul(&min_slots, toc_locations.used, 2) ? 0 : stdc_bit_ceil(min_slots);
+      ckd_mul(&min_slots, toc_locations.used, 2) ? 0 : bit_ceil_size(min_slots);
   size_t *seen = table_size > 0 ? calloc(table_size, sizeof(*seen)) : nullptr;
   size_t page_count = 0;
 
