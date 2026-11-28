@@ -119,14 +119,15 @@ int test_render(char *example) {
 
   FILE *got_file = fopen(got_file_path, "w");
   AnchorLocationArray empty_anchor_locations;
-  AnchorLocation al;
+  AnchorLocation al = {};
   init_anchor_location_array(&empty_anchor_locations, 0);
-  mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE, &al,
-                    empty_anchor_locations, "/", NULL);
+  int render_rc = mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE,
+                                    &al, empty_anchor_locations, "/", nullptr);
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
-  int failed = test_files_match(example, expected_path, got_file_path);
+  int failed =
+      render_rc < 0 || test_files_match(example, expected_path, got_file_path);
   close(ret);
   unlink(got_file_path);
   free(input_path);
@@ -161,13 +162,13 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   }
 
   FILE *got_file = fopen(got_file_path, "w");
-  AnchorLocation al;
-  al.title = "page title";
-  mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE, &al,
-                    anchor_locations, "/", NULL);
+  AnchorLocation al = {.title = "page title"};
+  int render_rc = mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
+                                    &al, anchor_locations, "/", nullptr);
   fclose(got_file);
 
-  int failed = test_files_match(example, expected_path, got_file_path);
+  int failed =
+      render_rc < 0 || test_files_match(example, expected_path, got_file_path);
   close(ret);
   unlink(got_file_path);
   free(input_path);
@@ -180,7 +181,7 @@ int test_code_block_detection(char *example, int expected) {
   snprintf(input_path, sizeof(input_path), "%s%s/input.md", TEST_EXAMPLE_DIR,
            example);
   FILE *output = tmpfile();
-  if (output == NULL)
+  if (output == nullptr)
     return 1;
 
   AnchorLocationArray empty_anchor_locations;
@@ -188,7 +189,7 @@ int test_code_block_detection(char *example, int expected) {
   init_anchor_location_array(&empty_anchor_locations, 0);
   int got =
       mmdoc_render_part(input_path, output, RENDER_TYPE_SINGLE,
-                        &anchor_location, empty_anchor_locations, "/", NULL);
+                        &anchor_location, empty_anchor_locations, "/", nullptr);
   free_anchor_location_array(&empty_anchor_locations);
   fclose(output);
 
@@ -263,7 +264,7 @@ int file_matches_bytes(char *path, const unsigned char *expected,
     return 0;
 
   FILE *file = fopen(path, "rb");
-  if (file == NULL)
+  if (file == nullptr)
     return 0;
   size_t got_size = fread(got, 1, sizeof(got), file);
   int close_result = fclose(file);
@@ -273,7 +274,7 @@ int file_matches_bytes(char *path, const unsigned char *expected,
 
 int test_copy_nested_image() {
   char root[] = "/tmp/mmdoc-image-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char src_dir[PATH_MAX];
@@ -298,7 +299,7 @@ int test_copy_nested_image() {
 
   const unsigned char image[] = {0, 1, 2, 0xff};
   FILE *source = fopen(source_path, "wb");
-  if (source == NULL)
+  if (source == nullptr)
     return 1;
   int write_failed = fwrite(image, 1, sizeof(image), source) != sizeof(image);
   if (fclose(source) != 0 || write_failed)
@@ -364,10 +365,10 @@ int test_anchor_location_index() {
       find_anchor_location(&anchor_locations, "#second");
   AnchorLocation *not_found =
       find_anchor_location(&anchor_locations, "#missing");
-  int passed = build_result == 0 && found_first != NULL &&
-               strcmp(found_first->title, "First") == 0 &&
-               found_second != NULL &&
-               strcmp(found_second->title, "Second") == 0 && not_found == NULL;
+  int passed =
+      build_result == 0 && found_first != nullptr &&
+      strcmp(found_first->title, "First") == 0 && found_second != nullptr &&
+      strcmp(found_second->title, "Second") == 0 && not_found == nullptr;
   free_anchor_location_array(&anchor_locations);
 
   if (!passed) {
@@ -384,7 +385,7 @@ int test_anchor_discovery_uses_markdown_ast() {
   if (fd == -1)
     return 1;
   FILE *file = fdopen(fd, "w");
-  if (file == NULL)
+  if (file == nullptr)
     return 1;
   const char *markdown = "# Page {#page}\n\n"
                          "`{#not-an-anchor}`\n\n"
@@ -404,9 +405,9 @@ int test_anchor_discovery_uses_markdown_ast() {
 
   free_array(&anchors);
   init_array(&anchors, 0);
-  char *title = NULL;
+  char *title = nullptr;
   int metadata_result = mmdoc_render_collect_metadata(path, &anchors, &title);
-  passed = passed && metadata_result == 0 && title != NULL &&
+  passed = passed && metadata_result == 0 && title != nullptr &&
            strcmp(title, "Page") == 0 && anchors.used == 5;
   for (size_t i = 0; passed && i < 5; i++)
     passed = strcmp(anchors.array[i], expected[i]) == 0;
@@ -423,14 +424,14 @@ int test_anchor_discovery_uses_markdown_ast() {
 
 int file_contains(char *path, const char *expected) {
   FILE *file = fopen(path, "r");
-  if (file == NULL)
+  if (file == nullptr)
     return 0;
 
-  char *line = NULL;
+  char *line = nullptr;
   size_t line_size = 0;
   int found = 0;
   while (getline(&line, &line_size, file) != -1) {
-    if (strstr(line, expected) != NULL) {
+    if (strstr(line, expected) != nullptr) {
       found = 1;
       break;
     }
@@ -442,7 +443,7 @@ int file_contains(char *path, const char *expected) {
 
 int file_contains_before(char *path, const char *first, const char *second) {
   FILE *file = fopen(path, "r");
-  if (file == NULL)
+  if (file == nullptr)
     return 0;
 
   if (fseek(file, 0, SEEK_END) != 0) {
@@ -456,7 +457,7 @@ int file_contains_before(char *path, const char *first, const char *second) {
   }
 
   char *contents = malloc((size_t)file_size + 1);
-  if (contents == NULL) {
+  if (contents == nullptr) {
     fclose(file);
     return 0;
   }
@@ -464,7 +465,7 @@ int file_contains_before(char *path, const char *first, const char *second) {
   contents[bytes_read] = '\0';
   char *first_position = strstr(contents, first);
   char *second_position = strstr(contents, second);
-  int found = first_position != NULL && second_position != NULL &&
+  int found = first_position != nullptr && second_position != nullptr &&
               first_position < second_position;
   free(contents);
   fclose(file);
@@ -473,7 +474,7 @@ int file_contains_before(char *path, const char *first, const char *second) {
 
 int file_exists_and_is_not_empty(char *path) {
   FILE *file = fopen(path, "rb");
-  if (file == NULL)
+  if (file == nullptr)
     return 0;
   int first = fgetc(file);
   fclose(file);
@@ -483,11 +484,11 @@ int file_exists_and_is_not_empty(char *path) {
 int find_asset_name(char *dir, const char *prefix, const char *suffix,
                     char *result, size_t result_size) {
   DIR *directory = opendir(dir);
-  if (directory == NULL)
+  if (directory == nullptr)
     return 0;
   struct dirent *entry;
   int found = 0;
-  while ((entry = readdir(directory)) != NULL) {
+  while ((entry = readdir(directory)) != nullptr) {
     size_t name_length = strlen(entry->d_name);
     size_t prefix_length = strlen(prefix);
     size_t suffix_length = strlen(suffix);
@@ -533,7 +534,7 @@ static void unlink_markdown(char *dir) {
 
 int write_text_file(char *path, const char *contents) {
   FILE *file = fopen(path, "w");
-  if (file == NULL)
+  if (file == nullptr)
     return 1;
   int failed = fputs(contents, file) == EOF;
   return fclose(file) != 0 || failed;
@@ -541,7 +542,7 @@ int write_text_file(char *path, const char *contents) {
 
 int test_multipage_shared_assets_and_accessible_controls() {
   char root[] = "/tmp/mmdoc-assets-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char page_path[PATH_MAX];
@@ -705,7 +706,7 @@ int test_multipage_shared_assets_and_accessible_controls() {
 
 int test_single_page_accessible_controls() {
   char root[] = "/tmp/mmdoc-single-accessibility-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char toc_path[PATH_MAX];
@@ -750,7 +751,7 @@ int test_single_page_accessible_controls() {
 
 int test_multipage_navigation_anchor() {
   char root[] = "/tmp/mmdoc-navigation-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char page_path[PATH_MAX];
@@ -759,13 +760,13 @@ int test_multipage_navigation_anchor() {
   snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
 
   FILE *toc_file = fopen(toc_path, "w");
-  if (toc_file == NULL)
+  if (toc_file == nullptr)
     return 1;
   if (fclose(toc_file) != 0)
     return 1;
 
   FILE *search_index_file = tmpfile();
-  if (search_index_file == NULL)
+  if (search_index_file == nullptr)
     return 1;
 
   Inputs inputs = {
@@ -773,7 +774,7 @@ int test_multipage_navigation_anchor() {
       .toc_path = toc_path,
   };
   AnchorLocation current = {
-      .file_path = NULL,
+      .file_path = nullptr,
       .multipage_output_file_path = page_path,
       .multipage_base_href = "",
       .multipage_url = "./",
@@ -798,7 +799,7 @@ int test_multipage_navigation_anchor() {
   int render_result =
       mmdoc_multi_page(inputs, anchor_locations, "", 0, &generated_names,
                        "search_index.0000000000000000.js", search_index_file,
-                       NULL, &current, &previous, &next, NULL);
+                       nullptr, &current, &previous, &next, nullptr);
   int found_previous =
       file_contains(page_path,
                     "id='chapter-previous-button' class='chapter-previous' "
@@ -829,7 +830,7 @@ int test_multipage_navigation_anchor() {
 
 int test_multipage_cached_toc_current_page_links() {
   char root[] = "/tmp/mmdoc-cached-toc-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char toc_path[PATH_MAX];
@@ -932,7 +933,7 @@ int test_multipage_cached_toc_current_page_links() {
 
 int test_multipage_duplicate_output_paths() {
   char root[] = "/tmp/mmdoc-duplicate-output-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char toc_path[PATH_MAX];
@@ -1026,7 +1027,7 @@ int write_overlong_id(char *path, const char *prefix, const char *suffix) {
     return 1;
 
   FILE *file = fdopen(fd, "w");
-  if (file == NULL) {
+  if (file == nullptr) {
     close(fd);
     return 1;
   }
@@ -1068,28 +1069,29 @@ int test_reject_overlong_ids() {
 }
 
 static int test_render_io_and_man_cleanup(void) {
-  AnchorLocationArray locations = {0};
-  Array anchors = {0};
+  AnchorLocationArray locations = {};
+  Array anchors = {};
   FILE *output = tmpfile();
-  if (output == NULL)
+  if (output == nullptr)
     return 1;
   char missing[] = "/dev/null/missing.md";
-  int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, NULL,
-                                 locations, "", NULL) != -1;
+  int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, nullptr,
+                                 locations, "", nullptr) != -1;
   char *title = mmdoc_render_get_title_from_file(missing);
-  failed |= title != NULL;
+  failed |= title != nullptr;
   free(title);
   failed |= mmdoc_render_collect_anchors(missing, &anchors) != -1;
   free_array(&anchors);
-  failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
-                              RENDER_TYPE_MAN, NULL, locations, "", NULL) < 0;
+  failed |=
+      mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
+                        RENDER_TYPE_MAN, nullptr, locations, "", nullptr) < 0;
   fclose(output);
   output = fopen("/dev/full", "w");
-  if (output != NULL) {
-    setvbuf(output, NULL, _IONBF, 0);
-    failed |=
-        mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
-                          RENDER_TYPE_SINGLE, NULL, locations, "", NULL) != -1;
+  if (output != nullptr) {
+    setvbuf(output, nullptr, _IONBF, 0);
+    failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
+                                RENDER_TYPE_SINGLE, nullptr, locations, "",
+                                nullptr) != -1;
     fclose(output);
   }
   return failed;
@@ -1168,13 +1170,13 @@ static int test_admonition_blank_lines_and_safety(void) {
     return 1;
 
   FILE *out = fopen(out_path, "w");
-  if (out == NULL)
+  if (out == nullptr)
     return 1;
   AnchorLocationArray empty;
   init_anchor_location_array(&empty, 0);
   AnchorLocation al = {.title = "Test"};
   int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, empty,
-                             "", NULL);
+                             "", nullptr);
   free_anchor_location_array(&empty);
   fclose(out);
 
@@ -1228,7 +1230,7 @@ static int test_refs_uses_markdown_ast(void) {
 
 static int test_single_dedup_and_link_titles(void) {
   char root[] = "/tmp/mmdoc-single-dedup-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char toc_path[PATH_MAX], p1_path[PATH_MAX], p2_path[PATH_MAX],
@@ -1272,18 +1274,19 @@ static int test_single_dedup_and_link_titles(void) {
   insert_anchor_location_array(&all_locs, &l1);
   insert_anchor_location_array(&all_locs, &l1b);
   insert_anchor_location_array(&all_locs, &l2);
-  build_anchor_location_index(&all_locs);
+  int index_rc = build_anchor_location_index(&all_locs);
 
-  int rc = mmdoc_single_with_anchors(inputs, toc_locs, all_locs);
+  int rc = index_rc == 0 ? mmdoc_single_with_anchors(inputs, toc_locs, all_locs)
+                         : -1;
 
   /* Count occurrences of id='first' to confirm p1 was rendered only once. */
   int first_count = 0;
   FILE *f = fopen(index_path, "r");
-  if (f != NULL) {
-    char *line = NULL;
+  if (f != nullptr) {
+    char *line = nullptr;
     size_t sz = 0;
     while (getline(&line, &sz, f) != -1) {
-      if (strstr(line, "<h1 id='first'>") != NULL)
+      if (strstr(line, "<h1 id='first'>") != nullptr)
         first_count++;
     }
     free(line);
@@ -1324,7 +1327,7 @@ static int test_mkdir_p_and_symlink_loop(void) {
   }
 
   char root[] = "/tmp/mmdoc-loop-test-XXXXXX";
-  if (mkdtemp(root) == NULL)
+  if (mkdtemp(root) == nullptr)
     return 1;
 
   char file_path[PATH_MAX], md_path[PATH_MAX], loop_path[PATH_MAX];
@@ -1340,7 +1343,7 @@ static int test_mkdir_p_and_symlink_loop(void) {
 
   Array md_files;
   init_array(&md_files, 4);
-  Inputs inputs = {.src = root, .out_multi = NULL, .out_single = NULL};
+  Inputs inputs = {.src = root, .out_multi = nullptr, .out_single = nullptr};
   int walk_rc = mmdoc_md_files(&md_files, inputs);
   int loop_safe = walk_rc == 0 && md_files.used == 1 &&
                   strcmp(md_files.array[0], md_path) == 0;
@@ -1419,7 +1422,7 @@ static int test_definition_list_continuations(void) {
   free_array(&anchors);
 
   FILE *out = fopen(out_path, "w");
-  if (out == NULL)
+  if (out == nullptr)
     return 1;
   AnchorLocationArray locations;
   init_anchor_location_array(&locations, 1);
@@ -1428,9 +1431,11 @@ static int test_definition_list_continuations(void) {
                        .title = "Config",
                        .multipage_url = "config/"};
   insert_anchor_location_array(&locations, &al);
-  build_anchor_location_index(&locations);
-  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al,
-                             locations, "", NULL);
+  int index_rc = build_anchor_location_index(&locations);
+  int rc = index_rc == 0
+               ? mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al,
+                                   locations, "", nullptr)
+               : -1;
   free_anchor_location_array(&locations);
   fclose(out);
 
@@ -1528,16 +1533,16 @@ static int test_markdown_engine_commonmark_and_gfm(void) {
   free_array(&anchors);
 
   FILE *out = fopen(out_path, "w");
-  if (out == NULL) {
+  if (out == nullptr) {
     unlink(input_path);
     unlink(out_path);
     return 1;
   }
   AnchorLocationArray locs;
   init_anchor_location_array(&locs, 0);
-  AnchorLocation al = {0};
+  AnchorLocation al = {};
   int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, locs, "",
-                             NULL);
+                             nullptr);
   free_anchor_location_array(&locs);
   fclose(out);
 
@@ -1588,7 +1593,7 @@ static int test_markdown_engine_commonmark_and_gfm(void) {
 static int test_markdown_engine_linear_time_dos(void) {
   const size_t n = 50000;
   char *buf = malloc(n * 3 + 16);
-  if (buf == NULL)
+  if (buf == nullptr)
     return 1;
 
   struct timespec t0, t1;
@@ -1664,10 +1669,10 @@ static int assert_md_html_eq(const char *label, const char *md,
                          .title = "Spec",
                          .multipage_url = "./",
                          .multipage_base_href = ""};
-  AnchorLocationArray empty = {0};
-  ChapterOutputs out = {0};
-  int rc =
-      mmdoc_render_chapter_from_mddoc(&doc, &chap, &empty, &empty, NULL, &out);
+  AnchorLocationArray empty = {};
+  ChapterOutputs out = {};
+  int rc = mmdoc_render_chapter_from_mddoc(&doc, &chap, &empty, &empty, nullptr,
+                                           &out);
   int failed =
       (rc != 0 || out.single_html.len != strlen(expected) ||
        memcmp(out.single_html.data, expected, out.single_html.len) != 0);

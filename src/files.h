@@ -3,9 +3,9 @@
 #include "inputs.h"
 #include "types.h"
 
-char *mmdoc_file_path(const char *directory, const char *name);
-int mmdoc_collect_source_files(Array *md_files, Array *img_files,
-                               Inputs inputs);
-int mmdoc_md_files(Array *md_files, Inputs inputs);
-int mmdoc_copy_img_files(const Array *img_files, Inputs inputs);
-int copy_imgs(Inputs inputs);
+[[nodiscard]] char *mmdoc_file_path(const char *directory, const char *name);
+[[nodiscard]] int mmdoc_collect_source_files(Array *md_files, Array *img_files,
+                                             Inputs inputs);
+[[nodiscard]] int mmdoc_md_files(Array *md_files, Inputs inputs);
+[[nodiscard]] int mmdoc_copy_img_files(const Array *img_files, Inputs inputs);
+[[nodiscard]] int copy_imgs(Inputs inputs);

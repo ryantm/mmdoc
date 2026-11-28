@@ -20,32 +20,32 @@ typedef struct {
 } TocChunks;
 
 static int split_toc_chunks(const char *toc_html, TocChunks *chunks) {
-  chunks->parts = NULL;
-  chunks->lens = NULL;
+  chunks->parts = nullptr;
+  chunks->lens = nullptr;
   chunks->count = 0;
 
   size_t placeholder_len = strlen(toc_current_page_url);
   size_t count = 1;
   const char *p = toc_html;
-  while ((p = strstr(p, toc_current_page_url)) != NULL) {
+  while ((p = strstr(p, toc_current_page_url)) != nullptr) {
     count++;
     p += placeholder_len;
   }
 
   chunks->parts = malloc(count * sizeof(*chunks->parts));
   chunks->lens = malloc(count * sizeof(*chunks->lens));
-  if (chunks->parts == NULL || chunks->lens == NULL) {
+  if (chunks->parts == nullptr || chunks->lens == nullptr) {
     free(chunks->parts);
     free(chunks->lens);
-    chunks->parts = NULL;
-    chunks->lens = NULL;
+    chunks->parts = nullptr;
+    chunks->lens = nullptr;
     return -1;
   }
 
   size_t idx = 0;
   const char *pos = toc_html;
   const char *hit;
-  while ((hit = strstr(pos, toc_current_page_url)) != NULL) {
+  while ((hit = strstr(pos, toc_current_page_url)) != nullptr) {
     chunks->parts[idx] = pos;
     chunks->lens[idx] = (size_t)(hit - pos);
     idx++;
@@ -60,8 +60,8 @@ static int split_toc_chunks(const char *toc_html, TocChunks *chunks) {
 static void free_toc_chunks(TocChunks *chunks) {
   free(chunks->parts);
   free(chunks->lens);
-  chunks->parts = NULL;
-  chunks->lens = NULL;
+  chunks->parts = nullptr;
+  chunks->lens = nullptr;
   chunks->count = 0;
 }
 
@@ -86,7 +86,7 @@ static int replace_file_name(const char *path, long offset,
     return -1;
 
   FILE *file = fopen(path, "r+b");
-  if (file == NULL)
+  if (file == nullptr)
     return -1;
   if (fseek(file, offset, SEEK_SET) != 0) {
     fclose(file);
@@ -104,10 +104,10 @@ static int replace_file_name(const char *path, long offset,
     return -1;
   }
 
-  int failed = strcmp(existing_file_name, new_file_name) != 0 &&
-               (fseek(file, offset, SEEK_SET) != 0 ||
-                fwrite(new_file_name, 1, strlen(new_file_name), file) !=
-                    strlen(new_file_name));
+  bool failed = strcmp(existing_file_name, new_file_name) != 0 &&
+                (fseek(file, offset, SEEK_SET) != 0 ||
+                 fwrite(new_file_name, 1, strlen(new_file_name), file) !=
+                     strlen(new_file_name));
   return fclose(file) != 0 || failed ? -1 : 0;
 }
 
@@ -116,7 +116,7 @@ static int write_toc(FILE *page_file, const char *toc_html,
   size_t placeholder_length = strlen(toc_current_page_url);
   const char *position = toc_html;
   const char *placeholder;
-  while ((placeholder = strstr(position, toc_current_page_url)) != NULL) {
+  while ((placeholder = strstr(position, toc_current_page_url)) != nullptr) {
     size_t prefix_length = (size_t)(placeholder - position);
     if (fwrite(position, 1, prefix_length, page_file) != prefix_length ||
         fputs(multipage_url, page_file) == EOF)
@@ -127,18 +127,19 @@ static int write_toc(FILE *page_file, const char *toc_html,
 }
 
 static int render_toc(Inputs inputs, AnchorLocationArray anchor_locations,
-                      char **toc_html, int *has_code_block) {
+                      char **toc_html, bool *has_code_block) {
   FILE *toc_file = tmpfile();
-  if (toc_file == NULL)
+  if (toc_file == nullptr)
     return -1;
 
-  *has_code_block =
-      mmdoc_render_part(inputs.toc_path, toc_file, RENDER_TYPE_MULTIPAGE, NULL,
-                        anchor_locations, toc_current_page_url, NULL);
-  if (*has_code_block < 0) {
+  int toc_rc = mmdoc_render_part(
+      inputs.toc_path, toc_file, RENDER_TYPE_MULTIPAGE, nullptr,
+      anchor_locations, toc_current_page_url, nullptr);
+  if (toc_rc < 0) {
     fclose(toc_file);
     return -1;
   }
+  *has_code_block = toc_rc != 0;
   if (fflush(toc_file) != 0 || fseek(toc_file, 0, SEEK_END) != 0) {
     fclose(toc_file);
     return -1;
@@ -150,16 +151,16 @@ static int render_toc(Inputs inputs, AnchorLocationArray anchor_locations,
   }
 
   *toc_html = malloc((size_t)toc_length + 1);
-  if (*toc_html == NULL) {
+  if (*toc_html == nullptr) {
     fclose(toc_file);
     return -1;
   }
   size_t bytes_read = fread(*toc_html, 1, (size_t)toc_length, toc_file);
-  int read_failed = bytes_read != (size_t)toc_length || ferror(toc_file);
-  int close_failed = fclose(toc_file) != 0;
+  bool read_failed = bytes_read != (size_t)toc_length || ferror(toc_file) != 0;
+  bool close_failed = fclose(toc_file) != 0;
   if (read_failed || close_failed) {
     free(*toc_html);
-    *toc_html = NULL;
+    *toc_html = nullptr;
     return -1;
   }
   (*toc_html)[toc_length] = '\0';
@@ -225,7 +226,7 @@ static int write_page_head_and_nav(FILE *page_file, Inputs inputs,
             page_file) == EOF)
     return -1;
 
-  if (prev_anchor_location != NULL) {
+  if (prev_anchor_location != nullptr) {
     if (fputs("    <a id='chapter-previous-button' class='chapter-previous' "
               "href='",
               page_file) == EOF ||
@@ -242,7 +243,7 @@ static int write_page_head_and_nav(FILE *page_file, Inputs inputs,
     return -1;
   }
 
-  if (next_anchor_location != NULL) {
+  if (next_anchor_location != nullptr) {
     if (fputs("    <a id='chapter-next-button' class='chapter-next' href='",
               page_file) == EOF ||
         fputs(next_anchor_location->multipage_url, page_file) == EOF ||
@@ -292,7 +293,7 @@ static int
 write_chapter_pagination(FILE *page_file,
                          const AnchorLocation *prev_anchor_location,
                          const AnchorLocation *next_anchor_location) {
-  if (prev_anchor_location == NULL && next_anchor_location == NULL)
+  if (prev_anchor_location == nullptr && next_anchor_location == nullptr)
     return 0;
 
   if (fputs("\n        <nav class='chapter-pagination' "
@@ -300,7 +301,7 @@ write_chapter_pagination(FILE *page_file,
             page_file) == EOF)
     return -1;
 
-  if (prev_anchor_location != NULL) {
+  if (prev_anchor_location != nullptr) {
     if (fputs("          <a class='chapter-pagination-link "
               "chapter-pagination-previous' href='",
               page_file) == EOF ||
@@ -314,7 +315,7 @@ write_chapter_pagination(FILE *page_file,
       return -1;
   }
 
-  if (next_anchor_location != NULL) {
+  if (next_anchor_location != nullptr) {
     if (fputs("          <a class='chapter-pagination-link "
               "chapter-pagination-next' href='",
               page_file) == EOF ||
@@ -333,7 +334,8 @@ write_chapter_pagination(FILE *page_file,
 
 static int write_page_footer(FILE *page_file, const AssetFileNames *asset_names,
                              const char *search_index_name,
-                             long *search_index_name_offset, int has_code_block,
+                             long *search_index_name_offset,
+                             bool has_code_block,
                              const AnchorLocation *prev_anchor_location,
                              const AnchorLocation *next_anchor_location) {
   if (write_chapter_pagination(page_file, prev_anchor_location,
@@ -356,7 +358,7 @@ static int write_page_footer(FILE *page_file, const AssetFileNames *asset_names,
       fputs(asset_names->mmdoc_search_js, page_file) == EOF ||
       fputs("' data-search-index='", page_file) == EOF)
     return -1;
-  if (search_index_name_offset != NULL)
+  if (search_index_name_offset != nullptr)
     *search_index_name_offset = ftell(page_file);
   if (fputs(search_index_name, page_file) == EOF ||
       fputs("' data-fuse='", page_file) == EOF ||
@@ -371,43 +373,44 @@ static int write_page_footer(FILE *page_file, const AssetFileNames *asset_names,
 }
 
 static int write_multipage_from_buffer(
-    Inputs inputs, const TocChunks *toc_chunks, int toc_has_code_block,
+    Inputs inputs, const TocChunks *toc_chunks, bool toc_has_code_block,
     const AssetFileNames *asset_names, const char *search_index_name,
     const AnchorLocation *anchor_location,
     const AnchorLocation *prev_anchor_location,
     const AnchorLocation *next_anchor_location, const MmdocBuf *body_html,
-    int body_has_code_block) {
+    bool body_has_code_block) {
   FILE *page_file = fopen(anchor_location->multipage_output_file_path, "wb");
-  if (page_file == NULL)
+  if (page_file == nullptr)
     return -1;
   char io_buf[65536];
   setvbuf(page_file, io_buf, _IOFBF, sizeof(io_buf));
 
-  int has_code_block = toc_has_code_block | body_has_code_block;
-  int failed = write_page_head_and_nav(page_file, inputs, asset_names,
-                                       anchor_location, prev_anchor_location,
-                                       next_anchor_location) != 0 ||
-               write_toc_chunks(page_file, toc_chunks,
-                                anchor_location->multipage_url) != 0 ||
-               write_page_after_toc(page_file) != 0 ||
-               (body_html->len > 0 && fwrite(body_html->data, 1, body_html->len,
-                                             page_file) != body_html->len) ||
-               write_page_footer(page_file, asset_names, search_index_name,
-                                 NULL, has_code_block, prev_anchor_location,
-                                 next_anchor_location) != 0;
+  bool has_code_block = toc_has_code_block || body_has_code_block;
+  bool failed =
+      write_page_head_and_nav(page_file, inputs, asset_names, anchor_location,
+                              prev_anchor_location,
+                              next_anchor_location) != 0 ||
+      write_toc_chunks(page_file, toc_chunks, anchor_location->multipage_url) !=
+          0 ||
+      write_page_after_toc(page_file) != 0 ||
+      (body_html->len > 0 && fwrite(body_html->data, 1, body_html->len,
+                                    page_file) != body_html->len) ||
+      write_page_footer(page_file, asset_names, search_index_name, nullptr,
+                        has_code_block, prev_anchor_location,
+                        next_anchor_location) != 0;
 
   if (ferror(page_file))
-    failed = 1;
+    failed = true;
   if (fclose(page_file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
 typedef struct {
   Inputs inputs;
   const TocChunks *toc_chunks;
-  int toc_has_code_block;
-  int any_code_blocks;
+  bool toc_has_code_block;
+  bool any_code_blocks;
   const AssetFileNames *asset_names;
   const char *search_index_name;
   const char *md_staging_dir;
@@ -433,22 +436,22 @@ static int write_search_index_file(const char *out,
   size_t prefix_len = strlen(prefix);
   char *search_index_path = mmdoc_file_path(out, search_index_name);
   FILE *search_file =
-      search_index_path != NULL ? fopen(search_index_path, "wb") : NULL;
+      search_index_path != nullptr ? fopen(search_index_path, "wb") : nullptr;
   free(search_index_path);
-  if (search_file == NULL)
+  if (search_file == nullptr)
     return -1;
   char search_io_buf[65536];
   setvbuf(search_file, search_io_buf, _IOFBF, sizeof(search_io_buf));
-  int failed = fwrite(prefix, 1, prefix_len, search_file) != prefix_len;
+  bool failed = fwrite(prefix, 1, prefix_len, search_file) != prefix_len;
   for (size_t i = 0; !failed && i < page_count; i++) {
     if (i > 0 && fwrite("\n,", 1, 2, search_file) != 2) {
-      failed = 1;
+      failed = true;
       break;
     }
     if (chapters[i].search_json.len > 0 &&
         fwrite(chapters[i].search_json.data, 1, chapters[i].search_json.len,
                search_file) != chapters[i].search_json.len) {
-      failed = 1;
+      failed = true;
       break;
     }
   }
@@ -456,10 +459,10 @@ static int write_search_index_file(const char *out,
     const char *suffix = page_count > 0 ? "\n]" : "]";
     size_t suffix_len = strlen(suffix);
     if (fwrite(suffix, 1, suffix_len, search_file) != suffix_len)
-      failed = 1;
+      failed = true;
   }
   if (fclose(search_file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
@@ -469,14 +472,14 @@ static int write_staged_llms_files(Inputs inputs, const char *index_path,
                                    const size_t *page_indices,
                                    const ChapterOutputs *chapters,
                                    size_t page_count) {
-  FILE *index_file = index_path != NULL ? fopen(index_path, "wb") : NULL;
-  FILE *full_file = full_path != NULL ? fopen(full_path, "wb") : NULL;
-  int failed = 0;
-  if (index_file == NULL || full_file == NULL ||
+  FILE *index_file = index_path != nullptr ? fopen(index_path, "wb") : nullptr;
+  FILE *full_file = full_path != nullptr ? fopen(full_path, "wb") : nullptr;
+  bool failed = false;
+  if (index_file == nullptr || full_file == nullptr ||
       fprintf(index_file,
               "# %s\n\n[Full manual](llms-full.txt)\n\n## Chapters\n\n",
               inputs.project_name) < 0) {
-    failed = 1;
+    failed = true;
   } else {
     char full_buf[65536];
     setvbuf(full_file, full_buf, _IOFBF, sizeof(full_buf));
@@ -488,15 +491,15 @@ static int write_staged_llms_files(Inputs inputs, const char *index_path,
           (chapters[i].full_md.len > 0 &&
            fwrite(chapters[i].full_md.data, 1, chapters[i].full_md.len,
                   full_file) != chapters[i].full_md.len)) {
-        failed = 1;
+        failed = true;
         break;
       }
     }
   }
-  if (index_file != NULL && fclose(index_file) != 0)
-    failed = 1;
-  if (full_file != NULL && fclose(full_file) != 0)
-    failed = 1;
+  if (index_file != nullptr && fclose(index_file) != 0)
+    failed = true;
+  if (full_file != nullptr && fclose(full_file) != 0)
+    failed = true;
   return failed ? -1 : 0;
 }
 
@@ -504,21 +507,21 @@ static int write_chapter_md(const AnchorLocation *loc,
                             const MmdocBuf *chapter_md) {
   char *dest =
       mmdoc_file_path(loc->multipage_output_directory_path, "index.md");
-  if (dest == NULL)
+  if (dest == nullptr)
     return -1;
   FILE *f = fopen(dest, "wb");
-  if (f == NULL) {
+  if (f == nullptr) {
     perror(dest);
     free(dest);
     return -1;
   }
   char io_buf[65536];
   setvbuf(f, io_buf, _IOFBF, sizeof(io_buf));
-  int failed =
+  bool failed =
       chapter_md->len > 0 &&
       fwrite(chapter_md->data, 1, chapter_md->len, f) != chapter_md->len;
   if (fclose(f) != 0)
-    failed = 1;
+    failed = true;
   free(dest);
   return failed ? -1 : 0;
 }
@@ -564,18 +567,18 @@ static void *chapter_write_worker(void *arg) {
     }
 
     size_t slot = job - 3;
-    size_t i = ctx->write_order != NULL ? ctx->write_order[slot] : slot;
+    size_t i = ctx->write_order != nullptr ? ctx->write_order[slot] : slot;
     const AnchorLocation *loc =
         &ctx->toc_anchor_locations.array[ctx->page_indices[i]];
     const AnchorLocation *prev =
         i > 0 ? &ctx->toc_anchor_locations.array[ctx->page_indices[i - 1]]
-              : NULL;
+              : nullptr;
     const AnchorLocation *next =
         i + 1 < ctx->page_count
             ? &ctx->toc_anchor_locations.array[ctx->page_indices[i + 1]]
-            : NULL;
+            : nullptr;
 
-    if (loc->multipage_output_directory_path != NULL &&
+    if (loc->multipage_output_directory_path != nullptr &&
         strcmp(loc->multipage_output_directory_path, ctx->inputs.out_multi) !=
             0 &&
         mkdir_p(loc->multipage_output_directory_path) != 0) {
@@ -583,10 +586,10 @@ static void *chapter_write_worker(void *arg) {
       break;
     }
 
-    const MmdocBuf *multi_html = ctx->chapters[i].multi_html.data != NULL
+    const MmdocBuf *multi_html = ctx->chapters[i].multi_html.data != nullptr
                                      ? &ctx->chapters[i].multi_html
                                      : &ctx->chapters[i].single_html;
-    const MmdocBuf *chap_md = ctx->chapters[i].chapter_md.data != NULL
+    const MmdocBuf *chap_md = ctx->chapters[i].chapter_md.data != nullptr
                                   ? &ctx->chapters[i].chapter_md
                                   : &ctx->chapters[i].full_md;
     if (write_multipage_from_buffer(
@@ -598,7 +601,7 @@ static void *chapter_write_worker(void *arg) {
       break;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 typedef struct {
@@ -633,7 +636,7 @@ static int write_static_assets(char *out, const AssetFileNames *asset_names) {
 static int publish_staged_file(const char *temporary, const char *directory,
                                const char *name) {
   char *path = mmdoc_file_path(directory, name);
-  if (path == NULL)
+  if (path == nullptr)
     return -1;
   int res = rename(temporary, path);
   if (res != 0)
@@ -658,8 +661,8 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
   AssetFileNames asset_names;
   asset_file_names(&asset_names);
 
-  char *toc_html = NULL;
-  int toc_has_code_block = 0;
+  char *toc_html = nullptr;
+  bool toc_has_code_block = false;
   if (render_toc(inputs, anchor_locations, &toc_html, &toc_has_code_block) != 0)
     return -1;
 
@@ -677,9 +680,9 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
   AssetHashState hash_state;
   asset_hash_state_init(&hash_state);
   asset_hash_state_feed(&hash_state, (const unsigned char *)prefix, prefix_len);
-  int any_code_blocks = toc_has_code_block;
+  bool any_code_blocks = toc_has_code_block;
   for (size_t i = 0; i < page_count; i++) {
-    any_code_blocks |= chapters[i].has_code_block;
+    any_code_blocks = any_code_blocks || chapters[i].has_code_block;
     if (i > 0)
       asset_hash_state_feed(&hash_state, (const unsigned char *)"\n,", 2);
     if (chapters[i].search_json.len > 0)
@@ -698,7 +701,7 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
                            search_index_name, sizeof(search_index_name));
 
   char *staging = mmdoc_file_path(out, ".mmdoc-XXXXXX");
-  if (staging == NULL || mkdtemp(staging) == NULL) {
+  if (staging == nullptr || mkdtemp(staging) == nullptr) {
     free(staging);
     free_toc_chunks(&toc_chunks);
     free(toc_html);
@@ -709,26 +712,26 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
 
   /* Sort chapter writes by descending output size (LPT) so large chapters start
    * immediately while smaller chapters fill remaining worker slots. */
-  size_t *write_order = NULL;
+  size_t *write_order = nullptr;
   if (page_count > 1) {
     WriteOrderEntry *entries = malloc(page_count * sizeof(*entries));
     write_order = malloc(page_count * sizeof(*write_order));
-    if (entries != NULL && write_order != NULL) {
+    if (entries != nullptr && write_order != nullptr) {
       for (size_t i = 0; i < page_count; i++) {
         entries[i].index = i;
         entries[i].bytes =
-            (chapters[i].multi_html.data != NULL
+            (chapters[i].multi_html.data != nullptr
                  ? chapters[i].multi_html.len
                  : chapters[i].single_html.len) +
-            (chapters[i].chapter_md.data != NULL ? chapters[i].chapter_md.len
-                                                 : chapters[i].full_md.len);
+            (chapters[i].chapter_md.data != nullptr ? chapters[i].chapter_md.len
+                                                    : chapters[i].full_md.len);
       }
       qsort(entries, page_count, sizeof(*entries), compare_write_order_desc);
       for (size_t i = 0; i < page_count; i++)
         write_order[i] = entries[i].index;
     } else {
       free(write_order);
-      write_order = NULL;
+      write_order = nullptr;
     }
     free(entries);
   }
@@ -750,7 +753,7 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
       .chapters = chapters,
       .next_job = 0,
       .next_worker_id = 0,
-      .failed = (index_path == NULL || full_path == NULL) ? 1 : 0,
+      .failed = (index_path == nullptr || full_path == nullptr) ? 1 : 0,
   };
 
   size_t total_jobs = page_count + 3;
@@ -760,13 +763,14 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
   if (threads_to_use > 8)
     threads_to_use = 8;
 
-  pthread_t *threads = NULL;
+  pthread_t *threads = nullptr;
   size_t spawned = 0;
   if (!ctx.failed && threads_to_use > 1) {
     threads = malloc((threads_to_use - 1) * sizeof(*threads));
-    if (threads != NULL) {
+    if (threads != nullptr) {
       for (size_t t = 0; t < threads_to_use - 1; t++) {
-        if (pthread_create(&threads[t], NULL, chapter_write_worker, &ctx) == 0)
+        if (pthread_create(&threads[t], nullptr, chapter_write_worker, &ctx) ==
+            0)
           spawned++;
         else
           break;
@@ -778,7 +782,7 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
     chapter_write_worker(&ctx);
 
   for (size_t t = 0; t < spawned; t++)
-    pthread_join(threads[t], NULL);
+    pthread_join(threads[t], nullptr);
   free(threads);
   free(write_order);
 
@@ -793,9 +797,9 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
   if (result == 0)
     result = publish_staged_file(index_path, out, "llms.txt");
 
-  if (full_path != NULL)
+  if (full_path != nullptr)
     unlink(full_path);
-  if (index_path != NULL)
+  if (index_path != nullptr)
     unlink(index_path);
   rmdir(staging);
   free(full_path);
@@ -807,17 +811,17 @@ int mmdoc_multi_write_from_chapters(Inputs inputs,
 /* ---- Standalone mmdoc_multi_page & mmdoc_multi (used by unit tests) ---- */
 
 int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
-                     const char *toc_html, int toc_has_code_block,
+                     const char *toc_html, bool toc_has_code_block,
                      const AssetFileNames *asset_names,
                      const char *search_index_name, FILE *search_index_file,
                      long *search_index_name_offset,
                      AnchorLocation *anchor_location,
                      AnchorLocation *prev_anchor_location,
                      AnchorLocation *next_anchor_location,
-                     int *has_code_blocks) {
+                     bool *has_code_blocks) {
   char *page_path = anchor_location->multipage_output_file_path;
   FILE *page_file = fopen(page_path, "w");
-  if (page_file == NULL)
+  if (page_file == nullptr)
     return -1;
 
   if (write_page_head_and_nav(page_file, inputs, asset_names, anchor_location,
@@ -829,8 +833,8 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     return -1;
   }
 
-  int has_code_block = toc_has_code_block;
-  if (anchor_location->file_path != NULL) {
+  bool has_code_block = toc_has_code_block;
+  if (anchor_location->file_path != nullptr) {
     int rendered = mmdoc_render_part(
         anchor_location->file_path, page_file, RENDER_TYPE_MULTIPAGE,
         anchor_location, anchor_locations, anchor_location->multipage_url,
@@ -839,7 +843,7 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
       fclose(page_file);
       return -1;
     }
-    has_code_block |= rendered;
+    has_code_block = has_code_block || (rendered != 0);
   }
 
   if (write_page_footer(page_file, asset_names, search_index_name,
@@ -849,12 +853,12 @@ int mmdoc_multi_page(Inputs inputs, AnchorLocationArray anchor_locations,
     return -1;
   }
 
-  if (has_code_blocks != NULL)
-    *has_code_blocks |= has_code_block;
+  if (has_code_blocks != nullptr)
+    *has_code_blocks = *has_code_blocks || has_code_block;
 
-  int failed = ferror(page_file);
+  bool failed = ferror(page_file) != 0;
   if (fclose(page_file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
@@ -869,18 +873,18 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     return -1;
 
   char *search_index_path = mmdoc_file_path(out, "search_index.tmp");
-  if (search_index_path == NULL)
+  if (search_index_path == nullptr)
     return -1;
   FILE *search_index_file = fopen(search_index_path, "w");
-  if (search_index_file == NULL) {
+  if (search_index_file == nullptr) {
     free(search_index_path);
     return -1;
   }
   fputs("window.mmdocSearchCorpus = [", search_index_file);
   long search_start_pos = ftell(search_index_file);
 
-  char *toc_html = NULL;
-  int toc_has_code_block = 0;
+  char *toc_html = nullptr;
+  bool toc_has_code_block = false;
   if (render_toc(inputs, anchor_locations, &toc_html, &toc_has_code_block) !=
       0) {
     fclose(search_index_file);
@@ -889,15 +893,15 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     return -1;
   }
 
-  AnchorLocation *prev_anchor_location = NULL;
-  AnchorLocation *next_anchor_location = NULL;
-  int has_code_blocks = 0;
-  long *search_index_name_offsets = NULL;
-  size_t *page_indices = NULL;
+  AnchorLocation *prev_anchor_location = nullptr;
+  AnchorLocation *next_anchor_location = nullptr;
+  bool has_code_blocks = false;
+  long *search_index_name_offsets = nullptr;
+  size_t *page_indices = nullptr;
   size_t page_count = 0;
   if (toc_anchor_locations.used > 0) {
     page_indices = malloc(toc_anchor_locations.used * sizeof(*page_indices));
-    if (page_indices == NULL) {
+    if (page_indices == nullptr) {
       free(toc_html);
       fclose(search_index_file);
       unlink(search_index_path);
@@ -908,7 +912,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
         mmdoc_collect_unique_page_indices(toc_anchor_locations, page_indices);
     search_index_name_offsets =
         malloc(page_count * sizeof(*search_index_name_offsets));
-    if (search_index_name_offsets == NULL) {
+    if (search_index_name_offsets == nullptr) {
       free(page_indices);
       free(toc_html);
       fclose(search_index_file);
@@ -920,7 +924,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
   for (size_t i = 0; i < page_count; i++) {
     AnchorLocation *anchor_location =
         &toc_anchor_locations.array[page_indices[i]];
-    if (anchor_location->multipage_output_directory_path != NULL &&
+    if (anchor_location->multipage_output_directory_path != nullptr &&
         mkdir_p(anchor_location->multipage_output_directory_path) != 0) {
       free(toc_html);
       free(page_indices);
@@ -933,7 +937,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     if (i + 1 < page_count) {
       next_anchor_location = &toc_anchor_locations.array[page_indices[i + 1]];
     } else {
-      next_anchor_location = NULL;
+      next_anchor_location = nullptr;
     }
     if (mmdoc_multi_page(inputs, anchor_locations, toc_html, toc_has_code_block,
                          &asset_names, search_index_placeholder,
@@ -952,13 +956,13 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
   }
   free(toc_html);
   long search_end_pos = ftell(search_index_file);
-  int search_index_failed = search_end_pos < 0 || search_start_pos < 0 ||
-                            (search_end_pos > search_start_pos &&
-                             fseek(search_index_file, -1, SEEK_CUR) != 0);
+  bool search_index_failed = search_end_pos < 0 || search_start_pos < 0 ||
+                             (search_end_pos > search_start_pos &&
+                              fseek(search_index_file, -1, SEEK_CUR) != 0);
   if (!search_index_failed && fputs("]", search_index_file) == EOF)
-    search_index_failed = 1;
+    search_index_failed = true;
   if (fclose(search_index_file) != 0)
-    search_index_failed = 1;
+    search_index_failed = true;
   if (search_index_failed) {
     unlink(search_index_path);
     free(search_index_path);
@@ -978,7 +982,7 @@ int mmdoc_multi(Inputs inputs, AnchorLocationArray toc_anchor_locations,
     return -1;
   }
   char *final_search_index_path = mmdoc_file_path(out, search_index_name);
-  if (final_search_index_path == NULL ||
+  if (final_search_index_path == nullptr ||
       rename(search_index_path, final_search_index_path) != 0) {
     free(final_search_index_path);
     unlink(search_index_path);

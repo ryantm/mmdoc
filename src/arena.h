@@ -19,5 +19,5 @@ typedef struct {
 void mmdoc_arena_init(MmdocArena *arena, size_t initial_slab_size);
 void mmdoc_arena_reset(MmdocArena *arena);
 void mmdoc_arena_destroy(MmdocArena *arena);
-void *mmdoc_arena_alloc(MmdocArena *arena, size_t size);
-char *mmdoc_arena_strdup(MmdocArena *arena, const char *s);
+[[nodiscard]] void *mmdoc_arena_alloc(MmdocArena *arena, size_t size);
+[[nodiscard]] char *mmdoc_arena_strdup(MmdocArena *arena, const char *s);

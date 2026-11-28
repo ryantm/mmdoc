@@ -3,4 +3,4 @@
 
 #include "types.h"
 
-int mmdoc_refs(Array *md_refs, char *path);
+[[nodiscard]] int mmdoc_refs(Array *md_refs, char *path);

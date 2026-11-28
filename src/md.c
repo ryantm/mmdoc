@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "md.h"
 #include <ctype.h>
+#include <stdckdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,12 +9,12 @@
 
 /* ---- Portable helpers (zero GNU-only dependencies) ---- */
 
-static inline int is_ascii_punct(unsigned char c) {
+static inline bool is_ascii_punct(unsigned char c) {
   return (c >= '!' && c <= '/') || (c >= ':' && c <= '@') ||
          (c >= '[' && c <= '`') || (c >= '{' && c <= '~');
 }
 
-static inline int is_ws(unsigned char c) {
+static inline bool is_ws(unsigned char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
          c == '\v';
 }
@@ -23,18 +24,18 @@ static const char *md_memmem(const char *hay, size_t hlen, const char *needle,
   if (nlen == 0)
     return hay;
   if (hlen < nlen)
-    return NULL;
+    return nullptr;
   const char *p = hay;
   const char *end = hay + hlen - nlen + 1;
   while (p < end) {
     const char *hit = memchr(p, needle[0], (size_t)(end - p));
-    if (hit == NULL)
-      return NULL;
+    if (hit == nullptr)
+      return nullptr;
     if (memcmp(hit, needle, nlen) == 0)
       return hit;
     p = hit + 1;
   }
-  return NULL;
+  return nullptr;
 }
 
 static int md_strncasecmp(const char *a, const char *b, size_t n) {
@@ -54,13 +55,20 @@ static int md_strncasecmp(const char *a, const char *b, size_t n) {
 /* ---- Bump allocators ---- */
 
 static uint32_t pool_alloc(MdDoc *doc, size_t len) {
-  size_t need = doc->pool_len + len + 1;
+  size_t need = 0;
+  if (ckd_add(&need, doc->pool_len, len) || ckd_add(&need, need, 1) ||
+      need > UINT32_MAX)
+    return UINT32_MAX;
   if (need > doc->pool_cap) {
-    size_t nc = doc->pool_cap == 0 ? 1024 : doc->pool_cap * 2;
-    while (nc < need)
-      nc *= 2;
+    size_t nc = doc->pool_cap == 0 ? 1024 : doc->pool_cap;
+    while (nc < need) {
+      if (ckd_mul(&nc, nc, 2)) {
+        nc = need;
+        break;
+      }
+    }
     char *next = realloc(doc->pool, nc);
-    if (next == NULL)
+    if (next == nullptr)
       return UINT32_MAX;
     doc->pool = next;
     doc->pool_cap = nc;
@@ -72,8 +80,8 @@ static uint32_t pool_alloc(MdDoc *doc, size_t len) {
 }
 
 static uint32_t pool_copy(MdDoc *doc, const char *s, size_t len) {
-  int from_pool =
-      (doc->pool != NULL && s >= doc->pool && s < doc->pool + doc->pool_cap);
+  bool from_pool =
+      (doc->pool != nullptr && s >= doc->pool && s < doc->pool + doc->pool_cap);
   size_t rel = from_pool ? (size_t)(s - doc->pool) : 0;
   uint32_t off = pool_alloc(doc, len);
   if (off == UINT32_MAX)
@@ -87,16 +95,20 @@ static uint32_t pool_copy(MdDoc *doc, const char *s, size_t len) {
 
 static uint32_t node_new(MdDoc *doc, MdNodeType type) {
   if (doc->nodes_len == doc->nodes_cap) {
-    uint32_t nc = doc->nodes_cap == 0 ? 128 : doc->nodes_cap * 2;
-    MdNode *next = realloc(doc->nodes, (size_t)nc * sizeof(*next));
-    if (next == NULL)
+    uint32_t nc = 128;
+    if (doc->nodes_cap != 0 && ckd_mul(&nc, doc->nodes_cap, 2))
+      return 0;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, (size_t)nc, sizeof(*doc->nodes)))
+      return 0;
+    MdNode *next = realloc(doc->nodes, bytes);
+    if (next == nullptr)
       return 0;
     doc->nodes = next;
     doc->nodes_cap = nc;
   }
   uint32_t id = doc->nodes_len++;
-  memset(&doc->nodes[id], 0, sizeof(MdNode));
-  doc->nodes[id].type = (uint8_t)type;
+  doc->nodes[id] = (MdNode){.type = type};
   return id;
 }
 
@@ -113,11 +125,16 @@ static inline void node_append(MdDoc *doc, uint32_t parent, uint32_t child) {
 }
 
 static int add_extra(MdDoc *doc, uint32_t node_id, uint32_t str_off,
-                     uint32_t str_len, uint8_t str_in_pool, int32_t num) {
+                     uint32_t str_len, bool str_in_pool, int32_t num) {
   if (doc->extras_len == doc->extras_cap) {
-    uint32_t nc = doc->extras_cap == 0 ? 16 : doc->extras_cap * 2;
-    MdExtra *next = realloc(doc->extras, (size_t)nc * sizeof(*next));
-    if (next == NULL)
+    uint32_t nc = 16;
+    if (doc->extras_cap != 0 && ckd_mul(&nc, doc->extras_cap, 2))
+      return -1;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, (size_t)nc, sizeof(*doc->extras)))
+      return -1;
+    MdExtra *next = realloc(doc->extras, bytes);
+    if (next == nullptr)
       return -1;
     doc->extras = next;
     doc->extras_cap = nc;
@@ -134,66 +151,74 @@ static int add_extra(MdDoc *doc, uint32_t node_id, uint32_t str_off,
 
 const MdExtra *md_find_extra(const MdDoc *doc, uint32_t node_id) {
   if (!(doc->nodes[node_id].flags & MD_F_HAS_EXTRA))
-    return NULL;
+    return nullptr;
   for (uint32_t i = 0; i < doc->extras_len; i++) {
     if (doc->extras[i].node_id == node_id)
       return &doc->extras[i];
   }
-  return NULL;
+  return nullptr;
 }
+
+static constexpr size_t MAX_ANCHOR_LEN = 1024;
 
 static int record_anchor(MdDoc *doc, const char *hash_anchor, size_t len,
                          const char *file_path) {
   if (len <= 1)
     return 0;
-  if (len >= 1024) {
-    fprintf(stderr, "Anchor in %s exceeds 1023 bytes.\n",
-            file_path ? file_path : "<input>");
-    doc->anchor_overflow = 1;
+  if (len >= MAX_ANCHOR_LEN) {
+    fprintf(stderr, "Anchor in %s exceeds %zu bytes.\n",
+            file_path ? file_path : "<input>", MAX_ANCHOR_LEN - 1);
+    doc->anchor_overflow = true;
     return -1;
   }
   if (doc->anchors.used == doc->anchors.size) {
-    size_t ns = doc->anchors.size == 0 ? 16 : doc->anchors.size * 2;
-    char **next = realloc(doc->anchors.array, ns * sizeof(*next));
-    if (next == NULL)
+    size_t ns = 16;
+    if (doc->anchors.size != 0 && ckd_mul(&ns, doc->anchors.size, 2))
+      return -1;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, ns, sizeof(*doc->anchors.array)))
+      return -1;
+    char **next = realloc(doc->anchors.array, bytes);
+    if (next == nullptr)
       return -1;
     doc->anchors.array = next;
     doc->anchors.size = ns;
   }
-  char *copy = malloc(len + 1);
-  if (copy == NULL)
+  char *copy = strndup(hash_anchor, len);
+  if (copy == nullptr)
     return -1;
-  memcpy(copy, hash_anchor, len);
-  copy[len] = '\0';
   doc->anchors.array[doc->anchors.used++] = copy;
   return 0;
 }
 
 /* ---- Link reference definition table ---- */
 
+static constexpr uint64_t FNV1A_OFFSET = UINT64_C(1469598103934665603);
+static constexpr uint64_t FNV1A_PRIME = UINT64_C(1099511628211);
+
 static uint64_t fnv1a_norm(const char *s, size_t len) {
-  uint64_t h = 1469598103934665603ULL;
+  uint64_t h = FNV1A_OFFSET;
   size_t i = 0;
   while (i < len && is_ws((unsigned char)s[i]))
     i++;
   size_t end = len;
   while (end > i && is_ws((unsigned char)s[end - 1]))
     end--;
-  int in_ws = 0;
+  bool in_ws = false;
   for (; i < end; i++) {
     unsigned char c = (unsigned char)s[i];
     if (is_ws(c)) {
       if (!in_ws) {
         h ^= ' ';
-        h *= 1099511628211ULL;
-        in_ws = 1;
+        h *= FNV1A_PRIME;
+        in_ws = true;
       }
     } else {
       if (c >= 'A' && c <= 'Z')
         c = (unsigned char)(c - 'A' + 'a');
       h ^= c;
-      h *= 1099511628211ULL;
-      in_ws = 0;
+      h *= FNV1A_PRIME;
+      in_ws = false;
     }
   }
   return h;
@@ -216,19 +241,19 @@ static uint32_t normalize_label_to_pool(MdDoc *doc, const char *s, size_t len,
     return UINT32_MAX;
   char *dst = doc->pool + off;
   size_t w = 0;
-  int in_ws = 0;
+  bool in_ws = false;
   for (; i < end; i++) {
     unsigned char c = (unsigned char)s[i];
     if (is_ws(c)) {
       if (!in_ws) {
         dst[w++] = ' ';
-        in_ws = 1;
+        in_ws = true;
       }
     } else {
       if (c >= 'A' && c <= 'Z')
         c = (unsigned char)(c - 'A' + 'a');
       dst[w++] = (char)c;
-      in_ws = 0;
+      in_ws = false;
     }
   }
   dst[w] = '\0';
@@ -236,8 +261,8 @@ static uint32_t normalize_label_to_pool(MdDoc *doc, const char *s, size_t len,
   return off;
 }
 
-static int ref_label_eq_norm(const char *norm, size_t nlen, const char *raw,
-                             size_t rlen) {
+static bool ref_label_eq_norm(const char *norm, size_t nlen, const char *raw,
+                              size_t rlen) {
   size_t i = 0;
   while (i < rlen && is_ws((unsigned char)raw[i]))
     i++;
@@ -245,30 +270,32 @@ static int ref_label_eq_norm(const char *norm, size_t nlen, const char *raw,
   while (end > i && is_ws((unsigned char)raw[end - 1]))
     end--;
   size_t ni = 0;
-  int in_ws = 0;
+  bool in_ws = false;
   for (; i < end; i++) {
     unsigned char c = (unsigned char)raw[i];
     if (is_ws(c)) {
       if (!in_ws) {
         if (ni >= nlen || norm[ni++] != ' ')
-          return 0;
-        in_ws = 1;
+          return false;
+        in_ws = true;
       }
     } else {
       if (c >= 'A' && c <= 'Z')
         c = (unsigned char)(c - 'A' + 'a');
       if (ni >= nlen || (unsigned char)norm[ni++] != c)
-        return 0;
-      in_ws = 0;
+        return false;
+      in_ws = false;
     }
   }
   return ni == nlen;
 }
 
 static int ref_table_grow(MdDoc *doc) {
-  uint32_t nc = doc->refs_cap == 0 ? 32 : doc->refs_cap * 2;
+  uint32_t nc = 32;
+  if (doc->refs_cap != 0 && ckd_mul(&nc, doc->refs_cap, 2))
+    return -1;
   MdRefDef *nt = calloc(nc, sizeof(*nt));
-  if (nt == NULL)
+  if (nt == nullptr)
     return -1;
   uint32_t mask = nc - 1;
   for (uint32_t i = 0; i < doc->refs_cap; i++) {
@@ -287,8 +314,8 @@ static int ref_table_grow(MdDoc *doc) {
 
 static void ref_table_insert(MdDoc *doc, const char *label, size_t label_len,
                              uint32_t url_off, uint32_t url_len,
-                             uint8_t url_in_pool, uint32_t title_off,
-                             uint32_t title_len, uint8_t title_in_pool) {
+                             bool url_in_pool, uint32_t title_off,
+                             uint32_t title_len, bool title_in_pool) {
   if (doc->refs_cap == 0 || (doc->refs_used + 1) * 2 >= doc->refs_cap) {
     if (ref_table_grow(doc) != 0)
       return;
@@ -323,7 +350,7 @@ static void ref_table_insert(MdDoc *doc, const char *label, size_t label_len,
 static const MdRefDef *ref_table_find(const MdDoc *doc, const char *label,
                                       size_t label_len) {
   if (doc->refs_used == 0 || label_len == 0 || label_len > 999)
-    return NULL;
+    return nullptr;
   uint64_t h = fnv1a_norm(label, label_len);
   uint32_t mask = doc->refs_cap - 1;
   uint32_t slot = (uint32_t)(h & mask);
@@ -335,7 +362,7 @@ static const MdRefDef *ref_table_find(const MdDoc *doc, const char *label,
     }
     slot = (slot + 1) & mask;
   }
-  return NULL;
+  return nullptr;
 }
 
 /* ---- UTF-8 & HTML5 named/numeric entity decoding ---- */
@@ -520,30 +547,30 @@ static size_t decode_entity(const char *s, size_t len, char out[8],
 }
 
 static uint32_t unescape_slice(MdDoc *doc, const char *s, size_t len,
-                               uint32_t *out_len, uint8_t *in_pool) {
-  int needs = 0;
+                               uint32_t *out_len, bool *in_pool) {
+  bool needs = false;
   for (size_t i = 0; i < len; i++) {
     if (s[i] == '\\' || s[i] == '&') {
-      needs = 1;
+      needs = true;
       break;
     }
   }
   if (!needs) {
     *out_len = (uint32_t)len;
     if (s >= doc->src && s <= doc->src + doc->src_len) {
-      *in_pool = 0;
+      *in_pool = false;
       return (uint32_t)(s - doc->src);
     }
-    *in_pool = 1;
+    *in_pool = true;
     return pool_copy(doc, s, len);
   }
-  int from_pool =
-      (doc->pool != NULL && s >= doc->pool && s < doc->pool + doc->pool_cap);
+  bool from_pool =
+      (doc->pool != nullptr && s >= doc->pool && s < doc->pool + doc->pool_cap);
   size_t rel = from_pool ? (size_t)(s - doc->pool) : 0;
   uint32_t off = pool_alloc(doc, len);
   if (off == UINT32_MAX) {
     *out_len = 0;
-    *in_pool = 1;
+    *in_pool = true;
     return 0;
   }
   if (from_pool)
@@ -572,33 +599,34 @@ static uint32_t unescape_slice(MdDoc *doc, const char *s, size_t len,
   }
   dst[w] = '\0';
   *out_len = (uint32_t)w;
-  *in_pool = 1;
+  *in_pool = true;
   return off;
 }
 
 /* ---- Inline Parser (strictly O(n) with bracket & delimiter stacks) ---- */
 
-static const unsigned char inline_special[256] = {
+static constexpr unsigned char inline_special[256] = {
     ['\n'] = 1, ['\r'] = 1, ['`'] = 1, ['*'] = 1,  ['_'] = 1, ['['] = 1,
     [']'] = 1,  ['!'] = 1,  ['<'] = 1, ['\\'] = 1, ['&'] = 1,
 };
 
-static const char *
-parse_inline_link_dest(MdDoc *doc, const char *p, const char *end,
-                       uint32_t *url_off, uint32_t *url_len,
-                       uint8_t *url_in_pool, uint32_t *title_off,
-                       uint32_t *title_len, uint8_t *title_in_pool) {
+static const char *parse_inline_link_dest(MdDoc *doc, const char *p,
+                                          const char *end, uint32_t *url_off,
+                                          uint32_t *url_len, bool *url_in_pool,
+                                          uint32_t *title_off,
+                                          uint32_t *title_len,
+                                          bool *title_in_pool) {
   *url_off = 0;
   *url_len = 0;
-  *url_in_pool = 0;
+  *url_in_pool = false;
   *title_off = 0;
   *title_len = 0;
-  *title_in_pool = 0;
+  *title_in_pool = false;
 
   while (p < end && is_ws((unsigned char)*p))
     p++;
   if (p >= end)
-    return NULL;
+    return nullptr;
 
   const char *u_start = p;
   const char *u_end = p;
@@ -611,12 +639,12 @@ parse_inline_link_dest(MdDoc *doc, const char *p, const char *end,
       if (*p == '\\' && p + 1 < end)
         p += 2;
       else if (*p == '<')
-        return NULL;
+        return nullptr;
       else
         p++;
     }
     if (p >= end || *p != '>')
-      return NULL;
+      return nullptr;
     u_end = p;
     p++;
   } else {
@@ -628,7 +656,7 @@ parse_inline_link_dest(MdDoc *doc, const char *p, const char *end,
       } else if (*p == '(') {
         parens++;
         if (parens > 32)
-          return NULL;
+          return nullptr;
         p++;
       } else if (*p == ')') {
         if (parens == 0)
@@ -636,30 +664,30 @@ parse_inline_link_dest(MdDoc *doc, const char *p, const char *end,
         parens--;
         p++;
       } else if ((unsigned char)*p < 0x20 || *p == 0x7f) {
-        return NULL;
+        return nullptr;
       } else {
         p++;
       }
     }
     if (parens != 0)
-      return NULL;
+      return nullptr;
     u_end = p;
   }
 
   const char *ws_start = p;
   while (p < end && is_ws((unsigned char)*p))
     p++;
-  const char *t_start = NULL, *t_end = NULL;
+  const char *t_start = nullptr, *t_end = nullptr;
   if (p < end && *p != ')') {
     if (p == ws_start)
-      return NULL;
+      return nullptr;
     char quote = *p;
     char close_q = (quote == '"')    ? '"'
                    : (quote == '\'') ? '\''
                    : (quote == '(')  ? ')'
                                      : 0;
     if (close_q == 0)
-      return NULL;
+      return nullptr;
     p++;
     t_start = p;
     while (p < end && *p != close_q) {
@@ -669,18 +697,18 @@ parse_inline_link_dest(MdDoc *doc, const char *p, const char *end,
         p++;
     }
     if (p >= end || *p != close_q)
-      return NULL;
+      return nullptr;
     t_end = p;
     p++;
     while (p < end && is_ws((unsigned char)*p))
       p++;
   }
   if (p >= end || *p != ')')
-    return NULL;
+    return nullptr;
 
   *url_off = unescape_slice(doc, u_start, (size_t)(u_end - u_start), url_len,
                             url_in_pool);
-  if (t_start != NULL) {
+  if (t_start != nullptr) {
     *title_off = unescape_slice(doc, t_start, (size_t)(t_end - t_start),
                                 title_len, title_in_pool);
   }
@@ -697,20 +725,20 @@ static size_t match_inline_html(const char *s, size_t len) {
       return 6;
     if (len >= 7) {
       const char *cl = md_memmem(s + 4, len - 4, "-->", 3);
-      if (cl != NULL)
+      if (cl != nullptr)
         return (size_t)(cl + 3 - s);
     }
     return 0;
   }
   if (len >= 4 && s[1] == '?') {
     const char *cl = md_memmem(s + 2, len - 2, "?>", 2);
-    if (cl != NULL)
+    if (cl != nullptr)
       return (size_t)(cl + 2 - s);
     return 0;
   }
   if (len >= 12 && memcmp(s, "<![CDATA[", 9) == 0) {
     const char *cl = md_memmem(s + 9, len - 9, "]]>", 3);
-    if (cl != NULL)
+    if (cl != nullptr)
       return (size_t)(cl + 3 - s);
     return 0;
   }
@@ -782,7 +810,7 @@ static size_t match_autolink(const char *s, size_t len, int *is_email) {
   if (len < 4 || s[0] != '<')
     return 0;
   const char *gt = memchr(s + 1, '>', len - 1);
-  if (gt == NULL)
+  if (gt == nullptr)
     return 0;
   size_t inner = (size_t)(gt - (s + 1));
   if (inner < 3)
@@ -802,9 +830,9 @@ static size_t match_autolink(const char *s, size_t len, int *is_email) {
       return inner + 2;
   }
   const char *at = memchr(s + 1, '@', inner);
-  if (at != NULL && at > s + 1 && at < gt - 1) {
+  if (at != nullptr && at > s + 1 && at < gt - 1) {
     const char *dot = memchr(at + 1, '.', (size_t)(gt - (at + 1)));
-    if (dot != NULL && dot > at + 1 && dot < gt - 1) {
+    if (dot != nullptr && dot > at + 1 && dot < gt - 1) {
       *is_email = 1;
       return inner + 2;
     }
@@ -853,12 +881,12 @@ static uint32_t append_text_node(MdDoc *doc, uint32_t parent, const char *s,
 static const char *match_brace_id(const char *p, const char *end,
                                   const char **id_start, size_t *id_len) {
   if (p + 3 >= end || p[0] != '{' || p[1] != '#')
-    return NULL;
+    return nullptr;
   const char *q = p + 2;
   while (q < end && *q != '}' && !is_ws((unsigned char)*q) && *q != '[')
     q++;
   if (q >= end || *q != '}' || q == p + 2)
-    return NULL;
+    return nullptr;
   *id_start = p + 2;
   *id_len = (size_t)(q - (p + 2));
   return q + 1;
@@ -868,12 +896,12 @@ static void collect_braced_anchors_in_text(MdDoc *doc, const char *s,
                                            size_t len, const char *file_path) {
   const char *end = s + len;
   const char *p = memchr(s, '{', len);
-  while (p != NULL && p < end) {
+  while (p != nullptr && p < end) {
     const char *close = memchr(p + 1, '}', (size_t)(end - (p + 1)));
-    if (close == NULL)
+    if (close == nullptr)
       break;
     const char *hash = memchr(p + 1, '#', (size_t)(close - (p + 1)));
-    if (hash != NULL) {
+    if (hash != nullptr) {
       const char *ae = hash + 1;
       while (ae < close && !is_ws((unsigned char)*ae))
         ae++;
@@ -1013,7 +1041,7 @@ static void process_emph_delims(MdDoc *doc, uint32_t parent, EmphDelim *delims,
 
 static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
                                 const char *end, const char *file_path,
-                                int collect_meta) {
+                                bool collect_meta) {
   EmphDelim stack_delims[64];
   EmphDelim *delims = stack_delims;
   size_t ndelims = 0, cap_delims = 64;
@@ -1103,10 +1131,10 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
       }
       const char *cs = p;
       const char *q = p;
-      const char *ce = NULL;
+      const char *ce = nullptr;
       while (q < end) {
         q = memchr(q, '`', (size_t)(end - q));
-        if (q == NULL)
+        if (q == nullptr)
           break;
         const char *cand_end = q;
         size_t ct = 0;
@@ -1120,15 +1148,15 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
           break;
         }
       }
-      if (ce == NULL) {
+      if (ce == nullptr) {
         if (ticks < 64)
           failed_bt[ticks] = 1;
         append_text_node(doc, parent, tick_start, ticks, 0);
         continue;
       }
       size_t clen = (size_t)(ce - cs);
-      int has_nl =
-          memchr(cs, '\n', clen) != NULL || memchr(cs, '\r', clen) != NULL;
+      int has_nl = memchr(cs, '\n', clen) != nullptr ||
+                   memchr(cs, '\r', clen) != nullptr;
       uint32_t cid = node_new(doc, MD_CODE);
       if (cid != 0) {
         if (!has_nl) {
@@ -1289,7 +1317,7 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
             EmphDelim *nd = (delims == stack_delims)
                                 ? malloc(nc * sizeof(*nd))
                                 : realloc(delims, nc * sizeof(*nd));
-            if (nd != NULL) {
+            if (nd != nullptr) {
               if (delims == stack_delims)
                 memcpy(nd, stack_delims, ndelims * sizeof(*nd));
               delims = nd;
@@ -1331,7 +1359,7 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
           BracketOpener *nb = (brackets == stack_brackets)
                                   ? malloc(nc * sizeof(*nb))
                                   : realloc(brackets, nc * sizeof(*nb));
-          if (nb != NULL) {
+          if (nb != nullptr) {
             if (brackets == stack_brackets)
               memcpy(nb, stack_brackets, nbrackets * sizeof(*nb));
             brackets = nb;
@@ -1364,17 +1392,17 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
       const char *after = p + 1;
       MdNodeType matched_type = MD_NONE;
       uint32_t aux_off = 0, aux_len = 0;
-      uint8_t aux_in_pool = 0;
+      bool aux_in_pool = false;
       uint32_t title_off = 0, title_len = 0;
-      uint8_t title_in_pool = 0;
-      const char *next_p = NULL;
-      const char *span_id_s = NULL;
+      bool title_in_pool = false;
+      const char *next_p = nullptr;
+      const char *span_id_s = nullptr;
       size_t span_id_l = 0;
 
       /* 1. Native mmdoc bracketed span: [content]{#id} */
       if (!op.is_img && after < end && *after == '{') {
         const char *ab = match_brace_id(after, end, &span_id_s, &span_id_l);
-        if (ab != NULL) {
+        if (ab != nullptr) {
           matched_type = MD_SPAN;
           aux_off =
               unescape_slice(doc, span_id_s, span_id_l, &aux_len, &aux_in_pool);
@@ -1387,7 +1415,7 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
         const char *alp = parse_inline_link_dest(
             doc, after + 1, end, &aux_off, &aux_len, &aux_in_pool, &title_off,
             &title_len, &title_in_pool);
-        if (alp != NULL) {
+        if (alp != nullptr) {
           matched_type = op.is_img ? MD_IMAGE : MD_LINK;
           next_p = alp;
         }
@@ -1415,7 +1443,7 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
           }
         }
         const MdRefDef *rd = ref_table_find(doc, ref_s, ref_l);
-        if (rd != NULL) {
+        if (rd != nullptr) {
           matched_type = op.is_img ? MD_IMAGE : MD_LINK;
           aux_off = rd->url_off;
           aux_len = rd->url_len;
@@ -1436,15 +1464,14 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
         uint32_t first_in = doc->nodes[op.node_id].next_sibling;
         uint32_t last_in = first_in ? doc->nodes[parent].last_child : 0;
         MdNode *wn = &doc->nodes[op.node_id];
-        memset(wn, 0, sizeof(*wn));
-        wn->type = (uint8_t)matched_type;
-        wn->first_child = first_in;
-        wn->last_child = last_in;
-        wn->next_sibling = 0;
-        wn->aux_off = aux_off;
-        wn->aux_len = aux_len;
-        if (aux_in_pool)
-          wn->flags |= MD_F_AUX_POOL;
+        *wn = (MdNode){
+            .type = matched_type,
+            .first_child = first_in,
+            .last_child = last_in,
+            .aux_off = aux_off,
+            .aux_len = aux_len,
+            .flags = aux_in_pool ? MD_F_AUX_POOL : 0,
+        };
         doc->nodes[parent].last_child = op.node_id;
 
         if (title_len > 0)
@@ -1454,7 +1481,7 @@ static void parse_inlines_range(MdDoc *doc, uint32_t parent, const char *start,
           char stack_a[256];
           char *ab =
               aux_len + 2 <= sizeof(stack_a) ? stack_a : malloc(aux_len + 2);
-          if (ab != NULL) {
+          if (ab != nullptr) {
             ab[0] = '#';
             memcpy(ab + 1,
                    aux_in_pool ? (doc->pool + aux_off) : (doc->src + aux_off),
@@ -1507,7 +1534,7 @@ static void extract_plain_title_rec(const MdDoc *doc, uint32_t node_id,
           while (nc < *len + n->text_len + 1)
             nc *= 2;
           char *nb = realloc(*buf, nc);
-          if (nb == NULL)
+          if (nb == nullptr)
             return;
           *buf = nb;
           *cap = nc;
@@ -1524,9 +1551,9 @@ static void extract_plain_title_rec(const MdDoc *doc, uint32_t node_id,
 
 static void set_heading_anchor(MdDoc *doc, uint32_t hid, const char *id_s,
                                size_t id_l, const char *file_path,
-                               int collect_meta) {
+                               bool collect_meta) {
   uint32_t ulen = 0;
-  uint8_t uip = 0;
+  bool uip = false;
   uint32_t uoff = unescape_slice(doc, id_s, id_l, &ulen, &uip);
   doc->nodes[hid].aux_off = uoff;
   doc->nodes[hid].aux_len = ulen;
@@ -1535,7 +1562,7 @@ static void set_heading_anchor(MdDoc *doc, uint32_t hid, const char *id_s,
   if (collect_meta && ulen > 0) {
     char stack_a[256];
     char *ab = ulen + 2 <= sizeof(stack_a) ? stack_a : malloc(ulen + 2);
-    if (ab != NULL) {
+    if (ab != nullptr) {
       ab[0] = '#';
       memcpy(ab + 1, uip ? (doc->pool + uoff) : (doc->src + uoff), ulen);
       ab[ulen + 1] = '\0';
@@ -1548,7 +1575,7 @@ static void set_heading_anchor(MdDoc *doc, uint32_t hid, const char *id_s,
 
 static size_t strip_heading_id(const char *s, size_t len, const char **id_s,
                                size_t *id_l) {
-  *id_s = NULL;
+  *id_s = nullptr;
   *id_l = 0;
   if (len < 4 || s[len - 1] != '}')
     return len;
@@ -1673,7 +1700,7 @@ static int parse_fence_open(const char *s, size_t len, char *fch, size_t *flen,
   size_t e = len;
   while (e > i && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r'))
     e--;
-  if (ch == '`' && memchr(s + i, '`', e - i) != NULL)
+  if (ch == '`' && memchr(s + i, '`', e - i) != nullptr)
     return 0;
   *fch = ch;
   *flen = n;
@@ -1726,7 +1753,7 @@ static int parse_admon_open(const char *s, size_t len, size_t *colons_out,
   *colons_out = colons;
   *type_s = s + ts;
   *type_l = i - ts;
-  *anc_s = NULL;
+  *anc_s = nullptr;
   *anc_l = 0;
   while (i < len && (s[i] == ' ' || s[i] == '\t'))
     i++;
@@ -1874,8 +1901,8 @@ static int detect_html_block_type(const char *s, size_t len) {
           "optgroup",   "option",   "p",       "param",    "search",
           "section",    "summary",  "table",   "tbody",    "td",
           "tfoot",      "th",       "thead",   "title",    "tr",
-          "track",      "ul",       NULL};
-      for (size_t k = 0; type6[k] != NULL; k++) {
+          "track",      "ul",       nullptr};
+      for (size_t k = 0; type6[k] != nullptr; k++) {
         if (strcmp(tag, type6[k]) == 0)
           return 6;
       }
@@ -1894,13 +1921,13 @@ static int detect_html_block_type(const char *s, size_t len) {
 
 static int html_block_ends_on_line(int htype, const char *s, size_t len) {
   if (htype == 2)
-    return md_memmem(s, len, "-->", 3) != NULL;
+    return md_memmem(s, len, "-->", 3) != nullptr;
   if (htype == 3)
-    return md_memmem(s, len, "?>", 2) != NULL;
+    return md_memmem(s, len, "?>", 2) != nullptr;
   if (htype == 4)
-    return memchr(s, '>', len) != NULL;
+    return memchr(s, '>', len) != nullptr;
   if (htype == 5)
-    return md_memmem(s, len, "]]>", 3) != NULL;
+    return md_memmem(s, len, "]]>", 3) != nullptr;
   if (htype == 1) {
     for (size_t i = 0; i + 5 < len; i++) {
       if (s[i] == '<' && s[i + 1] == '/') {
@@ -1922,7 +1949,7 @@ static int html_block_ends_on_line(int htype, const char *s, size_t len) {
 
 static int parse_table_delim_row(const char *s, size_t len, uint8_t *aligns,
                                  size_t max_cols, size_t *ncols_out) {
-  if (memchr(s, '-', len) == NULL)
+  if (memchr(s, '-', len) == nullptr)
     return 0;
   size_t i = 0;
   while (i < len && (s[i] == ' ' || s[i] == '\t'))
@@ -1930,7 +1957,7 @@ static int parse_table_delim_row(const char *s, size_t len, uint8_t *aligns,
   size_t e = len;
   while (e > i && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r'))
     e--;
-  if (i >= e || memchr(s + i, '|', e - i) == NULL)
+  if (i >= e || memchr(s + i, '|', e - i) == nullptr)
     return 0;
   if (s[i] == '-' && i + 1 < e && (s[i + 1] == ' ' || s[i + 1] == '\t'))
     return 0;
@@ -2003,7 +2030,7 @@ static void set_table_cell_text(MdDoc *doc, uint32_t cell, const char *s,
     return;
   }
   int from_pool =
-      (doc->pool != NULL && s >= doc->pool && s < doc->pool + doc->pool_cap);
+      (doc->pool != nullptr && s >= doc->pool && s < doc->pool + doc->pool_cap);
   size_t rel = from_pool ? (size_t)(s - doc->pool) : 0;
   uint32_t off = pool_alloc(doc, len);
   if (off == UINT32_MAX)
@@ -2153,7 +2180,7 @@ static size_t try_consume_ref_defs(MdDoc *doc, const char *s, size_t len) {
       line_end = (k < len && s[k] == '\n') ? k + 1 : k;
     }
     uint32_t uoff = 0, ulen = 0, toff = 0, tlen = 0;
-    uint8_t uip = 0, tip = 0;
+    bool uip = false, tip = false;
     uoff = unescape_slice(doc, s + us, ue - us, &ulen, &uip);
     if (te > ts)
       toff = unescape_slice(doc, s + ts, te - ts, &tlen, &tip);
@@ -2180,7 +2207,7 @@ static void sbuf_append(ScratchBuf *b, const char *s, size_t n) {
     while (nc < b->len + n + 1)
       nc *= 2;
     char *nd = realloc(b->data, nc);
-    if (nd == NULL)
+    if (nd == nullptr)
       return;
     b->data = nd;
     b->cap = nc;
@@ -2200,7 +2227,7 @@ typedef struct {
 
 static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
                          size_t nlines, uint8_t base_col, const char *file_path,
-                         int collect_meta, int depth,
+                         bool collect_meta, int depth,
                          int *had_direct_blank_out);
 
 static int line_breaks_lazy(LineView lv) {
@@ -2213,7 +2240,7 @@ static int line_breaks_lazy(LineView lv) {
   int hl = 0, ord = 0, snum = 1;
   char fc = 0, ldel = 0;
   size_t fl = 0, il = 0, hsl = 0, mc = 0, mb = 0, ac = 0, atl = 0, aal = 0;
-  const char *hs = NULL, *is = NULL, *ats = NULL, *aas = NULL;
+  const char *hs = nullptr, *is = nullptr, *ats = nullptr, *aas = nullptr;
   if (t[0] == '>' || is_thematic_break(t, tl) ||
       parse_atx_heading(t, tl, &hl, &hs, &hsl) ||
       parse_fence_open(t, tl, &fc, &fl, &is, &il) ||
@@ -2237,7 +2264,7 @@ static int line_can_lazy_continue(LineView lv, int depth) {
   int hl = 0, ord = 0, snum = 1;
   char fc = 0, ldel = 0;
   size_t fl = 0, il = 0, hsl = 0, mc = 0, mb = 0, ac = 0, atl = 0, aal = 0;
-  const char *hs = NULL, *is = NULL, *ats = NULL, *aas = NULL;
+  const char *hs = nullptr, *is = nullptr, *ats = nullptr, *aas = nullptr;
   if (is_thematic_break(t, tl) || parse_atx_heading(t, tl, &hl, &hs, &hsl) ||
       parse_fence_open(t, tl, &fc, &fl, &is, &il) ||
       parse_admon_open(t, tl, &ac, &ats, &atl, &aas, &aal) ||
@@ -2269,7 +2296,7 @@ static LineView strip_columns_alloc(LineView lv, size_t cols, char ***allocs,
         size_t rem_sp = c + adv - cols;
         size_t rest_len = lv.len - (i + 1);
         char *eb = malloc(rem_sp + rest_len + 1);
-        if (eb != NULL) {
+        if (eb != nullptr) {
           memset(eb, ' ', rem_sp);
           if (rest_len > 0)
             memcpy(eb + rem_sp, lv.s + i + 1, rest_len);
@@ -2350,15 +2377,15 @@ static uint32_t finalize_paragraph(MdDoc *doc, uint32_t parent,
 
 static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
                          size_t nlines, uint8_t base_col, const char *file_path,
-                         int collect_meta, int depth,
+                         bool collect_meta, int depth,
                          int *had_direct_blank_out) {
-  if (had_direct_blank_out != NULL)
+  if (had_direct_blank_out != nullptr)
     *had_direct_blank_out = 0;
   if (depth > 32)
     return;
-  ScratchBuf pbuf = {0};
-  const char *p_src_start = NULL;
-  const char *p_src_end = NULL;
+  ScratchBuf pbuf = {};
+  const char *p_src_start = nullptr;
+  const char *p_src_end = nullptr;
   int p_contiguous = 0;
   uint8_t p_col = base_col;
   int saw_blank_after_child = 0;
@@ -2383,7 +2410,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
     }
 
     if (saw_blank_after_child) {
-      if (had_direct_blank_out != NULL)
+      if (had_direct_blank_out != nullptr)
         *had_direct_blank_out = 1;
       saw_blank_after_child = 0;
     }
@@ -2398,7 +2425,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
 
     /* 1. Indented code block (>= 4 spaces, only outside paragraph) */
     if (!in_para && indent >= 4) {
-      ScratchBuf cbuf = {0};
+      ScratchBuf cbuf = {};
       size_t j = i;
       size_t last_nonblank = i;
       while (j < nlines) {
@@ -2426,7 +2453,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
             pool_copy(doc, cbuf.data ? cbuf.data : "", cbuf.len);
         doc->nodes[cid].text_len = (uint32_t)cbuf.len;
         doc->nodes[cid].flags |= MD_F_TEXT_POOL;
-        doc->has_code_block = 1;
+        doc->has_code_block = true;
         node_append(doc, parent, cid);
       }
       free(cbuf.data);
@@ -2450,7 +2477,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           }
           while (pl > 0 && is_ws((unsigned char)ps[pl - 1]))
             pl--;
-          const char *id_s = NULL;
+          const char *id_s = nullptr;
           size_t id_l = 0;
           pl = strip_heading_id(ps, pl, &id_s, &id_l);
           uint32_t hid = node_new(doc, MD_HEADING);
@@ -2465,7 +2492,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
               doc->nodes[hid].flags |= MD_F_TEXT_POOL;
             }
             doc->nodes[hid].text_len = (uint32_t)pl;
-            if (id_s != NULL)
+            if (id_s != nullptr)
               set_heading_anchor(doc, hid, id_s, id_l, file_path, collect_meta);
             node_append(doc, parent, hid);
           }
@@ -2488,24 +2515,24 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
         /* Isolate last line of paragraph as candidate header row */
         const char *hdr_s = ps;
         size_t hdr_l = pl;
-        const char *last_nl = NULL;
+        const char *last_nl = nullptr;
         for (size_t k = pl; k > 0; k--) {
           if (ps[k - 1] == '\n') {
             last_nl = ps + k - 1;
             break;
           }
         }
-        if (last_nl != NULL) {
+        if (last_nl != nullptr) {
           hdr_s = last_nl + 1;
           hdr_l = pl - (size_t)(hdr_s - ps);
         }
-        if (memchr(hdr_s, '|', hdr_l) != NULL) {
+        if (memchr(hdr_s, '|', hdr_l) != nullptr) {
           const char *hstarts[64];
           size_t hlens[64];
           size_t hcols = split_table_cells(hdr_s, hdr_l, hstarts, hlens, 64);
           if (hcols == ncols) {
             /* Emit any earlier lines before the table header as a paragraph */
-            if (last_nl != NULL) {
+            if (last_nl != nullptr) {
               finalize_paragraph(doc, parent, ps, (size_t)(last_nl - ps),
                                  p_contiguous, p_col);
             }
@@ -2571,7 +2598,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
     if (indent < 4) {
       /* 4a. ATX Heading */
       int hlevel = 0;
-      const char *hs = NULL;
+      const char *hs = nullptr;
       size_t hl = 0;
       if (parse_atx_heading(trimmed, tlen, &hlevel, &hs, &hl)) {
         if (in_para) {
@@ -2583,7 +2610,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           pbuf.len = 0;
           p_contiguous = 0;
         }
-        const char *id_s = NULL;
+        const char *id_s = nullptr;
         size_t id_l = 0;
         hl = strip_heading_id(hs, hl, &id_s, &id_l);
         uint32_t hid = node_new(doc, MD_HEADING);
@@ -2597,7 +2624,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
             doc->nodes[hid].flags |= MD_F_TEXT_POOL;
           }
           doc->nodes[hid].text_len = (uint32_t)hl;
-          if (id_s != NULL)
+          if (id_s != nullptr)
             set_heading_anchor(doc, hid, id_s, id_l, file_path, collect_meta);
           node_append(doc, parent, hid);
         }
@@ -2608,7 +2635,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
       /* 4b. Fenced Code Block */
       char fch = 0;
       size_t flen = 0;
-      const char *info_s = NULL;
+      const char *info_s = nullptr;
       size_t info_l = 0;
       if (parse_fence_open(trimmed, tlen, &fch, &flen, &info_s, &info_l)) {
         if (in_para) {
@@ -2624,9 +2651,9 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
         int can_zero_copy =
             (indent == 0 && j < nlines && lines[j].s >= doc->src &&
              lines[j].s <= doc->src + doc->src_len);
-        const char *zc_start = can_zero_copy ? lines[j].s : NULL;
+        const char *zc_start = can_zero_copy ? lines[j].s : nullptr;
         const char *zc_end = zc_start;
-        ScratchBuf cbuf = {0};
+        ScratchBuf cbuf = {};
         while (j < nlines) {
           size_t jb = 0;
           size_t jind = count_indent(lines[j].s, lines[j].len, &jb);
@@ -2661,7 +2688,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
         if (cid != 0) {
           doc->nodes[cid].col = cur_col;
           doc->nodes[cid].flags |= MD_F_FENCED;
-          doc->has_code_block = 1;
+          doc->has_code_block = true;
           if (can_zero_copy && zc_end > zc_start) {
             doc->nodes[cid].text_off = (uint32_t)(zc_start - doc->src);
             doc->nodes[cid].text_len = (uint32_t)(zc_end - zc_start);
@@ -2672,7 +2699,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           }
           if (info_l > 0) {
             uint32_t il = 0;
-            uint8_t ip = 0;
+            bool ip = false;
             uint32_t io = unescape_slice(doc, info_s, info_l, &il, &ip);
             doc->nodes[cid].aux_off = io;
             doc->nodes[cid].aux_len = il;
@@ -2688,7 +2715,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
 
       /* 4c. Native mmdoc Admonition: :::+ type / :::+ {.type #anchor} */
       size_t open_colons = 0;
-      const char *atype_s = NULL, *aanc_s = NULL;
+      const char *atype_s = nullptr, *aanc_s = nullptr;
       size_t atype_l = 0, aanc_l = 0;
       if (parse_admon_open(trimmed, tlen, &open_colons, &atype_s, &atype_l,
                            &aanc_s, &aanc_l)) {
@@ -2746,7 +2773,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
               doc->nodes[aid].flags |= MD_F_AUX_POOL;
             }
             doc->nodes[aid].aux_len = (uint32_t)atype_l;
-            if (aanc_s != NULL && aanc_l > 0) {
+            if (aanc_s != nullptr && aanc_l > 0) {
               uint32_t ao;
               uint8_t aip = 0;
               if (aanc_s >= doc->src && aanc_s <= doc->src + doc->src_len) {
@@ -2762,7 +2789,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
             node_append(doc, parent, aid);
             if (j > i + 1) {
               parse_blocks(doc, aid, lines + i + 1, j - (i + 1), cur_col,
-                           file_path, collect_meta, depth + 1, NULL);
+                           file_path, collect_meta, depth + 1, nullptr);
             }
           }
           i = j + 1;
@@ -2801,9 +2828,9 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           pbuf.len = 0;
           p_contiguous = 0;
         }
-        LineView *qlines = NULL;
+        LineView *qlines = nullptr;
         size_t qn = 0, qcap = 0;
-        char **qallocs = NULL;
+        char **qallocs = nullptr;
         size_t qan = 0, qacap = 0;
         size_t j = i;
         int last_was_para = 0;
@@ -2827,7 +2854,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
                 ql = (LineView){lines[j].s + skip + 1, rest_len, 0};
               } else {
                 char *eb = malloc(rem_sp + rest_len + 1);
-                if (eb != NULL) {
+                if (eb != nullptr) {
                   memset(eb, ' ', rem_sp);
                   if (rest_len > 0)
                     memcpy(eb + rem_sp, lines[j].s + skip + 1, rest_len);
@@ -2857,7 +2884,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
                   in_q_fence = 0;
                 last_was_para = 0;
               } else {
-                const char *qis = NULL;
+                const char *qis = nullptr;
                 size_t qil = 0;
                 if (qind < 4 &&
                     parse_fence_open(qt, qtl, &q_fch, &q_flen, &qis, &qil)) {
@@ -2887,7 +2914,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           doc->nodes[bq].col = cur_col;
           node_append(doc, parent, bq);
           parse_blocks(doc, bq, qlines, qn, cur_col, file_path, collect_meta,
-                       depth + 1, NULL);
+                       depth + 1, nullptr);
         }
         free(qlines);
         for (size_t qa = 0; qa < qan; qa++)
@@ -2909,7 +2936,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
           pbuf.len = 0;
           p_contiguous = 0;
         }
-        ScratchBuf hbuf = {0};
+        ScratchBuf hbuf = {};
         size_t j = i;
         while (j < nlines) {
           if (htype >= 6 && is_blank_line(lines[j].s, lines[j].len))
@@ -2967,7 +2994,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
             int saw_blank_between = 0;
             size_t list_indent = indent;
             size_t j = i;
-            LineView *ilines = NULL;
+            LineView *ilines = nullptr;
             size_t icap = 0;
 
             while (j < nlines) {
@@ -3020,7 +3047,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
               ilines[in++] = first_lv;
               j++;
               int item_had_blank = 0;
-              char **lallocs = NULL;
+              char **lallocs = nullptr;
               size_t lan = 0, lacap = 0;
               while (j < nlines) {
                 if (is_blank_line(lines[j].s, lines[j].len)) {
@@ -3105,7 +3132,7 @@ static void parse_blocks(MdDoc *doc, uint32_t parent, const LineView *lines,
     /* 5. Detect potential definition list line ": " */
     if (indent < 4 && tlen >= 2 && trimmed[0] == ':' &&
         (trimmed[1] == ' ' || trimmed[1] == '\t')) {
-      doc->has_deflist = 1;
+      doc->has_deflist = true;
     }
 
     /* 6. Accumulate paragraph line (zero-copy when contiguous in src) */
@@ -3162,14 +3189,14 @@ static void split_compact_deflist_paras(MdDoc *doc, uint32_t container) {
   uint32_t cur = doc->nodes[container].first_child;
   while (cur != 0) {
     uint32_t next = doc->nodes[cur].next_sibling;
-    MdNodeType t = (MdNodeType)doc->nodes[cur].type;
+    MdNodeType t = doc->nodes[cur].type;
     if (t == MD_PARAGRAPH && doc->nodes[cur].text_len > 0) {
       const char *s = md_text_ptr(doc, &doc->nodes[cur]);
       size_t len = doc->nodes[cur].text_len;
       int in_pool = (doc->nodes[cur].flags & MD_F_TEXT_POOL) != 0;
       const char *nl = memchr(s, '\n', len);
       uint32_t split_target = cur;
-      while (nl != NULL) {
+      while (nl != nullptr) {
         size_t rem = len - (size_t)(nl + 1 - s);
         const char *next_nl = memchr(nl + 1, '\n', rem);
         size_t line_len = next_nl ? (size_t)(next_nl - (nl + 1)) : rem;
@@ -3206,7 +3233,8 @@ static void split_compact_deflist_paras(MdDoc *doc, uint32_t container) {
 }
 
 static void group_deflists(MdDoc *doc, uint32_t container,
-                           const char *file_path, int collect_meta, int depth) {
+                           const char *file_path, bool collect_meta,
+                           int depth) {
   if (depth > 16)
     return;
   split_compact_deflist_paras(doc, container);
@@ -3215,7 +3243,7 @@ static void group_deflists(MdDoc *doc, uint32_t container,
   uint32_t cur = doc->nodes[container].first_child;
   while (cur != 0) {
     uint32_t nxt = doc->nodes[cur].next_sibling;
-    MdNodeType ct = (MdNodeType)doc->nodes[cur].type;
+    MdNodeType ct = doc->nodes[cur].type;
     int next_is_def = 0;
     if (ct == MD_PARAGRAPH && nxt != 0 &&
         doc->nodes[nxt].type == MD_PARAGRAPH) {
@@ -3276,15 +3304,15 @@ static void group_deflists(MdDoc *doc, uint32_t container,
         int absorbed_extra = 0;
         while (cont != 0) {
           uint32_t cont_next = doc->nodes[cont].next_sibling;
-          MdNodeType kt = (MdNodeType)doc->nodes[cont].type;
+          MdNodeType kt = doc->nodes[cont].type;
           if (kt == MD_CODE_BLOCK && !(doc->nodes[cont].flags & MD_F_FENCED)) {
             const char *ks_raw = md_text_ptr(doc, &doc->nodes[cont]);
             size_t kl = doc->nodes[cont].text_len;
             char *kcopy = malloc(kl + 1);
-            if (kcopy != NULL) {
+            if (kcopy != nullptr) {
               memcpy(kcopy, ks_raw, kl);
               kcopy[kl] = '\0';
-              LineView *sub_lines = NULL;
+              LineView *sub_lines = nullptr;
               size_t sn = 0, scap = 0;
               size_t pos = 0;
               while (pos < kl) {
@@ -3298,7 +3326,7 @@ static void group_deflists(MdDoc *doc, uint32_t container,
                 pos = nl2 ? (size_t)(nl2 - kcopy) + 1 : kl;
               }
               parse_blocks(doc, dd, sub_lines, sn, dd_col, file_path,
-                           collect_meta, depth + 1, NULL);
+                           collect_meta, depth + 1, nullptr);
               free(sub_lines);
               free(kcopy);
             }
@@ -3341,62 +3369,61 @@ static void group_deflists(MdDoc *doc, uint32_t container,
 /* ---- Phase 2: Parse inlines for all leaf blocks ---- */
 
 static void parse_all_inlines(MdDoc *doc, const char *file_path,
-                              int collect_meta) {
+                              bool collect_meta) {
   uint32_t block_count = doc->nodes_len;
   for (uint32_t id = 1; id < block_count; id++) {
-    MdNodeType t = (MdNodeType)doc->nodes[id].type;
+    MdNodeType t = doc->nodes[id].type;
     if (t != MD_PARAGRAPH && t != MD_HEADING && t != MD_TABLE_CELL)
       continue;
     if (doc->nodes[id].text_len == 0)
       continue;
     const char *s = md_text_ptr(doc, &doc->nodes[id]);
     size_t len = doc->nodes[id].text_len;
-    char *tmp_copy = NULL;
+    char *tmp_copy = nullptr;
     if (doc->nodes[id].flags & MD_F_TEXT_POOL) {
-      tmp_copy = malloc(len + 1);
-      if (tmp_copy == NULL)
+      tmp_copy = strndup(s, len);
+      if (tmp_copy == nullptr)
         continue;
-      memcpy(tmp_copy, s, len);
-      tmp_copy[len] = '\0';
       s = tmp_copy;
     }
     parse_inlines_range(doc, id, s, s + len, file_path, collect_meta);
     free(tmp_copy);
 
     if (collect_meta && t == MD_HEADING && doc->nodes[id].aux_len > 0 &&
-        doc->title == NULL) {
-      char *tbuf = NULL;
+        doc->title == nullptr) {
+      char *tbuf = nullptr;
       size_t tlen = 0, tcap = 0;
       extract_plain_title_rec(doc, id, &tbuf, &tlen, &tcap);
-      doc->title = tbuf != NULL ? tbuf : calloc(1, 1);
+      doc->title = tbuf != nullptr ? tbuf : calloc(1, 1);
     }
   }
-  if (collect_meta && doc->title == NULL)
+  if (collect_meta && doc->title == nullptr)
     doc->title = calloc(1, 1);
 }
 
 /* ---- Public API ---- */
 
 int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
-                    const char *file_path, int collect_meta) {
-  memset(doc, 0, sizeof(*doc));
-  doc->src = (char *)data;
-  doc->src_len = len;
-  doc->owns_src = 0;
+                    const char *file_path, bool collect_meta) {
+  *doc = (MdDoc){
+      .src = (char *)data,
+      .src_len = len,
+      .owns_src = false,
+  };
 
   uint32_t init_nodes = (uint32_t)(len / 16) + 64;
   if (init_nodes < 128)
     init_nodes = 128;
   doc->nodes = malloc((size_t)init_nodes * sizeof(MdNode));
-  if (doc->nodes == NULL)
+  if (doc->nodes == nullptr)
     return -1;
   doc->nodes_cap = init_nodes;
   doc->nodes_len = 1;
-  memset(&doc->nodes[0], 0, sizeof(MdNode));
+  doc->nodes[0] = (MdNode){};
 
   size_t init_pool = len / 4 + 256;
   doc->pool = malloc(init_pool);
-  if (doc->pool == NULL) {
+  if (doc->pool == nullptr) {
     md_doc_free(doc);
     return -1;
   }
@@ -3414,7 +3441,7 @@ int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
 
   size_t lcap = len / 32 + 32;
   LineView *lines = malloc(lcap * sizeof(*lines));
-  if (lines == NULL) {
+  if (lines == nullptr) {
     md_doc_free(doc);
     return -1;
   }
@@ -3428,7 +3455,7 @@ int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
     if (nlines == lcap) {
       lcap *= 2;
       LineView *nlv = realloc(lines, lcap * sizeof(*nlv));
-      if (nlv == NULL) {
+      if (nlv == nullptr) {
         free(lines);
         md_doc_free(doc);
         return -1;
@@ -3439,7 +3466,8 @@ int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
     pos = nl ? (size_t)(nl - data) + 1 : len;
   }
 
-  parse_blocks(doc, root, lines, nlines, 1, file_path, collect_meta, 0, NULL);
+  parse_blocks(doc, root, lines, nlines, 1, file_path, collect_meta, 0,
+               nullptr);
   free(lines);
 
   if (doc->has_deflist)
@@ -3453,17 +3481,17 @@ int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
   return 0;
 }
 
-int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta) {
+int md_parse_file(MdDoc *doc, const char *file_path, bool collect_meta) {
   FILE *f = fopen(file_path, "rb");
-  if (f == NULL)
+  if (f == nullptr)
     return -1;
   struct stat st;
-  char *buf = NULL;
+  char *buf = nullptr;
   size_t total = 0;
   if (fstat(fileno(f), &st) == 0 && S_ISREG(st.st_mode) && st.st_size >= 0) {
     size_t sz = (size_t)st.st_size;
     buf = malloc(sz + 1);
-    if (buf == NULL) {
+    if (buf == nullptr) {
       fclose(f);
       return -1;
     }
@@ -3477,7 +3505,7 @@ int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta) {
   } else {
     size_t cap = 4096;
     buf = malloc(cap);
-    if (buf == NULL) {
+    if (buf == nullptr) {
       fclose(f);
       return -1;
     }
@@ -3485,7 +3513,7 @@ int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta) {
       if (total + 4096 + 1 > cap) {
         cap *= 2;
         char *nb = realloc(buf, cap);
-        if (nb == NULL) {
+        if (nb == nullptr) {
           free(buf);
           fclose(f);
           return -1;
@@ -3499,7 +3527,7 @@ int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta) {
     }
     buf[total] = '\0';
   }
-  int err = ferror(f);
+  bool err = ferror(f) != 0;
   if (fclose(f) != 0 || err) {
     free(buf);
     return -1;
@@ -3509,7 +3537,7 @@ int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta) {
     free(buf);
     return -1;
   }
-  doc->owns_src = 1;
+  doc->owns_src = true;
   return 0;
 }
 
@@ -3522,5 +3550,5 @@ void md_doc_free(MdDoc *doc) {
   free(doc->refs);
   free(doc->title);
   free_array(&doc->anchors);
-  memset(doc, 0, sizeof(*doc));
+  *doc = (MdDoc){};
 }

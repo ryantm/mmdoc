@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef enum {
+typedef enum : uint8_t {
   MD_NONE = 0,
   MD_DOCUMENT,
   MD_BLOCK_QUOTE,
@@ -39,7 +39,7 @@ typedef enum {
   MD_SPAN,
 } MdNodeType;
 
-enum {
+enum : uint8_t {
   MD_F_TEXT_POOL = 1 << 0,
   MD_F_AUX_POOL = 1 << 1,
   MD_F_FENCED = 1 << 2,
@@ -51,12 +51,12 @@ enum {
 };
 
 /* Admonition tight-boundary bits stored in MdNode.info for MD_ADMONITION */
-enum {
+enum : uint8_t {
   MD_ADMON_TIGHT_OPEN = 1 << 0,
   MD_ADMON_TIGHT_CLOSE = 1 << 1,
 };
 
-enum {
+enum : uint8_t {
   MD_ALIGN_NONE = 0,
   MD_ALIGN_LEFT = 1,
   MD_ALIGN_CENTER = 2,
@@ -72,18 +72,20 @@ typedef struct {
   uint32_t text_len;
   uint32_t aux_off;
   uint32_t aux_len;
-  uint8_t type;
+  MdNodeType type;
   uint8_t flags;
   uint8_t info; /* heading level 1..6, list delim, table align, admon flags */
   uint8_t col;  /* 1-based start column (saturated at 255) */
 } MdNode;
+
+static_assert(sizeof(MdNode) == 32);
 
 typedef struct {
   uint32_t node_id;
   uint32_t str_off;
   uint32_t str_len;
   int32_t num;
-  uint8_t str_in_pool;
+  bool str_in_pool;
 } MdExtra;
 
 typedef struct {
@@ -93,15 +95,15 @@ typedef struct {
   uint32_t url_len;
   uint32_t title_off;
   uint32_t title_len;
-  uint8_t url_in_pool;
-  uint8_t title_in_pool;
+  bool url_in_pool;
+  bool title_in_pool;
   uint64_t hash;
 } MdRefDef;
 
 typedef struct {
   char *src;
   size_t src_len;
-  int owns_src;
+  bool owns_src;
 
   char *pool;
   size_t pool_len;
@@ -119,9 +121,9 @@ typedef struct {
   uint32_t refs_cap;
   uint32_t refs_used;
 
-  int has_code_block;
-  int has_deflist;
-  int anchor_overflow;
+  bool has_code_block;
+  bool has_deflist;
+  bool anchor_overflow;
   char *title;
   Array anchors;
 } MdDoc;
@@ -145,9 +147,10 @@ const MdExtra *md_find_extra(const MdDoc *doc, uint32_t node_id);
 /* Parse Markdown buffer or file into a flat-array zero-copy MdDoc.
  * Collects anchors, first anchored heading title, and has_code_block in-pass.
  * Returns 0 on success, -1 on I/O, allocation, or anchor-length error. */
-int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
-                    const char *file_path, int collect_meta);
-int md_parse_file(MdDoc *doc, const char *file_path, int collect_meta);
+[[nodiscard]] int md_parse_buffer(MdDoc *doc, const char *data, size_t len,
+                                  const char *file_path, bool collect_meta);
+[[nodiscard]] int md_parse_file(MdDoc *doc, const char *file_path,
+                                bool collect_meta);
 void md_doc_free(MdDoc *doc);
 
 #endif /* MMDOC_MD_H */

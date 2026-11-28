@@ -10,5 +10,5 @@ typedef struct {
   char *out_single;
 } Inputs;
 
-int mmdoc_inputs_derive(Inputs *inputs, char *argv[]);
+[[nodiscard]] int mmdoc_inputs_derive(Inputs *inputs, char *argv[]);
 void mmdoc_inputs_free(Inputs *inputs);

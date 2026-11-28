@@ -23,7 +23,7 @@ static const char *html_escape_entity(char c, size_t *len) {
     *len = 6;
     return "&quot;";
   default:
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -33,7 +33,7 @@ int html_write_escaped(FILE *file, const char *text) {
   while (*p != '\0') {
     size_t entity_len = 0;
     const char *entity = html_escape_entity(*p, &entity_len);
-    if (entity != NULL) {
+    if (entity != nullptr) {
       size_t run_len = (size_t)(p - run);
       if (run_len > 0 && fwrite(run, 1, run_len, file) != run_len)
         return -1;
@@ -54,13 +54,13 @@ char *html_escape_string(const char *text) {
   size_t len = 0;
   for (const char *p = text; *p != '\0'; p++) {
     size_t entity_len = 0;
-    if (html_escape_entity(*p, &entity_len) != NULL)
+    if (html_escape_entity(*p, &entity_len) != nullptr)
       extra += entity_len - 1;
     len++;
   }
   char *out = malloc(len + extra + 1);
-  if (out == NULL)
-    return NULL;
+  if (out == nullptr)
+    return nullptr;
   if (extra == 0) {
     memcpy(out, text, len + 1);
     return out;
@@ -69,7 +69,7 @@ char *html_escape_string(const char *text) {
   for (const char *p = text; *p != '\0'; p++) {
     size_t entity_len = 0;
     const char *entity = html_escape_entity(*p, &entity_len);
-    if (entity != NULL) {
+    if (entity != nullptr) {
       memcpy(dst, entity, entity_len);
       dst += entity_len;
     } else {
@@ -81,11 +81,11 @@ char *html_escape_string(const char *text) {
 }
 
 char *mmdoc_url_encode_path(const char *path) {
-  static const char hex[] = "0123456789ABCDEF";
+  static constexpr char hex[] = "0123456789ABCDEF";
   size_t len = strlen(path);
   char *out = malloc(len * 3 + 1);
-  if (out == NULL)
-    return NULL;
+  if (out == nullptr)
+    return nullptr;
   char *dst = out;
   for (const unsigned char *p = (const unsigned char *)path; *p != '\0'; p++) {
     if (isalnum(*p) || *p == '-' || *p == '.' || *p == '_' || *p == '~' ||

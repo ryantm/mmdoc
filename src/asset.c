@@ -34,11 +34,11 @@ static const unsigned char asset_mmdoc_search_js[] = {
 };
 
 /* Fast 64-bit XXH64 streaming hash (4-lane 32 bytes/iter). */
-#define XXH_PRIME1 UINT64_C(0x9E3779B185EBCA87)
-#define XXH_PRIME2 UINT64_C(0xC2B2AE3D27D4EB4F)
-#define XXH_PRIME3 UINT64_C(0x165667B19E3779F9)
-#define XXH_PRIME4 UINT64_C(0x85EBCA77C2B2AE63)
-#define XXH_PRIME5 UINT64_C(0x27D4EB2F165667C5)
+static constexpr uint64_t XXH_PRIME1 = UINT64_C(0x9E3779B185EBCA87);
+static constexpr uint64_t XXH_PRIME2 = UINT64_C(0xC2B2AE3D27D4EB4F);
+static constexpr uint64_t XXH_PRIME3 = UINT64_C(0x165667B19E3779F9);
+static constexpr uint64_t XXH_PRIME4 = UINT64_C(0x85EBCA77C2B2AE63);
+static constexpr uint64_t XXH_PRIME5 = UINT64_C(0x27D4EB2F165667C5);
 
 static inline uint64_t xxh_rotl64(uint64_t x, int r) {
   return (x << r) | (x >> (64 - r));
@@ -243,7 +243,7 @@ int asset_hashed_file_name_from_path(const char *path, const char *stem,
                                      const char *extension, char *file_name,
                                      size_t file_name_size) {
   FILE *file = fopen(path, "rb");
-  if (file == NULL)
+  if (file == nullptr)
     return -1;
 
   AssetHashState state;
@@ -252,10 +252,9 @@ int asset_hashed_file_name_from_path(const char *path, const char *stem,
   size_t bytes_read;
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
     asset_hash_state_feed(&state, buffer, bytes_read);
-  int read_failed = ferror(file);
-  int close_failed = fclose(file) != 0;
-  int failed = read_failed || close_failed;
-  if (failed)
+  bool read_failed = ferror(file) != 0;
+  bool close_failed = fclose(file) != 0;
+  if (read_failed || close_failed)
     return -1;
 
   asset_format_hashed_name(stem, extension, asset_hash_state_final(&state),
@@ -276,13 +275,13 @@ static int asset_write_to_dir(char *dir, const char *asset_file_name,
                               const unsigned char *asset_array,
                               size_t asset_array_length) {
   char *asset_path = malloc(strlen(dir) + 1 + strlen(asset_file_name) + 1);
-  if (asset_path == NULL) {
+  if (asset_path == nullptr) {
     printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
     return -1;
   }
   sprintf(asset_path, "%s/%s", dir, asset_file_name);
   FILE *asset_file = fopen(asset_path, "w");
-  if (asset_file == NULL) {
+  if (asset_file == nullptr) {
     printf("Failed to open file %s for writing: %s\n", asset_path,
            strerror(errno));
     free(asset_path);

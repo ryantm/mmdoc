@@ -1,27 +1,40 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "types.h"
 #include "arena.h"
+#include <stdbit.h>
+#include <stdckdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize) {
-  a->array = initialSize > 0 ? malloc(initialSize * sizeof(*a->array)) : NULL;
+  size_t bytes = 0;
+  a->array =
+      (initialSize > 0 && !ckd_mul(&bytes, initialSize, sizeof(*a->array)))
+          ? malloc(bytes)
+          : nullptr;
   a->used = 0;
-  a->size = a->array != NULL ? initialSize : 0;
-  a->anchor_index = NULL;
+  a->size = a->array != nullptr ? initialSize : 0;
+  a->anchor_index = nullptr;
   a->anchor_index_size = 0;
-  a->string_arena = NULL;
+  a->string_arena = nullptr;
 }
 
 int reserve_anchor_location_array(AnchorLocationArray *a, size_t additional) {
-  size_t needed = a->used + additional;
+  size_t needed = 0;
+  if (ckd_add(&needed, a->used, additional))
+    return -1;
   if (needed <= a->size)
     return 0;
   size_t next_size = a->size == 0 ? 64 : a->size;
-  while (next_size < needed)
-    next_size *= 2;
-  AnchorLocation *next = realloc(a->array, next_size * sizeof(*a->array));
-  if (next == NULL)
+  while (next_size < needed) {
+    if (ckd_mul(&next_size, next_size, 2))
+      return -1;
+  }
+  size_t bytes = 0;
+  if (ckd_mul(&bytes, next_size, sizeof(*a->array)))
+    return -1;
+  AnchorLocation *next = realloc(a->array, bytes);
+  if (next == nullptr)
     return -1;
   a->array = next;
   a->size = next_size;
@@ -31,12 +44,17 @@ int reserve_anchor_location_array(AnchorLocationArray *a, size_t additional) {
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element) {
   free(a->anchor_index);
-  a->anchor_index = NULL;
+  a->anchor_index = nullptr;
   a->anchor_index_size = 0;
   if (a->used == a->size) {
-    size_t next_size = a->size == 0 ? 1 : a->size * 2;
-    AnchorLocation *next = realloc(a->array, next_size * sizeof(*a->array));
-    if (next == NULL)
+    size_t next_size = 1;
+    if (a->size != 0 && ckd_mul(&next_size, a->size, 2))
+      return;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, next_size, sizeof(*a->array)))
+      return;
+    AnchorLocation *next = realloc(a->array, bytes);
+    if (next == nullptr)
       return;
     a->array = next;
     a->size = next_size;
@@ -54,18 +72,21 @@ static size_t anchor_hash(const char *anchor) {
 
 int build_anchor_location_index(AnchorLocationArray *a) {
   free(a->anchor_index);
-  a->anchor_index = NULL;
+  a->anchor_index = nullptr;
   a->anchor_index_size = 0;
 
   if (a->used == 0)
     return 0;
 
-  size_t index_size = 1;
-  while (index_size < a->used * 2)
-    index_size *= 2;
+  size_t min_slots = 0;
+  if (ckd_mul(&min_slots, a->used, 2))
+    return -1;
+  size_t index_size = stdc_bit_ceil(min_slots);
+  if (index_size == 0)
+    return -1;
 
   size_t *index = calloc(index_size, sizeof(*index));
-  if (index == NULL)
+  if (index == nullptr)
     return -1;
 
   for (size_t i = 0; i < a->used; i++) {
@@ -87,7 +108,7 @@ int build_anchor_location_index(AnchorLocationArray *a) {
 
 AnchorLocation *find_anchor_location(AnchorLocationArray *a,
                                      const char *anchor) {
-  if (a->anchor_index != NULL) {
+  if (a->anchor_index != nullptr) {
     size_t slot = anchor_hash(anchor) & (a->anchor_index_size - 1);
     while (a->anchor_index[slot] != 0) {
       AnchorLocation *location = &a->array[a->anchor_index[slot] - 1];
@@ -95,13 +116,13 @@ AnchorLocation *find_anchor_location(AnchorLocationArray *a,
         return location;
       slot = (slot + 1) & (a->anchor_index_size - 1);
     }
-    return NULL;
+    return nullptr;
   }
 
   for (size_t i = 0; i < a->used; i++)
     if (strcmp(anchor, a->array[i].anchor) == 0)
       return &a->array[i];
-  return NULL;
+  return nullptr;
 }
 
 void free_anchor_location(AnchorLocation *location) {
@@ -112,23 +133,23 @@ void free_anchor_location(AnchorLocation *location) {
   free(location->multipage_base_href);
   free(location->anchor);
   free(location->title);
-  memset(location, 0, sizeof(*location));
+  *location = (AnchorLocation){};
 }
 
 void free_anchor_location_array(AnchorLocationArray *a) {
   free(a->anchor_index);
   free(a->array);
-  a->array = NULL;
-  a->anchor_index = NULL;
+  a->array = nullptr;
+  a->anchor_index = nullptr;
   a->anchor_index_size = 0;
   a->used = a->size = 0;
 }
 
 void free_anchor_location_array_deep(AnchorLocationArray *a) {
-  if (a->string_arena != NULL) {
+  if (a->string_arena != nullptr) {
     mmdoc_arena_destroy(a->string_arena);
     free(a->string_arena);
-    a->string_arena = NULL;
+    a->string_arena = nullptr;
   } else {
     for (size_t i = 0; i < a->used; i++)
       free_anchor_location(&a->array[i]);
@@ -137,25 +158,32 @@ void free_anchor_location_array_deep(AnchorLocationArray *a) {
 }
 
 void init_array(Array *a, size_t initialSize) {
-  a->array = initialSize > 0 ? malloc(initialSize * sizeof(*a->array)) : NULL;
+  size_t bytes = 0;
+  a->array =
+      (initialSize > 0 && !ckd_mul(&bytes, initialSize, sizeof(*a->array)))
+          ? malloc(bytes)
+          : nullptr;
   a->used = 0;
-  a->size = a->array != NULL ? initialSize : 0;
+  a->size = a->array != nullptr ? initialSize : 0;
 }
 
 void insert_array(Array *a, char *element) {
   if (a->used == a->size) {
-    size_t next_size = a->size == 0 ? 1 : a->size * 2;
-    char **next = realloc(a->array, next_size * sizeof(*a->array));
-    if (next == NULL)
+    size_t next_size = 1;
+    if (a->size != 0 && ckd_mul(&next_size, a->size, 2))
+      return;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, next_size, sizeof(*a->array)))
+      return;
+    char **next = realloc(a->array, bytes);
+    if (next == nullptr)
       return;
     a->array = next;
     a->size = next_size;
   }
-  size_t len = strlen(element) + 1;
-  char *copy = malloc(len);
-  if (copy == NULL)
+  char *copy = strdup(element);
+  if (copy == nullptr)
     return;
-  memcpy(copy, element, len);
   a->array[a->used] = copy;
   a->used++;
 }
@@ -164,12 +192,12 @@ void free_array(Array *a) {
   for (size_t i = 0; i < a->used; i++)
     free(a->array[i]);
   free(a->array);
-  a->array = NULL;
+  a->array = nullptr;
   a->used = a->size = 0;
 }
 
 static const char *page_dedup_key(const AnchorLocation *loc) {
-  if (loc->multipage_output_file_path != NULL)
+  if (loc->multipage_output_file_path != nullptr)
     return loc->multipage_output_file_path;
   return loc->file_path;
 }
@@ -179,26 +207,26 @@ size_t mmdoc_collect_unique_page_indices(AnchorLocationArray toc_locations,
   if (toc_locations.used == 0)
     return 0;
 
-  size_t table_size = 1;
-  while (table_size < toc_locations.used * 2)
-    table_size *= 2;
-  size_t *seen = calloc(table_size, sizeof(*seen));
+  size_t min_slots = 0;
+  size_t table_size =
+      ckd_mul(&min_slots, toc_locations.used, 2) ? 0 : stdc_bit_ceil(min_slots);
+  size_t *seen = table_size > 0 ? calloc(table_size, sizeof(*seen)) : nullptr;
   size_t page_count = 0;
 
-  if (seen != NULL) {
+  if (seen != nullptr) {
     for (size_t i = 0; i < toc_locations.used; i++) {
       const char *key = page_dedup_key(&toc_locations.array[i]);
-      if (key == NULL) {
+      if (key == nullptr) {
         page_indices[page_count++] = i;
         continue;
       }
       size_t slot = anchor_hash(key) & (table_size - 1);
-      int duplicate = 0;
+      bool duplicate = false;
       while (seen[slot] != 0) {
         const char *existing =
             page_dedup_key(&toc_locations.array[seen[slot] - 1]);
-        if (existing != NULL && strcmp(existing, key) == 0) {
-          duplicate = 1;
+        if (existing != nullptr && strcmp(existing, key) == 0) {
+          duplicate = true;
           break;
         }
         slot = (slot + 1) & (table_size - 1);
@@ -214,13 +242,13 @@ size_t mmdoc_collect_unique_page_indices(AnchorLocationArray toc_locations,
 
   for (size_t i = 0; i < toc_locations.used; i++) {
     const char *key = page_dedup_key(&toc_locations.array[i]);
-    int duplicate = 0;
-    if (key != NULL) {
+    bool duplicate = false;
+    if (key != nullptr) {
       for (size_t j = 0; j < page_count; j++) {
         const char *existing =
             page_dedup_key(&toc_locations.array[page_indices[j]]);
-        if (existing != NULL && strcmp(existing, key) == 0) {
-          duplicate = 1;
+        if (existing != nullptr && strcmp(existing, key) == 0) {
+          duplicate = true;
           break;
         }
       }

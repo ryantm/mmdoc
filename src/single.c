@@ -9,7 +9,7 @@
 
 static int write_single_header(FILE *index_file, Inputs inputs,
                                AnchorLocationArray anchor_locations,
-                               int *has_code_block) {
+                               bool *has_code_block) {
   if (fputs("<!doctype html>\n"
             "<html lang='en'>\n"
             "  <head>\n"
@@ -46,13 +46,13 @@ static int write_single_header(FILE *index_file, Inputs inputs,
             index_file) == EOF)
     return -1;
 
-  AnchorLocation al = {0};
+  AnchorLocation al = {};
   int toc_code =
       mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
-                        anchor_locations, "", NULL);
+                        anchor_locations, "", nullptr);
   if (toc_code < 0)
     return -1;
-  *has_code_block = toc_code;
+  *has_code_block = toc_code != 0;
 
   if (fputs("    </nav>\n"
             "    <section id='main'>\n"
@@ -63,7 +63,7 @@ static int write_single_header(FILE *index_file, Inputs inputs,
   return 0;
 }
 
-static int write_single_footer(FILE *index_file, int has_code_block) {
+static int write_single_footer(FILE *index_file, bool has_code_block) {
   if (fputs("        </main>\n"
             "      </div>\n"
             "      </section>\n"
@@ -81,11 +81,11 @@ static int write_single_footer(FILE *index_file, int has_code_block) {
 static FILE *open_single_index(const char *out) {
   if (mkdir_p(out) != 0) {
     printf("Error recursively making single directory %s\n", out);
-    return NULL;
+    return nullptr;
   }
   char *index_path = malloc(strlen(out) + sizeof("/index.html"));
-  if (index_path == NULL)
-    return NULL;
+  if (index_path == nullptr)
+    return nullptr;
   sprintf(index_path, "%s/index.html", out);
   FILE *index_file = fopen(index_path, "w");
   free(index_path);
@@ -97,31 +97,31 @@ int mmdoc_single_write_from_chapters(Inputs inputs,
                                      const ChapterOutputs *chapters,
                                      size_t page_count) {
   FILE *index_file = open_single_index(inputs.out_single);
-  if (index_file == NULL)
+  if (index_file == nullptr)
     return -1;
   char io_buf[65536];
   setvbuf(index_file, io_buf, _IOFBF, sizeof(io_buf));
 
-  int has_code_block = 0;
-  int failed = write_single_header(index_file, inputs, anchor_locations,
-                                   &has_code_block) != 0;
+  bool has_code_block = false;
+  bool failed = write_single_header(index_file, inputs, anchor_locations,
+                                    &has_code_block) != 0;
 
   for (size_t i = 0; !failed && i < page_count; i++) {
     if (chapters[i].single_html.len > 0 &&
         fwrite(chapters[i].single_html.data, 1, chapters[i].single_html.len,
                index_file) != chapters[i].single_html.len) {
-      failed = 1;
+      failed = true;
       break;
     }
-    has_code_block |= chapters[i].has_code_block;
+    has_code_block = has_code_block || chapters[i].has_code_block;
   }
 
   if (!failed && write_single_footer(index_file, has_code_block) != 0)
-    failed = 1;
+    failed = true;
   if (ferror(index_file))
-    failed = 1;
+    failed = true;
   if (fclose(index_file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
@@ -129,23 +129,23 @@ int mmdoc_single_with_anchors(Inputs inputs,
                               AnchorLocationArray toc_anchor_locations,
                               AnchorLocationArray anchor_locations) {
   FILE *index_file = open_single_index(inputs.out_single);
-  if (index_file == NULL)
+  if (index_file == nullptr)
     return -1;
   char io_buf[65536];
   setvbuf(index_file, io_buf, _IOFBF, sizeof(io_buf));
 
   AnchorLocationArray lookup =
       anchor_locations.used > 0 ? anchor_locations : toc_anchor_locations;
-  int has_code_block = 0;
-  int failed =
+  bool has_code_block = false;
+  bool failed =
       write_single_header(index_file, inputs, lookup, &has_code_block) != 0;
 
-  size_t *page_indices = NULL;
+  size_t *page_indices = nullptr;
   size_t page_count = 0;
   if (!failed && toc_anchor_locations.used > 0) {
     page_indices = malloc(toc_anchor_locations.used * sizeof(*page_indices));
-    if (page_indices == NULL) {
-      failed = 1;
+    if (page_indices == nullptr) {
+      failed = true;
     } else {
       page_count =
           mmdoc_collect_unique_page_indices(toc_anchor_locations, page_indices);
@@ -154,26 +154,27 @@ int mmdoc_single_with_anchors(Inputs inputs,
 
   for (size_t i = 0; !failed && i < page_count; i++) {
     AnchorLocation *loc = &toc_anchor_locations.array[page_indices[i]];
-    int rendered = mmdoc_render_part(loc->file_path, index_file,
-                                     RENDER_TYPE_SINGLE, loc, lookup, "", NULL);
+    int rendered =
+        mmdoc_render_part(loc->file_path, index_file, RENDER_TYPE_SINGLE, loc,
+                          lookup, "", nullptr);
     if (rendered < 0) {
-      failed = 1;
+      failed = true;
       break;
     }
-    has_code_block |= rendered;
+    has_code_block = has_code_block || (rendered != 0);
   }
   free(page_indices);
 
   if (!failed && write_single_footer(index_file, has_code_block) != 0)
-    failed = 1;
+    failed = true;
   if (ferror(index_file))
-    failed = 1;
+    failed = true;
   if (fclose(index_file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
 int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
-  AnchorLocationArray empty = {0};
+  AnchorLocationArray empty = {};
   return mmdoc_single_with_anchors(inputs, toc_anchor_locations, empty);
 }

@@ -11,14 +11,6 @@ int mmdoc_anchors(Array *md_anchors, char *path) {
   return mmdoc_render_collect_anchors(path, md_anchors);
 }
 
-static char *copy_string(const char *source) {
-  size_t len = strlen(source) + 1;
-  char *copy = malloc(len);
-  if (copy != NULL)
-    memcpy(copy, source, len);
-  return copy;
-}
-
 typedef struct {
   char *output_file_path;
   char *output_directory_path;
@@ -31,21 +23,21 @@ static void free_page_paths(PagePaths *p) {
   free(p->output_directory_path);
   free(p->multipage_url);
   free(p->multipage_base_href);
-  memset(p, 0, sizeof(*p));
+  *p = (PagePaths){};
 }
 
 static int compute_page_paths(PagePaths *p, const char *file_path,
-                              int is_index_page, Inputs inputs) {
-  memset(p, 0, sizeof(*p));
+                              bool is_index_page, Inputs inputs) {
+  *p = (PagePaths){};
   if (is_index_page) {
     const char *index_html = "index.html";
     p->output_file_path =
         malloc(strlen(inputs.out_multi) + 1 + strlen(index_html) + 1);
-    p->output_directory_path = copy_string(inputs.out_multi);
-    p->multipage_url = copy_string("./");
-    p->multipage_base_href = copy_string("");
-    if (p->output_file_path == NULL || p->output_directory_path == NULL ||
-        p->multipage_url == NULL || p->multipage_base_href == NULL) {
+    p->output_directory_path = strdup(inputs.out_multi);
+    p->multipage_url = strdup("./");
+    p->multipage_base_href = strdup("");
+    if (p->output_file_path == nullptr || p->output_directory_path == nullptr ||
+        p->multipage_url == nullptr || p->multipage_base_href == nullptr) {
       free_page_paths(p);
       return -1;
     }
@@ -55,10 +47,10 @@ static int compute_page_paths(PagePaths *p, const char *file_path,
 
   size_t src_len = strlen(inputs.src);
   const char *rel = file_path + src_len;
-  int need_slash = rel[0] != '/';
+  bool need_slash = rel[0] != '/';
   char *page_path =
       malloc(strlen(inputs.out_multi) + (size_t)need_slash + strlen(rel) + 13);
-  if (page_path == NULL) {
+  if (page_path == nullptr) {
     free_page_paths(p);
     return -1;
   }
@@ -66,24 +58,25 @@ static int compute_page_paths(PagePaths *p, const char *file_path,
 
   char *last_slash = strrchr(page_path, '/');
   char *last_ext = strrchr(page_path, '.');
-  while (last_ext != NULL && (last_slash == NULL ? last_ext > page_path
-                                                 : last_ext > last_slash + 1)) {
+  while (last_ext != nullptr &&
+         (last_slash == nullptr ? last_ext > page_path
+                                : last_ext > last_slash + 1)) {
     *last_ext = '\0';
     last_ext = strrchr(page_path, '.');
   }
   strcat(page_path, "/");
 
-  p->output_directory_path = copy_string(page_path);
+  p->output_directory_path = strdup(page_path);
   strcat(page_path, "index.html");
   p->output_file_path = page_path;
-  if (p->output_directory_path == NULL) {
+  if (p->output_directory_path == nullptr) {
     free_page_paths(p);
     return -1;
   }
 
   const char *raw_url = p->output_directory_path + strlen(inputs.out_multi) + 1;
   p->multipage_url = mmdoc_url_encode_path(raw_url);
-  if (p->multipage_url == NULL) {
+  if (p->multipage_url == nullptr) {
     free_page_paths(p);
     return -1;
   }
@@ -94,7 +87,7 @@ static int compute_page_paths(PagePaths *p, const char *file_path,
       directory_depth++;
 
   p->multipage_base_href = malloc(3 * directory_depth + 1);
-  if (p->multipage_base_href == NULL) {
+  if (p->multipage_base_href == nullptr) {
     free_page_paths(p);
     return -1;
   }
@@ -106,14 +99,14 @@ static int compute_page_paths(PagePaths *p, const char *file_path,
 
 int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
                            const char *file_path, const Array *anchors,
-                           const char *title, int is_index_page,
+                           const char *title, bool is_index_page,
                            Inputs inputs) {
   if (anchors->used == 0)
     return 0;
 
-  if (anchor_locations->string_arena == NULL) {
+  if (anchor_locations->string_arena == nullptr) {
     MmdocArena *arena = malloc(sizeof(*arena));
-    if (arena == NULL) {
+    if (arena == nullptr) {
       fprintf(stderr, "Fatal: failed to allocate anchor string arena.\n");
       return -1;
     }
@@ -137,21 +130,21 @@ int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
   char *shared_base_href = mmdoc_arena_strdup(arena, paths.multipage_base_href);
   free_page_paths(&paths);
 
-  if (shared_file_path == NULL || shared_title == NULL ||
-      shared_out_file == NULL || shared_out_dir == NULL || shared_url == NULL ||
-      shared_base_href == NULL ||
+  if (shared_file_path == nullptr || shared_title == nullptr ||
+      shared_out_file == nullptr || shared_out_dir == nullptr ||
+      shared_url == nullptr || shared_base_href == nullptr ||
       reserve_anchor_location_array(anchor_locations, anchors->used) != 0) {
     fprintf(stderr, "Fatal: failed to allocate anchor location metadata.\n");
     return -1;
   }
 
   free(anchor_locations->anchor_index);
-  anchor_locations->anchor_index = NULL;
+  anchor_locations->anchor_index = nullptr;
   anchor_locations->anchor_index_size = 0;
 
   for (size_t j = 0; j < anchors->used; j++) {
     char *anchor_copy = mmdoc_arena_strdup(arena, anchors->array[j]);
-    if (anchor_copy == NULL) {
+    if (anchor_copy == nullptr) {
       fprintf(stderr, "Fatal: failed to allocate an anchor location.\n");
       return -1;
     }
@@ -169,27 +162,27 @@ int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
 
 int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
                             Array *md_files, Array *toc_refs, Inputs inputs) {
-  const char *index_anchor = toc_refs->used > 0 ? toc_refs->array[0] : NULL;
-  int found_index_page = 0;
+  const char *index_anchor = toc_refs->used > 0 ? toc_refs->array[0] : nullptr;
+  bool found_index_page = false;
 
   init_anchor_location_array(anchor_locations, 500);
 
   for (size_t i = 0; i < md_files->used; i++) {
     Array anchors;
     init_array(&anchors, 64);
-    char *title = NULL;
+    char *title = nullptr;
     if (mmdoc_render_collect_metadata(md_files->array[i], &anchors, &title) !=
         0) {
       free_array(&anchors);
       free_anchor_location_array_deep(anchor_locations);
       return -1;
     }
-    int is_index_page = 0;
+    bool is_index_page = false;
     for (size_t j = 0;
-         !found_index_page && index_anchor != NULL && j < anchors.used; j++)
+         !found_index_page && index_anchor != nullptr && j < anchors.used; j++)
       if (strcmp(anchors.array[j], index_anchor) == 0) {
-        is_index_page = 1;
-        found_index_page = 1;
+        is_index_page = true;
+        found_index_page = true;
       }
 
     if (mmdoc_anchors_add_file(anchor_locations, md_files->array[i], &anchors,
@@ -215,7 +208,7 @@ int mmdoc_anchors_find_toc_anchors(AnchorLocationArray *toc_anchor_locations,
   for (size_t i = 0; i < toc_refs->used; i++) {
     AnchorLocation *anchor_location =
         find_anchor_location(anchor_locations, toc_refs->array[i]);
-    if (anchor_location == NULL) {
+    if (anchor_location == nullptr) {
       printf("Anchor \"%s\" referenced in toc.md not found.\n",
              toc_refs->array[i]);
       return -1;

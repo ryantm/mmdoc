@@ -11,7 +11,7 @@
 static int publish(const char *temporary, const char *directory,
                    const char *name) {
   char *path = mmdoc_file_path(directory, name);
-  if (path == NULL)
+  if (path == nullptr)
     return -1;
   int result = rename(temporary, path);
   if (result != 0)
@@ -28,8 +28,8 @@ static char *chapter_url(const char *base, const AnchorLocation *chapter,
   size_t blen = strlen(base);
   size_t flen = strlen(fragment);
   char *url = malloc(blen + 3 * strlen(dir) + sizeof("index.md") + flen);
-  if (url == NULL)
-    return NULL;
+  if (url == nullptr)
+    return nullptr;
   char *out = url;
   memcpy(out, base, blen);
   out += blen;
@@ -50,22 +50,22 @@ static char *chapter_url(const char *base, const AnchorLocation *chapter,
 
 static int write_index_entry(FILE *index, const AnchorLocation *chapter) {
   char *url = chapter_url("", chapter, "");
-  if (url == NULL)
+  if (url == nullptr)
     return -1;
   const char *label = *chapter->title ? chapter->title : chapter->anchor + 1;
-  int failed = fputs("- [", index) == EOF;
+  bool failed = fputs("- [", index) == EOF;
   for (const unsigned char *p = (const unsigned char *)label; !failed && *p;
        p++) {
     if (*p == '[' || *p == ']' || *p == '\\' || *p == '*' || *p == '_' ||
         *p == '`' || *p == '<' || *p == '>' || *p == '~' || *p == '!') {
       if (fputc('\\', index) == EOF)
-        failed = 1;
+        failed = true;
     }
     if (!failed && fputc((int)*p, index) == EOF)
-      failed = 1;
+      failed = true;
   }
   if (!failed && fprintf(index, "](%s)\n", url) < 0)
-    failed = 1;
+    failed = true;
   free(url);
   return failed ? -1 : 0;
 }
@@ -77,11 +77,11 @@ int mmdoc_markdown_write_index_entry(FILE *index,
 
 static int write_buffer_file(const char *path, const char *data, size_t len) {
   FILE *file = fopen(path, "wb");
-  if (file == NULL)
+  if (file == nullptr)
     return -1;
-  int failed = len > 0 && fwrite(data, 1, len, file) != len;
+  bool failed = len > 0 && fwrite(data, 1, len, file) != len;
   if (fclose(file) != 0)
-    failed = 1;
+    failed = true;
   return failed ? -1 : 0;
 }
 
@@ -90,7 +90,7 @@ int mmdoc_markdown_write_from_chapters(Inputs inputs, AnchorLocationArray toc,
                                        size_t page_count,
                                        const ChapterOutputs *chapters) {
   char *staging = mmdoc_file_path(inputs.out_multi, ".mmdoc-XXXXXX");
-  if (staging == NULL || mkdtemp(staging) == NULL) {
+  if (staging == nullptr || mkdtemp(staging) == nullptr) {
     free(staging);
     return -1;
   }
@@ -98,13 +98,13 @@ int mmdoc_markdown_write_from_chapters(Inputs inputs, AnchorLocationArray toc,
   char *full_path = mmdoc_file_path(staging, "llms-full.txt");
   char *chapter_path = mmdoc_file_path(staging, "index.md");
 
-  FILE *index = NULL, *full = NULL;
+  FILE *index = nullptr, *full = nullptr;
   int result = -1;
   if (!index_path || !full_path || !chapter_path)
     goto done;
   index = fopen(index_path, "wb");
   full = fopen(full_path, "wb");
-  if (index == NULL || full == NULL ||
+  if (index == nullptr || full == nullptr ||
       fprintf(index, "# %s\n\n[Full manual](llms-full.txt)\n\n## Chapters\n\n",
               inputs.project_name) < 0)
     goto done;
@@ -114,7 +114,7 @@ int mmdoc_markdown_write_from_chapters(Inputs inputs, AnchorLocationArray toc,
 
   for (size_t i = 0; i < page_count; i++) {
     const AnchorLocation *chapter = &toc.array[page_indices[i]];
-    const MmdocBuf *chap_md = chapters[i].chapter_md.data != NULL
+    const MmdocBuf *chap_md = chapters[i].chapter_md.data != nullptr
                                   ? &chapters[i].chapter_md
                                   : &chapters[i].full_md;
     if (write_index_entry(index, chapter) != 0 ||
@@ -130,19 +130,19 @@ int mmdoc_markdown_write_from_chapters(Inputs inputs, AnchorLocationArray toc,
   result = 0;
 
 done:
-  if (index != NULL && fclose(index) != 0)
+  if (index != nullptr && fclose(index) != 0)
     result = -1;
-  if (full != NULL && fclose(full) != 0)
+  if (full != nullptr && fclose(full) != 0)
     result = -1;
   if (result == 0)
     result = publish(full_path, inputs.out_multi, "llms-full.txt");
   if (result == 0)
     result = publish(index_path, inputs.out_multi, "llms.txt");
-  if (chapter_path != NULL)
+  if (chapter_path != nullptr)
     unlink(chapter_path);
-  if (full_path != NULL)
+  if (full_path != nullptr)
     unlink(full_path);
-  if (index_path != NULL)
+  if (index_path != nullptr)
     unlink(index_path);
   rmdir(staging);
   free(chapter_path);
@@ -156,7 +156,7 @@ int mmdoc_markdown(Inputs inputs, AnchorLocationArray toc,
                    const size_t *page_indices, size_t page_count,
                    AnchorLocationArray anchors) {
   char *staging = mmdoc_file_path(inputs.out_multi, ".mmdoc-XXXXXX");
-  if (staging == NULL || mkdtemp(staging) == NULL) {
+  if (staging == nullptr || mkdtemp(staging) == nullptr) {
     free(staging);
     return -1;
   }
@@ -171,14 +171,14 @@ int mmdoc_markdown(Inputs inputs, AnchorLocationArray toc,
     insert_anchor_location_array(&chapters_by_source, &chapter);
   }
 
-  FILE *index = NULL, *full = NULL;
+  FILE *index = nullptr, *full = nullptr;
   int result = -1;
   if (!index_path || !full_path || !chapter_path ||
       build_anchor_location_index(&chapters_by_source) != 0)
     goto done;
   index = fopen(index_path, "wb");
   full = fopen(full_path, "wb");
-  if (index == NULL || full == NULL ||
+  if (index == nullptr || full == nullptr ||
       fprintf(index, "# %s\n\n[Full manual](llms-full.txt)\n\n## Chapters\n\n",
               inputs.project_name) < 0)
     goto done;
@@ -186,14 +186,14 @@ int mmdoc_markdown(Inputs inputs, AnchorLocationArray toc,
   for (size_t i = 0; i < page_count; i++) {
     AnchorLocation *chapter = &toc.array[page_indices[i]];
     MdDoc doc;
-    if (md_parse_file(&doc, chapter->file_path, 0) != 0)
+    if (md_parse_file(&doc, chapter->file_path, false) != 0)
       goto done;
-    MmdocBuf full_md = {0}, chap_md = {0};
+    MmdocBuf full_md = {}, chap_md = {};
     int rc = mmdoc_render_markdown_dual(
         &doc, chapter, &anchors, &chapters_by_source, &full_md, &chap_md);
     md_doc_free(&doc);
     if (rc == 0) {
-      const MmdocBuf *cm = chap_md.data != NULL ? &chap_md : &full_md;
+      const MmdocBuf *cm = chap_md.data != nullptr ? &chap_md : &full_md;
       if (write_index_entry(index, chapter) != 0 ||
           (i > 0 && fputc('\n', full) == EOF) ||
           (full_md.len > 0 &&
@@ -211,19 +211,19 @@ int mmdoc_markdown(Inputs inputs, AnchorLocationArray toc,
   result = 0;
 
 done:
-  if (index != NULL && fclose(index) != 0)
+  if (index != nullptr && fclose(index) != 0)
     result = -1;
-  if (full != NULL && fclose(full) != 0)
+  if (full != nullptr && fclose(full) != 0)
     result = -1;
   if (result == 0)
     result = publish(full_path, inputs.out_multi, "llms-full.txt");
   if (result == 0)
     result = publish(index_path, inputs.out_multi, "llms.txt");
-  if (chapter_path != NULL)
+  if (chapter_path != nullptr)
     unlink(chapter_path);
-  if (full_path != NULL)
+  if (full_path != nullptr)
     unlink(full_path);
-  if (index_path != NULL)
+  if (index_path != nullptr)
     unlink(index_path);
   rmdir(staging);
   free(chapter_path);

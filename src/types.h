@@ -32,12 +32,13 @@ typedef struct {
 } HeadingInfo;
 
 void init_anchor_location_array(AnchorLocationArray *a, size_t initialSize);
-int reserve_anchor_location_array(AnchorLocationArray *a, size_t additional);
+[[nodiscard]] int reserve_anchor_location_array(AnchorLocationArray *a,
+                                                size_t additional);
 void insert_anchor_location_array(AnchorLocationArray *a,
                                   AnchorLocation *element);
-int build_anchor_location_index(AnchorLocationArray *a);
-AnchorLocation *find_anchor_location(AnchorLocationArray *a,
-                                     const char *anchor);
+[[nodiscard]] int build_anchor_location_index(AnchorLocationArray *a);
+[[nodiscard]] AnchorLocation *find_anchor_location(AnchorLocationArray *a,
+                                                   const char *anchor);
 void free_anchor_location(AnchorLocation *location);
 void free_anchor_location_array(AnchorLocationArray *a);
 void free_anchor_location_array_deep(AnchorLocationArray *a);

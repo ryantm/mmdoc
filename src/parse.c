@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: CC0-1.0 */
-#include <stdio.h>
+#include "parse.h"
+#include <stdint.h>
 
-enum parse_heading_bracketed_span_state {
+enum parse_heading_bracketed_span_state : uint8_t {
   HEADING_NONE,
   HEADING_SPACE,
   HEADING_L,
@@ -9,10 +10,10 @@ enum parse_heading_bracketed_span_state {
 };
 
 int parse_heading_bracketed_span_id(const char *text, char *id) {
-  if (text == NULL)
+  if (text == nullptr)
     return -1;
   int id_pos = 0;
-  int bracket_found = 0;
+  bool bracket_found = false;
   int bracket_start = 0;
 
   enum parse_heading_bracketed_span_state state = HEADING_NONE;
@@ -54,7 +55,7 @@ int parse_heading_bracketed_span_id(const char *text, char *id) {
       if (c == '}') {
         if (id_pos > 0) {
           id[id_pos] = '\0';
-          bracket_found = 1;
+          bracket_found = true;
           break;
         }
         state = HEADING_NONE;
@@ -78,7 +79,7 @@ int parse_heading_bracketed_span_id(const char *text, char *id) {
   return bracket_found ? bracket_start : -1;
 }
 
-enum parse_link_bracketed_span_state {
+enum parse_link_bracketed_span_state : uint8_t {
   LINK_NONE,
   LINK_TEXT,
   LINK_R_SQUARE,
@@ -87,12 +88,12 @@ enum parse_link_bracketed_span_state {
 };
 
 int parse_link_bracketed_span_id(const char *text, char *span_text, char *id) {
-  if (text == NULL)
+  if (text == nullptr)
     return -1;
 
   int text_pos = 0;
   int id_pos = 0;
-  int bracket_found = 0;
+  bool bracket_found = false;
   int bracket_start = 0;
   enum parse_link_bracketed_span_state state = LINK_NONE;
 
@@ -155,7 +156,7 @@ int parse_link_bracketed_span_id(const char *text, char *span_text, char *id) {
       if (c == '}') {
         if (id_pos > 0) {
           id[id_pos] = '\0';
-          bracket_found = 1;
+          bracket_found = true;
           break;
         }
         text_pos = 0;
@@ -178,7 +179,7 @@ int parse_link_bracketed_span_id(const char *text, char *span_text, char *id) {
   return bracket_found ? bracket_start : -1;
 }
 
-enum parse_admonition_start_state {
+enum parse_admonition_start_state : uint8_t {
   ADMONITION_START_NONE,
   ADMONITION_START_ONE,
   ADMONITION_START_TWO,
@@ -190,7 +191,7 @@ enum parse_admonition_start_state {
 
 int parse_admonition_start(const char *text, char *admonition_type,
                            char *admonition_anchor) {
-  if (text == NULL)
+  if (text == nullptr)
     return -1;
   int type_pos = 0;
   int anchor_pos = 0;
@@ -262,7 +263,7 @@ int parse_admonition_start(const char *text, char *admonition_type,
 }
 
 int parse_admonition_end(const char *text) {
-  if (text == NULL)
+  if (text == nullptr)
     return -1;
   const char *p = text;
   while (*p == ' ')
@@ -279,14 +280,14 @@ int parse_admonition_end(const char *text) {
   return *p == '\0' ? 0 : -1;
 }
 
-enum parse_dd_state {
+enum parse_dd_state : uint8_t {
   DD_NONE,
   DD_COLON,
   DD_SPACE,
 };
 
 int parse_dd(const char *text) {
-  if (text == NULL)
+  if (text == nullptr)
     return -1;
   enum parse_dd_state state = DD_NONE;
 

@@ -54,7 +54,7 @@ static size_t detect_worker_count(size_t item_count) {
 typedef struct {
   MdDoc doc;
   size_t file_size;
-  int doc_live;
+  bool doc_live;
 } ParsedFile;
 
 typedef struct {
@@ -89,15 +89,15 @@ static void *parse_stage_worker(void *arg) {
     if (__atomic_load_n(&ctx->failed, __ATOMIC_RELAXED))
       break;
 
-    size_t i = ctx->parse_order != NULL ? ctx->parse_order[slot] : slot;
+    size_t i = ctx->parse_order != nullptr ? ctx->parse_order[slot] : slot;
     ParsedFile *pf = &ctx->parsed[i];
-    if (md_parse_file(&pf->doc, ctx->md_files->array[i], 1) != 0) {
+    if (md_parse_file(&pf->doc, ctx->md_files->array[i], true) != 0) {
       __atomic_store_n(&ctx->failed, 1, __ATOMIC_RELAXED);
     } else {
-      pf->doc_live = 1;
+      pf->doc_live = true;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 typedef struct {
@@ -125,7 +125,7 @@ static void *render_stage_worker(void *arg) {
     if (__atomic_load_n(&ctx->failed, __ATOMIC_RELAXED))
       break;
 
-    size_t k = ctx->render_order != NULL ? ctx->render_order[slot] : slot;
+    size_t k = ctx->render_order != nullptr ? ctx->render_order[slot] : slot;
     const AnchorLocation *chapter =
         &ctx->toc_anchor_locations.array[ctx->page_indices[k]];
     ParsedFile *pf = &ctx->parsed[ctx->chapter_file_indices[k]];
@@ -138,10 +138,10 @@ static void *render_stage_worker(void *arg) {
     }
 
     md_doc_free(&pf->doc);
-    pf->doc_live = 0;
+    pf->doc_live = false;
   }
   mmdoc_buf_free(&scratch_plain);
-  return NULL;
+  return nullptr;
 }
 
 typedef struct {
@@ -156,7 +156,7 @@ static void *single_write_thread_fn(void *arg) {
   SingleWriteTask *task = arg;
   task->result = mmdoc_single_write_from_chapters(
       task->inputs, task->anchor_locations, task->outputs, task->page_count);
-  return NULL;
+  return nullptr;
 }
 
 static void run_parallel(size_t workers, void *(*fn)(void *), void *ctx) {
@@ -165,20 +165,20 @@ static void run_parallel(size_t workers, void *(*fn)(void *), void *ctx) {
     return;
   }
   pthread_t *threads = malloc((workers - 1) * sizeof(*threads));
-  if (threads == NULL) {
+  if (threads == nullptr) {
     fn(ctx);
     return;
   }
   size_t spawned = 0;
   for (size_t t = 0; t < workers - 1; t++) {
-    if (pthread_create(&threads[t], NULL, fn, ctx) == 0)
+    if (pthread_create(&threads[t], nullptr, fn, ctx) == 0)
       spawned++;
     else
       break;
   }
   fn(ctx);
   for (size_t t = 0; t < spawned; t++)
-    pthread_join(threads[t], NULL);
+    pthread_join(threads[t], nullptr);
   free(threads);
 }
 
@@ -216,17 +216,17 @@ int main(int argc, char *argv[]) {
   }
 
   int result = 1;
-  Inputs inputs = {0};
-  Array toc_refs = {0};
-  Array md_files = {0};
-  Array img_files = {0};
-  AnchorLocationArray anchor_locations = {0};
-  AnchorLocationArray toc_anchor_locations = {0};
-  AnchorLocationArray chapters_by_source = {0};
-  ParsedFile *parsed = NULL;
-  size_t *page_indices = NULL;
-  size_t *chapter_file_indices = NULL;
-  ChapterOutputs *outputs = NULL;
+  Inputs inputs = {};
+  Array toc_refs = {};
+  Array md_files = {};
+  Array img_files = {};
+  AnchorLocationArray anchor_locations = {};
+  AnchorLocationArray toc_anchor_locations = {};
+  AnchorLocationArray chapters_by_source = {};
+  ParsedFile *parsed = nullptr;
+  size_t *page_indices = nullptr;
+  size_t *chapter_file_indices = nullptr;
+  ChapterOutputs *outputs = nullptr;
   size_t page_count = 0;
 
 #ifdef __GLIBC__
@@ -251,14 +251,14 @@ int main(int argc, char *argv[]) {
    */
   if (md_files.used > 0) {
     parsed = calloc(md_files.used, sizeof(*parsed));
-    if (parsed == NULL)
+    if (parsed == nullptr)
       goto cleanup;
 
-    size_t *parse_order = NULL;
+    size_t *parse_order = nullptr;
     if (md_files.used > 1) {
       SizeOrderEntry *entries = malloc(md_files.used * sizeof(*entries));
       parse_order = malloc(md_files.used * sizeof(*parse_order));
-      if (entries != NULL && parse_order != NULL) {
+      if (entries != nullptr && parse_order != nullptr) {
         for (size_t i = 0; i < md_files.used; i++) {
           struct stat st;
           size_t sz = (stat(md_files.array[i], &st) == 0 && st.st_size > 0)
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
           parse_order[i] = entries[i].index;
       } else {
         free(parse_order);
-        parse_order = NULL;
+        parse_order = nullptr;
       }
       free(entries);
     }
@@ -300,14 +300,14 @@ int main(int argc, char *argv[]) {
   init_anchor_location_array(&anchor_locations,
                              total_anchors > 0 ? total_anchors : 64);
   const char *index_anchor = toc_refs.array[0];
-  int found_index_page = 0;
+  bool found_index_page = false;
   for (size_t i = 0; i < md_files.used; i++) {
-    int is_index_page = 0;
+    bool is_index_page = false;
     for (size_t j = 0; !found_index_page && j < parsed[i].doc.anchors.used;
          j++) {
       if (strcmp(parsed[i].doc.anchors.array[j], index_anchor) == 0) {
-        is_index_page = 1;
-        found_index_page = 1;
+        is_index_page = true;
+        found_index_page = true;
       }
     }
     if (mmdoc_anchors_add_file(&anchor_locations, md_files.array[i],
@@ -326,19 +326,18 @@ int main(int argc, char *argv[]) {
 
   if (toc_anchor_locations.used > 0) {
     page_indices = malloc(toc_anchor_locations.used * sizeof(*page_indices));
-    if (page_indices == NULL)
+    if (page_indices == nullptr)
       goto cleanup;
     page_count =
         mmdoc_collect_unique_page_indices(toc_anchor_locations, page_indices);
   }
 
-  unsigned char *used_file =
-      md_files.used > 0 ? calloc(md_files.used, 1) : NULL;
+  bool *used_file = md_files.used > 0 ? calloc(md_files.used, 1) : nullptr;
   if (page_count > 0) {
     chapter_file_indices = malloc(page_count * sizeof(*chapter_file_indices));
     outputs = calloc(page_count, sizeof(*outputs));
-    if (chapter_file_indices == NULL || outputs == NULL ||
-        (md_files.used > 0 && used_file == NULL)) {
+    if (chapter_file_indices == nullptr || outputs == nullptr ||
+        (md_files.used > 0 && used_file == nullptr)) {
       free(used_file);
       goto cleanup;
     }
@@ -353,7 +352,7 @@ int main(int argc, char *argv[]) {
       goto cleanup;
     }
     chapter_file_indices[k] = fidx;
-    used_file[fidx] = 1;
+    used_file[fidx] = true;
     chapter.anchor = chapter.file_path;
     insert_anchor_location_array(&chapters_by_source, &chapter);
   }
@@ -363,9 +362,9 @@ int main(int argc, char *argv[]) {
   }
 
   for (size_t i = 0; i < md_files.used; i++) {
-    if ((used_file == NULL || !used_file[i]) && parsed[i].doc_live) {
+    if ((used_file == nullptr || !used_file[i]) && parsed[i].doc_live) {
       md_doc_free(&parsed[i].doc);
-      parsed[i].doc_live = 0;
+      parsed[i].doc_live = false;
     }
   }
   free(used_file);
@@ -373,11 +372,11 @@ int main(int argc, char *argv[]) {
   /* Stage B: Render all outputs (HTML, search JSON, Markdown) per chapter in
    * parallel (largest files first) from the flat MdDoc AST. */
   if (page_count > 0) {
-    size_t *render_order = NULL;
+    size_t *render_order = nullptr;
     if (page_count > 1) {
       SizeOrderEntry *entries = malloc(page_count * sizeof(*entries));
       render_order = malloc(page_count * sizeof(*render_order));
-      if (entries != NULL && render_order != NULL) {
+      if (entries != nullptr && render_order != nullptr) {
         for (size_t k = 0; k < page_count; k++) {
           entries[k].index = k;
           entries[k].size = parsed[chapter_file_indices[k]].file_size;
@@ -387,7 +386,7 @@ int main(int argc, char *argv[]) {
           render_order[k] = entries[k].index;
       } else {
         free(render_order);
-        render_order = NULL;
+        render_order = nullptr;
       }
       free(entries);
     }
@@ -428,8 +427,8 @@ int main(int argc, char *argv[]) {
         .result = -1,
     };
     pthread_t single_thread;
-    int spawned_single =
-        pthread_create(&single_thread, NULL, single_write_thread_fn,
+    bool spawned_single =
+        pthread_create(&single_thread, nullptr, single_write_thread_fn,
                        &single_task) == 0;
     if (!spawned_single)
       single_write_thread_fn(&single_task);
@@ -439,7 +438,7 @@ int main(int argc, char *argv[]) {
         anchor_locations, outputs, detect_worker_count(page_count));
 
     if (spawned_single)
-      pthread_join(single_thread, NULL);
+      pthread_join(single_thread, nullptr);
 
     if (single_task.result != 0 || multi_rc != 0)
       goto cleanup;
@@ -451,12 +450,12 @@ int main(int argc, char *argv[]) {
   result = 0;
 
 cleanup:
-  if (outputs != NULL) {
+  if (outputs != nullptr) {
     for (size_t k = 0; k < page_count; k++)
       chapter_outputs_free(&outputs[k]);
     free(outputs);
   }
-  if (parsed != NULL) {
+  if (parsed != nullptr) {
     for (size_t i = 0; i < md_files.used; i++) {
       if (parsed[i].doc_live)
         md_doc_free(&parsed[i].doc);

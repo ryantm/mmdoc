@@ -10,25 +10,15 @@ static char *dup_strip_trailing_slashes(const char *path) {
   size_t len = strlen(path);
   while (len > 1 && path[len - 1] == '/')
     len--;
-  char *copy = malloc(len + 1);
-  if (copy == NULL)
-    return NULL;
-  memcpy(copy, path, len);
-  copy[len] = '\0';
-  return copy;
+  return strndup(path, len);
 }
 
 int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
-  inputs->project_name = argv[1];
-  inputs->src = NULL;
-  inputs->out = NULL;
-  inputs->toc_path = NULL;
-  inputs->out_multi = NULL;
-  inputs->out_single = NULL;
+  *inputs = (Inputs){.project_name = argv[1]};
 
   inputs->src = dup_strip_trailing_slashes(argv[2]);
   inputs->out = dup_strip_trailing_slashes(argv[3]);
-  if (inputs->src == NULL || inputs->out == NULL) {
+  if (inputs->src == nullptr || inputs->out == nullptr) {
     fprintf(stderr, "Fatal: failed to allocate memory for input paths.\n");
     mmdoc_inputs_free(inputs);
     return -1;
@@ -38,7 +28,7 @@ int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
       strcmp(inputs->src, "/") == 0 ? "toc.md" : "/toc.md";
   char *toc_path =
       malloc(strlen(inputs->src) + strlen(src_relative_toc_path) + 1);
-  if (toc_path == NULL) {
+  if (toc_path == nullptr) {
     fprintf(stderr, "Fatal: failed to allocate memory for toc path.\n");
     mmdoc_inputs_free(inputs);
     return -1;
@@ -57,7 +47,7 @@ int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
   const char *multi = "multi";
   char *out_multi =
       malloc(strlen(inputs->out) + strlen(sep) + strlen(multi) + 1);
-  if (out_multi == NULL) {
+  if (out_multi == nullptr) {
     fprintf(stderr,
             "Fatal: failed to allocate memory for multi output path.\n");
     mmdoc_inputs_free(inputs);
@@ -69,7 +59,7 @@ int mmdoc_inputs_derive(Inputs *inputs, char *argv[]) {
   const char *single = "single";
   char *out_single =
       malloc(strlen(inputs->out) + strlen(sep) + strlen(single) + 1);
-  if (out_single == NULL) {
+  if (out_single == nullptr) {
     fprintf(stderr,
             "Fatal: failed to allocate memory for single output path.\n");
     mmdoc_inputs_free(inputs);
@@ -87,9 +77,9 @@ void mmdoc_inputs_free(Inputs *inputs) {
   free(inputs->toc_path);
   free(inputs->out_multi);
   free(inputs->out_single);
-  inputs->src = NULL;
-  inputs->out = NULL;
-  inputs->toc_path = NULL;
-  inputs->out_multi = NULL;
-  inputs->out_single = NULL;
+  inputs->src = nullptr;
+  inputs->out = nullptr;
+  inputs->toc_path = nullptr;
+  inputs->out_multi = nullptr;
+  inputs->out_single = nullptr;
 }

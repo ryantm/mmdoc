@@ -4,6 +4,7 @@
 #include "types.h"
 #include <dirent.h>
 #include <errno.h>
+#include <stdckdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,10 +13,10 @@
 char *mmdoc_file_path(const char *directory, const char *name) {
   size_t dlen = strlen(directory);
   size_t nlen = strlen(name);
-  int need_slash = dlen > 0 && directory[dlen - 1] != '/';
+  bool need_slash = dlen > 0 && directory[dlen - 1] != '/';
   char *path = malloc(dlen + (size_t)need_slash + nlen + 1);
-  if (path == NULL)
-    return NULL;
+  if (path == nullptr)
+    return nullptr;
   memcpy(path, directory, dlen);
   if (need_slash)
     path[dlen] = '/';
@@ -23,18 +24,18 @@ char *mmdoc_file_path(const char *directory, const char *name) {
   return path;
 }
 
-static const char *const markdown_extensions[] = {".md", NULL};
-static const char *const image_extensions[] = {".svg", ".jpeg", ".jpg", ".webp",
-                                               ".png", ".gif",  ".bmp", NULL};
+static const char *const markdown_extensions[] = {".md", nullptr};
+static const char *const image_extensions[] = {
+    ".svg", ".jpeg", ".jpg", ".webp", ".png", ".gif", ".bmp", nullptr};
 
-static int has_extension(const char *name, const char *const extensions[]) {
+static bool has_extension(const char *name, const char *const extensions[]) {
   const char *ext = strrchr(name, '.');
-  if (ext == NULL)
-    return 0;
-  for (size_t i = 0; extensions[i] != NULL; i++)
+  if (ext == nullptr)
+    return false;
+  for (size_t i = 0; extensions[i] != nullptr; i++)
     if (strcmp(ext, extensions[i]) == 0)
-      return 1;
-  return 0;
+      return true;
+  return false;
 }
 
 typedef struct {
@@ -48,18 +49,23 @@ typedef struct {
   size_t cap;
 } DirIdStack;
 
-static int stack_contains(const DirIdStack *s, dev_t dev, ino_t ino) {
+static bool stack_contains(const DirIdStack *s, dev_t dev, ino_t ino) {
   for (size_t i = 0; i < s->used; i++)
     if (s->items[i].dev == dev && s->items[i].ino == ino)
-      return 1;
-  return 0;
+      return true;
+  return false;
 }
 
 static int stack_push(DirIdStack *s, dev_t dev, ino_t ino) {
   if (s->used == s->cap) {
-    size_t nc = s->cap == 0 ? 16 : s->cap * 2;
-    DirId *next = realloc(s->items, nc * sizeof(*next));
-    if (next == NULL)
+    size_t nc = 16;
+    if (s->cap != 0 && ckd_mul(&nc, s->cap, 2))
+      return -1;
+    size_t bytes = 0;
+    if (ckd_mul(&bytes, nc, sizeof(*s->items)))
+      return -1;
+    DirId *next = realloc(s->items, bytes);
+    if (next == nullptr)
       return -1;
     s->items = next;
     s->cap = nc;
@@ -78,9 +84,9 @@ static int compare_strings(const void *a, const void *b) {
 
 static void record_file(const char *path, const char *name, Array *md_files,
                         Array *img_files) {
-  if (md_files != NULL && has_extension(name, markdown_extensions))
+  if (md_files != nullptr && has_extension(name, markdown_extensions))
     insert_array(md_files, (char *)path);
-  else if (img_files != NULL && has_extension(name, image_extensions))
+  else if (img_files != nullptr && has_extension(name, image_extensions))
     insert_array(img_files, (char *)path);
 }
 
@@ -88,10 +94,11 @@ static int walk_directory(const char *path, Array *md_files, Array *img_files,
                           const struct stat excluded[], size_t excluded_count,
                           DirIdStack *ancestors) {
   DIR *dir = opendir(path);
-  if (dir == NULL) {
+  if (dir == nullptr) {
     if (errno == ENOTDIR) {
       const char *slash = strrchr(path, '/');
-      record_file(path, slash != NULL ? slash + 1 : path, md_files, img_files);
+      record_file(path, slash != nullptr ? slash + 1 : path, md_files,
+                  img_files);
       return 0;
     }
     fprintf(stderr, "Failed to open directory %s: %s\n", path, strerror(errno));
@@ -99,7 +106,7 @@ static int walk_directory(const char *path, Array *md_files, Array *img_files,
   }
 
   struct stat current;
-  int pushed = 0;
+  bool pushed = false;
   if (fstat(dirfd(dir), &current) == 0) {
     for (size_t i = 0; i < excluded_count; i++) {
       if (current.st_dev == excluded[i].st_dev &&
@@ -116,32 +123,32 @@ static int walk_directory(const char *path, Array *md_files, Array *img_files,
       closedir(dir);
       return -1;
     }
-    pushed = 1;
+    pushed = true;
   }
 
   struct dirent *entry;
-  int failed = 0;
-  while ((entry = readdir(dir)) != NULL) {
+  bool failed = false;
+  while ((entry = readdir(dir)) != nullptr) {
     const char *name = entry->d_name;
     if (name[0] == '.' &&
         (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
       continue;
 
-    int is_dir = 0;
-    int is_reg = 0;
+    bool is_dir = false;
+    bool is_reg = false;
 #ifdef _DIRENT_HAVE_D_TYPE
     if (entry->d_type == DT_REG) {
-      is_reg = 1;
+      is_reg = true;
     } else if (entry->d_type == DT_DIR) {
-      is_dir = 1;
+      is_dir = true;
     }
 #endif
     if (is_reg) {
-      if ((md_files != NULL && has_extension(name, markdown_extensions)) ||
-          (img_files != NULL && has_extension(name, image_extensions))) {
+      if ((md_files != nullptr && has_extension(name, markdown_extensions)) ||
+          (img_files != nullptr && has_extension(name, image_extensions))) {
         char *child = mmdoc_file_path(path, name);
-        if (child == NULL) {
-          failed = 1;
+        if (child == nullptr) {
+          failed = true;
           break;
         }
         record_file(child, name, md_files, img_files);
@@ -151,8 +158,8 @@ static int walk_directory(const char *path, Array *md_files, Array *img_files,
     }
 
     char *child = mmdoc_file_path(path, name);
-    if (child == NULL) {
-      failed = 1;
+    if (child == nullptr) {
+      failed = true;
       break;
     }
     if (is_dir) {
@@ -184,42 +191,43 @@ int mmdoc_collect_source_files(Array *md_files, Array *img_files,
                                Inputs inputs) {
   struct stat excluded[2];
   size_t count = 0;
-  if (inputs.out_multi != NULL && stat(inputs.out_multi, &excluded[count]) == 0)
+  if (inputs.out_multi != nullptr &&
+      stat(inputs.out_multi, &excluded[count]) == 0)
     count++;
-  if (inputs.out_single != NULL &&
+  if (inputs.out_single != nullptr &&
       stat(inputs.out_single, &excluded[count]) == 0)
     count++;
 
-  DirIdStack ancestors = {0};
+  DirIdStack ancestors = {};
   int result = walk_directory(inputs.src, md_files, img_files, excluded, count,
                               &ancestors);
   free(ancestors.items);
 
   if (result == 0) {
-    if (md_files != NULL && md_files->used > 1)
+    if (md_files != nullptr && md_files->used > 1)
       qsort(md_files->array, md_files->used, sizeof(char *), compare_strings);
-    if (img_files != NULL && img_files->used > 1)
+    if (img_files != nullptr && img_files->used > 1)
       qsort(img_files->array, img_files->used, sizeof(char *), compare_strings);
   }
   return result;
 }
 
 int mmdoc_md_files(Array *files, Inputs inputs) {
-  return mmdoc_collect_source_files(files, NULL, inputs);
+  return mmdoc_collect_source_files(files, nullptr, inputs);
 }
 
 int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
   size_t src_len = strlen(inputs.src);
   size_t out_multi_len = strlen(inputs.out_multi);
   size_t out_single_len = strlen(inputs.out_single);
-  char *last_dir = NULL;
+  char *last_dir = nullptr;
   size_t last_dir_len = 0;
   unsigned char buffer[64 * 1024];
 
   for (size_t i = 0; i < img_files->used; i++) {
     const char *source_path = img_files->array[i];
     FILE *source = fopen(source_path, "rb");
-    if (source == NULL) {
+    if (source == nullptr) {
       printf("Failed to open file %s for reading: %s\n", source_path,
              strerror(errno));
       free(last_dir);
@@ -228,11 +236,11 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
 
     const char *rel_path = source_path + src_len;
     size_t rel_len = strlen(rel_path);
-    int need_slash = rel_len > 0 && rel_path[0] != '/';
+    bool need_slash = rel_len > 0 && rel_path[0] != '/';
     char *multi_path = malloc(out_multi_len + (size_t)need_slash + rel_len + 1);
     char *single_path =
         malloc(out_single_len + (size_t)need_slash + rel_len + 1);
-    if (multi_path == NULL || single_path == NULL) {
+    if (multi_path == nullptr || single_path == nullptr) {
       printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
       free(single_path);
       free(multi_path);
@@ -247,7 +255,7 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
 
     char *multi_file_name = strrchr(multi_path, '/');
     char *single_file_name = strrchr(single_path, '/');
-    if (multi_file_name == NULL || single_file_name == NULL) {
+    if (multi_file_name == nullptr || single_file_name == nullptr) {
       printf("Failed to determine image output directories\n");
       free(single_path);
       free(multi_path);
@@ -257,11 +265,11 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
     }
 
     size_t dir_len = (size_t)(multi_file_name - multi_path);
-    if (last_dir == NULL || dir_len != last_dir_len ||
+    if (last_dir == nullptr || dir_len != last_dir_len ||
         memcmp(last_dir, multi_path, dir_len) != 0) {
       *multi_file_name = '\0';
       *single_file_name = '\0';
-      int mkdir_failed = mkdir_p(multi_path) != 0 || mkdir_p(single_path) != 0;
+      bool mkdir_failed = mkdir_p(multi_path) != 0 || mkdir_p(single_path) != 0;
       *multi_file_name = '/';
       *single_file_name = '/';
       if (mkdir_failed) {
@@ -274,7 +282,7 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
         return -1;
       }
       char *next_last = realloc(last_dir, dir_len + 1);
-      if (next_last != NULL) {
+      if (next_last != nullptr) {
         memcpy(next_last, multi_path, dir_len);
         next_last[dir_len] = '\0';
         last_dir = next_last;
@@ -283,7 +291,7 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
     }
 
     FILE *multi = fopen(multi_path, "wb");
-    if (multi == NULL) {
+    if (multi == nullptr) {
       printf("Failed to open file %s for writing: %s\n", multi_path,
              strerror(errno));
       free(single_path);
@@ -294,7 +302,7 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
     }
 
     FILE *single = fopen(single_path, "wb");
-    if (single == NULL) {
+    if (single == nullptr) {
       printf("Failed to open file %s for writing: %s\n", single_path,
              strerror(errno));
       fclose(multi);
@@ -306,25 +314,25 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
     }
 
     size_t bytes_read;
-    int io_failed = 0;
+    bool io_failed = false;
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), source)) > 0) {
       if (fwrite(buffer, 1, bytes_read, multi) != bytes_read ||
           fwrite(buffer, 1, bytes_read, single) != bytes_read) {
-        io_failed = 1;
+        io_failed = true;
         break;
       }
     }
     if (!io_failed && ferror(source)) {
       printf("Failed to read file %s: %s\n", source_path, strerror(errno));
-      io_failed = 1;
+      io_failed = true;
     }
 
     if (fclose(single) != 0)
-      io_failed = 1;
+      io_failed = true;
     if (fclose(multi) != 0)
-      io_failed = 1;
+      io_failed = true;
     if (fclose(source) != 0)
-      io_failed = 1;
+      io_failed = true;
     free(single_path);
     free(multi_path);
     if (io_failed) {
@@ -339,7 +347,7 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
 int copy_imgs(Inputs inputs) {
   Array img_files;
   init_array(&img_files, 64);
-  if (mmdoc_collect_source_files(NULL, &img_files, inputs) != 0) {
+  if (mmdoc_collect_source_files(nullptr, &img_files, inputs) != 0) {
     free_array(&img_files);
     return -1;
   }

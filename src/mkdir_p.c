@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
+#include "mkdir_p.h"
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
@@ -20,7 +21,7 @@ static int ensure_dir(const char *path) {
 }
 
 int mkdir_p(const char *path) {
-  if (path == NULL || path[0] == '\0') {
+  if (path == nullptr || path[0] == '\0') {
     errno = EINVAL;
     return -1;
   }
