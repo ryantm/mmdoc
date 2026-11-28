@@ -1,0 +1,278 @@
+# Introduction {#introduction}
+
+> Minimal Markdown Documentation
+
+Given a table of contents Markdown file, and some other Markdown files, generate:
+
+- A single-page HTML document
+- Multi-page HTML documents, with full-text search
+- Markdown chapters, an index for agents, and a full manual in one text file
+
+``` ShellSession
+$ mmdoc project_name src_dir out_dir
+```
+
+For example:
+
+``` ShellSession
+$ mmdoc mmdoc doc out
+```
+
+takes a directory like
+
+``` text
+doc
+├── development.md
+├── features.md
+├── introduction.md
+├── license.md
+├── toc.md
+└── usage.md
+```
+
+and outputs
+
+``` text
+out
+├── multi
+│   ├── a11y-dark.<hash>.css
+│   ├── a11y-light.<hash>.css
+│   ├── development
+│   │   ├── index.html
+│   │   └── index.md
+│   ├── features
+│   │   ├── index.html
+│   │   └── index.md
+│   ├── fuse.basic.min.<hash>.js
+│   ├── highlight.pack.<hash>.js
+│   ├── index.html
+│   ├── index.md
+│   ├── license
+│   │   ├── index.html
+│   │   └── index.md
+│   ├── llms-full.txt
+│   ├── llms.txt
+│   ├── mmdoc.<hash>.css
+│   ├── mmdoc.<hash>.js
+│   ├── mmdoc_search.<hash>.js
+│   ├── search_index.<hash>.js
+│   └── usage
+│       ├── index.html
+│       └── index.md
+└── single
+    └── index.html
+```
+
+The multi-page output uses shared assets with content hashes in their names so
+browsers can cache them without serving stale content. The single-page output
+embeds its styling and scripts in `index.html` so it remains portable as one
+file.
+
+# Features {#features}
+
+- No options.
+- Fast and dependency-free: written in pure C11 with an in-tree linear-time CommonMark/GFM Markdown engine and zero external runtime libraries.
+- The HTML documents have syntax highlighting via [highlight.js](https://highlightjs.org/).
+- The multi-page HTML documents have full-text search via [fuse.js](https://fusejs.io/).
+- The multi-page documents share cacheable style and script assets, while the single-page document is self-contained.
+- The generated interface includes keyboard-operable controls, a skip link, labelled navigation, and light and dark themes.
+
+# Users of mmdoc {#users}
+
+- [This manual!](https://ryantm.github.io/mmdoc)
+- [Ryan's rendering of the Nixpkgs manual](https://ryantm.github.io/nixpkgs)
+- [Ryan's personal blog](https://ryantm.com)
+
+Please contact me at ryan@ryantm.com or make an issue at https://github.com/ryantm/mmdoc.
+
+# Install {#install}
+
+To run the flake from source, enable the [Nix features used by drvc](#development-tests):
+
+``` ShellSession
+$ nix run github:ryantm/mmdoc -- <site name> <src> <out>
+```
+
+You could install with Nix via
+
+``` ShellSession
+$ nix profile install github:ryantm/mmdoc
+```
+
+- [mmdoc is packaged in Nixpkgs](https://search.nixos.org/packages?channel=23.05&show=mmdoc&from=0&size=50&sort=relevance&type=packages&query=mmdoc)
+
+Packaging in other repositories is welcome and will be added here as they're made known.
+
+# Usage {#usage}
+
+## toc.md
+
+The cross-references in `toc.md` select the source files to publish and set their reading order.
+
+## Reading the manual as Markdown {#agent-markdown}
+
+The usual `mmdoc PROJECT SRC OUT` command writes `llms.txt` at the root of
+`OUT/multi/`. An agent can read this index and follow a chapter link, such as
+`usage/index.md`, to fetch just the relevant text. For the whole manual in one
+request, fetch `llms-full.txt` from the same directory.
+
+Both forms keep code examples, tables, and mmdoc's explicit `{#id}` anchors.
+Cross-chapter links in individual chapters point to the corresponding Markdown
+file. In the full manual they point to an anchor within that file.
+
+When publishing from a branch on GitHub Pages, add an empty `.nojekyll` file
+at the published root so Pages serves the Markdown chapters at their original URLs.
+
+## Extensions beyond CommonMark
+
+In order to be useful for Documentation, it uses several CommonMark extensions available in GitHub-flavored Markdown and [Pandoc](https://pandoc.org/).
+
+- Cross references
+
+  Made with:
+
+  ``` text
+  # Heading {#heading-anchor-id}
+  [inline]{#inline-anchor-id}
+  ```
+
+  Referenced with:
+
+  ``` text
+  [heading](#heading-anchor-id)
+  [inline](#inline-anchor-id)
+  ```
+
+- GitHub tables
+
+  ``` text
+  | foo | bar |
+  | --- | --- |
+  | baz | bim |
+  ```
+
+- Admonitions
+
+  ``` text
+  ::: warning
+  this is your last warning
+  :::
+  ```
+
+  ::: warning
+  this is your last warning
+  :::
+
+  ``` text
+  ::: {.example #anchor}
+  this is your last warning
+  :::
+  ```
+
+  ::: {.example #anchor}
+  this is your last warning
+  :::
+
+- DD Lists
+
+  ``` text
+  term 1
+  
+  : defintion 1
+  
+  term 2
+  
+  : defintion 2
+  ```
+
+## Generated interface
+
+The table of contents, search, and theme controls are available from the top
+navigation bar. Press `/` or <kbd>Control</kbd>/<kbd>Command</kbd>+<kbd>K</kbd>
+to open search, then use the up and down arrow keys to cycle through results.
+Outside interactive controls, the left and right arrow keys move between pages.
+A skip link appears when focused so keyboard users can move directly to the
+main content.
+
+# Contributing {#contributing}
+
+For easy development, `nix` with [flakes support](https://nixos.wiki/wiki/Flakes) is recommended.
+
+## Test {#development-tests}
+
+The flake uses [drvc](https://github.com/drvlang/drvc) to build the native Meson project. It reads the source file set, system libraries, and build tools from `drvlang.json`. Enable `nix-command`, `flakes`, `ca-derivations`, `dynamic-derivations`, and `recursive-nix` on the client and daemon. The builder also needs the `recursive-nix` system feature.
+
+Compile mmdoc and run its tests:
+
+``` ShellSession
+$ nix build
+$ nix flake check
+```
+
+Run the same tests through the drvc CLI:
+
+``` ShellSession
+$ nix run github:drvlang/drvc -- test -C .
+```
+
+To use a local Meson development build:
+
+``` ShellSession
+$ mkdir build && cd build
+$ meson ..
+$ ninja test
+```
+
+## Format
+
+``` ShellSession
+$ nix fmt
+```
+
+## Documentation
+
+Build the mmdoc docs to `./result` with:
+
+``` ShellSession
+$ nix develop -c doc-build
+```
+
+Continuosly build the mmdoc docs and serve them on port 8000 with:
+
+``` ShellSession
+$ nix develop -c doc-watch
+```
+
+## Nixpkgs manual
+
+This is a temporary test that is in place while mmdoc is developed in tandem with the conversion of the nixpkgs manual to use Markdown. You can build my branch of nixpkgs-manual with:
+
+Build the nixpkgs manual at `./result` with:
+
+``` ShellSession
+$ nix develop -c np-build
+```
+
+Continuosly build the nixpkgs manual and serve them on port 8000 with:
+
+``` ShellSession
+$ nix develop -c np-watch
+```
+
+## Making a new release
+
+1. run `./contrib/release {major.minor.patch}`. For example, `./contrib/release 0.16.0`.
+2. edit commit message
+3. push commit and tags to GitHub
+
+# License {#license}
+
+The mmdoc project is licensed under the "CC0 1.0 Universal". By contributing to this project, you agree to have your work licensed under that license.
+
+Other licenses that might be relevant to this project:
+
+- [highlight.js](https://github.com/highlightjs/highlight.js) source code is merged into the mmdoc binary so that it can be used in the HTML outputs.
+
+- [fuse.js](https://github.com/krisk/fuse) source code is merged into the mmdoc binary so that it can be used in the HTML outputs.
+
+- Some styling and HTML DOM object layout are based on [mdBook](https://github.com/rust-lang/mdBook/) source code.

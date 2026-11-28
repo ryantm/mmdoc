@@ -1,0 +1,267 @@
+//// Viewport
+function syncVisualViewport() {
+  const vv = window.visualViewport
+  if (!vv)
+    return
+
+  const root = document.documentElement.style
+  if (vv.scale > 1.01) {
+    root.removeProperty('--viewport-height')
+    root.removeProperty('--viewport-top')
+    return
+  }
+
+  root.setProperty('--viewport-height', `${vv.height}px`)
+  root.setProperty('--viewport-top', `${Math.max(0, vv.offsetTop)}px`)
+}
+
+if (window.visualViewport) {
+  syncVisualViewport()
+  window.visualViewport.addEventListener('resize', syncVisualViewport)
+  window.visualViewport.addEventListener('scroll', syncVisualViewport)
+  window.addEventListener('orientationchange', syncVisualViewport)
+}
+
+//// Sidebar
+const sidebarMedia = window.matchMedia('(max-width: 700px)')
+
+function getSidebarClosed() {
+  return (localStorage.getItem('sidebar-closed') ?? 'false') === 'true'
+}
+
+function isSidebarVisible() {
+  const checked = document.getElementById('sidebar-checkbox').checked
+  return sidebarMedia.matches ? checked : !checked
+}
+
+function updateSidebarToggle(visible) {
+  const label = visible ? 'Hide table of contents' : 'Show table of contents'
+  document.querySelectorAll('.sidebar-toggle').forEach(button => {
+    button.setAttribute('aria-expanded', String(visible))
+    button.setAttribute('aria-label', label)
+    button.setAttribute('title', label)
+  })
+  const mainSection = document.getElementById('main')
+  if (mainSection !== null)
+    mainSection.inert = sidebarMedia.matches && visible
+}
+
+function setSidebarVisible(visible) {
+  document.getElementById('sidebar-checkbox').checked =
+    sidebarMedia.matches ? visible : !visible
+  updateSidebarToggle(visible)
+}
+
+function toggleSidebar() {
+  setSidebarVisible(!isSidebarVisible())
+  if (!sidebarMedia.matches)
+    localStorage.setItem('sidebar-closed', String(!isSidebarVisible()))
+  showCurrentPageInSidebar()
+}
+
+function closeSidebarOnMobileNavigation() {
+  if (!sidebarMedia.matches)
+    return
+
+  setSidebarVisible(false)
+}
+
+function setupSidebar() {
+  document.querySelectorAll('.sidebar-toggle').forEach(button => {
+    button.addEventListener('click', toggleSidebar)
+  })
+  Array.from(document.querySelectorAll('nav.sidebar a[href]')).forEach(link => {
+    link.addEventListener('click', closeSidebarOnMobileNavigation)
+  })
+  sidebarMedia.addEventListener('change', event => {
+    setSidebarVisible(event.matches ? false : !getSidebarClosed())
+  })
+  window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !sidebarMedia.matches || !isSidebarVisible())
+      return
+    event.preventDefault()
+    setSidebarVisible(false)
+    const toggle = document.querySelector('.sidebar-toggle')
+    if (toggle !== null)
+      toggle.focus()
+  })
+  setSidebarVisible(sidebarMedia.matches ? false : !getSidebarClosed())
+}
+
+setupSidebar()
+
+function normalizedPagePath(pathname) {
+  const withoutIndex = pathname.replace(/\/index\.html?$/i, '')
+  return withoutIndex.replace(/\/$/, '') || '/'
+}
+
+function scrollSidebarToLink(sidebar, link) {
+  window.requestAnimationFrame(() => {
+    const sidebarRect = sidebar.getBoundingClientRect()
+    if (sidebarRect.height === 0)
+      return
+
+    const linkRect = link.getBoundingClientRect()
+    const offset = linkRect.top + linkRect.height / 2 -
+      (sidebarRect.top + sidebarRect.height / 2)
+
+    sidebar.scrollTop += offset
+  })
+}
+
+function showCurrentPageInSidebar() {
+  const sidebar = document.querySelector('nav.sidebar')
+  if (sidebar === null)
+    return
+
+  const currentPath = normalizedPagePath(window.location.pathname)
+  const samePageLinks = Array.from(sidebar.querySelectorAll('a[href]')).filter(
+    link => {
+      const url = new URL(link.href, window.location.href)
+      return url.origin === window.location.origin &&
+        normalizedPagePath(url.pathname) === currentPath
+    })
+
+  if (samePageLinks.length === 0)
+    return
+
+  const matchingHashLink = samePageLinks.find(link => {
+    const url = new URL(link.href, window.location.href)
+    return url.hash !== '' && url.hash === window.location.hash
+  })
+  const currentPageLink = matchingHashLink ?? samePageLinks[0]
+
+  sidebar.querySelectorAll('a[aria-current="page"]').forEach(link => {
+    link.removeAttribute('aria-current')
+  })
+  currentPageLink.setAttribute('aria-current', 'page')
+  scrollSidebarToLink(sidebar, currentPageLink)
+}
+
+showCurrentPageInSidebar()
+window.addEventListener('hashchange', showCurrentPageInSidebar)
+
+//// Theme
+
+// Returns 'light' or 'dark'
+function getDefaultTheme() {
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+    return 'dark'
+  else
+    return 'light'
+}
+
+// Returns 'light' or 'dark'
+function getSelectedTheme() {
+  let theme = null
+  try { theme = localStorage.getItem('theme') } catch (error) {}
+  return theme === 'light' || theme === 'dark' ? theme : getDefaultTheme()
+}
+
+function saveSelectedTheme(theme) {
+  try { localStorage.setItem('theme', theme) } catch (error) {}
+}
+
+function toggleTheme() {
+  const theme = getSelectedTheme()
+
+  if (theme === 'dark') {
+    saveSelectedTheme('light')
+    setLightTheme()
+  } else if (theme === 'light') {
+    saveSelectedTheme('dark')
+    setDarkTheme()
+  }
+}
+
+function setDarkTheme() {
+  document.querySelector('html').classList.remove("light-theme")
+  document.querySelector('html').classList.add("dark-theme")
+  updateThemeToggle('dark')
+}
+
+function setLightTheme() {
+  document.querySelector('html').classList.remove("dark-theme")
+  document.querySelector('html').classList.add("light-theme")
+  updateThemeToggle('light')
+}
+
+function updateThemeToggle(theme) {
+  const dark = theme === 'dark'
+  const label = dark ? 'Switch to light theme' : 'Switch to dark theme'
+  document.querySelectorAll('.theme-toggle').forEach(button => {
+    button.setAttribute('aria-pressed', String(dark))
+    button.setAttribute('aria-label', label)
+    button.setAttribute('title', label)
+  })
+}
+
+function setupToggleTheme() {
+  Array.from(document.querySelectorAll('.theme-toggle')).forEach(el => {
+    el.addEventListener('click', toggleTheme)
+  })
+}
+
+setupToggleTheme()
+
+if (getSelectedTheme() === 'dark')
+  setDarkTheme();
+else
+  setLightTheme();
+
+//// Keyboard-scrollable regions
+function updateScrollableRegions() {
+  document.querySelectorAll('main pre code, main table').forEach(el => {
+    const scrollable = el.scrollWidth > el.clientWidth + 1
+    if (scrollable) {
+      el.setAttribute('tabindex', '0')
+      el.setAttribute('role', 'region')
+      el.setAttribute(
+        'aria-label',
+        el.tagName === 'TABLE' ? 'Scrollable table' : 'Scrollable code block')
+    } else if (el.getAttribute('role') === 'region') {
+      el.removeAttribute('tabindex')
+      el.removeAttribute('role')
+      el.removeAttribute('aria-label')
+    }
+  })
+}
+
+window.addEventListener('load', updateScrollableRegions)
+window.addEventListener('resize', updateScrollableRegions)
+
+// Highlight
+window.addEventListener('load', (event) => {
+  let codeElems =
+      Array.from(document.querySelectorAll('code')).filter(
+        function (elem) {
+          return !elem.parentElement.classList.contains('heade')
+        })
+  codeElems.forEach(e => e.classList.add('hljs'))
+})
+
+if (typeof hljs !== 'undefined')
+  hljs.highlightAll()
+
+function isInteractiveTarget(target) {
+  return target.closest(
+    'a, button, input, select, textarea, [contenteditable="true"]') !== null
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
+      event.shiftKey || isInteractiveTarget(event.target))
+    return
+
+  let button = null
+  if (event.key === 'ArrowLeft') {
+    button = document.getElementById('chapter-previous-button')
+  }
+  else if (event.key === 'ArrowRight') {
+    button = document.getElementById('chapter-next-button')
+  }
+  if (button !== null) {
+    event.preventDefault()
+    button.click()
+  }
+})
