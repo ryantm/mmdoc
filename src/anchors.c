@@ -2,14 +2,9 @@
 #include "anchors.h"
 #include "arena.h"
 #include "html.h"
-#include "render.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-int mmdoc_anchors(Array *md_anchors, char *path) {
-  return mmdoc_render_collect_anchors(path, md_anchors);
-}
 
 typedef struct {
   char *output_file_path;
@@ -156,48 +151,6 @@ int mmdoc_anchors_add_file(AnchorLocationArray *anchor_locations,
     al->multipage_output_directory_path = shared_out_dir;
     al->multipage_url = shared_url;
     al->multipage_base_href = shared_base_href;
-  }
-  return 0;
-}
-
-int mmdoc_anchors_locations(AnchorLocationArray *anchor_locations,
-                            Array *md_files, Array *toc_refs, Inputs inputs) {
-  const char *index_anchor = toc_refs->used > 0 ? toc_refs->array[0] : nullptr;
-  bool found_index_page = false;
-
-  init_anchor_location_array(anchor_locations, 500);
-
-  for (size_t i = 0; i < md_files->used; i++) {
-    Array anchors;
-    init_array(&anchors, 64);
-    char *title = nullptr;
-    if (mmdoc_render_collect_metadata(md_files->array[i], &anchors, &title) !=
-        0) {
-      free_array(&anchors);
-      free_anchor_location_array_deep(anchor_locations);
-      return -1;
-    }
-    bool is_index_page = false;
-    for (size_t j = 0;
-         !found_index_page && index_anchor != nullptr && j < anchors.used; j++)
-      if (strcmp(anchors.array[j], index_anchor) == 0) {
-        is_index_page = true;
-        found_index_page = true;
-      }
-
-    if (mmdoc_anchors_add_file(anchor_locations, md_files->array[i], &anchors,
-                               title, is_index_page, inputs) != 0) {
-      free(title);
-      free_array(&anchors);
-      free_anchor_location_array_deep(anchor_locations);
-      return -1;
-    }
-    free(title);
-    free_array(&anchors);
-  }
-  if (build_anchor_location_index(anchor_locations) != 0) {
-    free_anchor_location_array_deep(anchor_locations);
-    return -1;
   }
   return 0;
 }

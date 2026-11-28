@@ -138,7 +138,7 @@ int html_theme_init(FILE *file) {
 int html_js(FILE *file) {
   if (fputs("<script>\n", file) == EOF)
     return -1;
-  if (asset_write_to_file_mmdoc_js(file) != 0)
+  if (asset_write_to_file(file, ASSET_MMDOC_JS) != 0)
     return -1;
   return fputs("</script>\n", file) == EOF ? -1 : 0;
 }
@@ -146,7 +146,7 @@ int html_js(FILE *file) {
 int html_highlight_js(FILE *file) {
   if (fputs("<script>\n", file) == EOF)
     return -1;
-  if (asset_write_to_file_highlight_pack_js(file) != 0)
+  if (asset_write_to_file(file, ASSET_HIGHLIGHT_PACK_JS) != 0)
     return -1;
   return fputs("hljs.highlightAll()\n</script>\n", file) == EOF ? -1 : 0;
 }
@@ -154,11 +154,11 @@ int html_highlight_js(FILE *file) {
 int html_css(FILE *file) {
   if (fputs("<style>\n", file) == EOF)
     return -1;
-  if (asset_write_to_file_a11y_dark_css(file) != 0)
+  if (asset_write_to_file(file, ASSET_A11Y_DARK_CSS) != 0)
     return -1;
-  if (asset_write_to_file_a11y_light_css(file) != 0)
+  if (asset_write_to_file(file, ASSET_A11Y_LIGHT_CSS) != 0)
     return -1;
-  if (asset_write_to_file_mmdoc_css(file) != 0)
+  if (asset_write_to_file(file, ASSET_MMDOC_CSS) != 0)
     return -1;
   return fputs("</style>\n", file) == EOF ? -1 : 0;
 }

@@ -1,13 +1,12 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "../src/anchors.h"
+#include "../src/asset.h"
+#include "../src/build.h"
 #include "../src/files.h"
 #include "../src/md.h"
 #include "../src/mkdir_p.h"
-#include "../src/multi.h"
-#include "../src/parse.h"
 #include "../src/refs.h"
 #include "../src/render.h"
-#include "../src/single.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -15,11 +14,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include <testconfig.h>
 
-extern int errno;
+static void rm_rf(const char *path) {
+  struct stat st;
+  if (lstat(path, &st) != 0)
+    return;
+  if (!S_ISDIR(st.st_mode)) {
+    unlink(path);
+    return;
+  }
+  DIR *dir = opendir(path);
+  if (dir != nullptr) {
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        continue;
+      char child[PATH_MAX];
+      snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
+      rm_rf(child);
+    }
+    closedir(dir);
+  }
+  rmdir(path);
+}
 
 int test_files_match(char *example_name, char *expected_file_path,
                      char *got_file_path) {
@@ -119,10 +140,9 @@ int test_render(char *example) {
 
   FILE *got_file = fopen(got_file_path, "w");
   AnchorLocationArray empty_anchor_locations;
-  AnchorLocation al = {};
   init_anchor_location_array(&empty_anchor_locations, 0);
   int render_rc = mmdoc_render_part(input_path, got_file, RENDER_TYPE_SINGLE,
-                                    &al, empty_anchor_locations, "/", nullptr);
+                                    empty_anchor_locations, "/");
   free_anchor_location_array(&empty_anchor_locations);
   fclose(got_file);
 
@@ -162,9 +182,8 @@ int test_multipage_render(char *example, AnchorLocationArray anchor_locations) {
   }
 
   FILE *got_file = fopen(got_file_path, "w");
-  AnchorLocation al = {.title = "page title"};
   int render_rc = mmdoc_render_part(input_path, got_file, RENDER_TYPE_MULTIPAGE,
-                                    &al, anchor_locations, "/", nullptr);
+                                    anchor_locations, "/");
   fclose(got_file);
 
   int failed =
@@ -185,11 +204,9 @@ int test_code_block_detection(char *example, int expected) {
     return 1;
 
   AnchorLocationArray empty_anchor_locations;
-  AnchorLocation anchor_location = {.title = "page title"};
   init_anchor_location_array(&empty_anchor_locations, 0);
-  int got =
-      mmdoc_render_part(input_path, output, RENDER_TYPE_SINGLE,
-                        &anchor_location, empty_anchor_locations, "/", nullptr);
+  int got = mmdoc_render_part(input_path, output, RENDER_TYPE_SINGLE,
+                              empty_anchor_locations, "/");
   free_anchor_location_array(&empty_anchor_locations);
   fclose(output);
 
@@ -242,18 +259,24 @@ int test_title(char *example, char *expected_title) {
                             strlen(input_filename) + 1);
   sprintf(input_path, "%s%s/%s", example_dir, example, input_filename);
 
-  char *got_title = mmdoc_render_get_title_from_file(input_path);
+  MdDoc doc;
+  if (md_parse_file(&doc, input_path, true) != 0) {
+    printf("%s: parse failed\n", example);
+    free(input_path);
+    return 1;
+  }
 
-  if (strcmp(got_title, expected_title) != 0) {
+  if (strcmp(doc.title, expected_title) != 0) {
     printf("%s: title didn't match\n    expected: %s\n         "
            "got: %s\n",
-           example, expected_title, got_title);
+           example, expected_title, doc.title);
+    md_doc_free(&doc);
     free(input_path);
     return 1;
   }
   printf("%s title test passed\n", example);
+  md_doc_free(&doc);
   free(input_path);
-  free(got_title);
   return 0;
 }
 
@@ -310,11 +333,21 @@ int test_copy_nested_image() {
       .out_multi = multi_dir,
       .out_single = single_dir,
   };
-  if (copy_imgs(inputs) != 0)
+  Array img_files;
+  init_array(&img_files, 16);
+  int rc = mmdoc_collect_source_files(nullptr, &img_files, inputs);
+  if (rc == 0)
+    rc = mmdoc_copy_img_files(&img_files, inputs);
+  free_array(&img_files);
+  if (rc != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  if (!file_matches_bytes(multi_path, image, sizeof(image)) ||
-      !file_matches_bytes(single_path, image, sizeof(image)))
+  int matched = file_matches_bytes(multi_path, image, sizeof(image)) &&
+                file_matches_bytes(single_path, image, sizeof(image));
+  rm_rf(root);
+  if (!matched)
     return 1;
 
   printf("nested image copy test passed\n");
@@ -394,25 +427,16 @@ int test_anchor_discovery_uses_markdown_ast() {
                          "[]{#first-alias} []{#second-alias}\n";
   int write_failed = fputs(markdown, file) == EOF || fclose(file) != 0;
 
-  Array anchors;
-  init_array(&anchors, 0);
-  int result = write_failed ? -1 : mmdoc_anchors(&anchors, path);
+  MdDoc doc;
+  int result = write_failed ? -1 : md_parse_file(&doc, path, true);
   const char *expected[] = {"#page", "#example-anchor", "#lib-anchor",
                             "#first-alias", "#second-alias"};
-  int passed = result == 0 && anchors.used == 5;
+  int passed = result == 0 && doc.title != nullptr &&
+               strcmp(doc.title, "Page") == 0 && doc.anchors.used == 5;
   for (size_t i = 0; passed && i < 5; i++)
-    passed = strcmp(anchors.array[i], expected[i]) == 0;
-
-  free_array(&anchors);
-  init_array(&anchors, 0);
-  char *title = nullptr;
-  int metadata_result = mmdoc_render_collect_metadata(path, &anchors, &title);
-  passed = passed && metadata_result == 0 && title != nullptr &&
-           strcmp(title, "Page") == 0 && anchors.used == 5;
-  for (size_t i = 0; passed && i < 5; i++)
-    passed = strcmp(anchors.array[i], expected[i]) == 0;
-  free(title);
-  free_array(&anchors);
+    passed = strcmp(doc.anchors.array[i], expected[i]) == 0;
+  if (result == 0)
+    md_doc_free(&doc);
   unlink(path);
   if (!passed) {
     printf("AST anchor discovery test failed\n");
@@ -520,18 +544,6 @@ int asset_name_has_hash(const char *file_name, const char *stem,
   return file_name[stem_length + 17] == '.';
 }
 
-void unlink_asset(char *dir, const char *file_name) {
-  char path[PATH_MAX];
-  snprintf(path, sizeof(path), "%s/%s", dir, file_name);
-  unlink(path);
-}
-
-static void unlink_markdown(char *dir) {
-  unlink_asset(dir, "index.md");
-  unlink_asset(dir, "llms.txt");
-  unlink_asset(dir, "llms-full.txt");
-}
-
 int write_text_file(char *path, const char *contents) {
   FILE *file = fopen(path, "w");
   if (file == nullptr)
@@ -540,93 +552,87 @@ int write_text_file(char *path, const char *contents) {
   return fclose(file) != 0 || failed;
 }
 
+static int run_mmdoc_build(const char *project_name, const char *src_dir,
+                           const char *out_dir) {
+  char *argv[] = {(char *)"mmdoc", (char *)project_name, (char *)src_dir,
+                  (char *)out_dir};
+  Inputs inputs = {};
+  if (mmdoc_inputs_derive(&inputs, argv) != 0)
+    return -1;
+  int rc = mmdoc_build(inputs);
+  mmdoc_inputs_free(&inputs);
+  return rc;
+}
+
 int test_multipage_shared_assets_and_accessible_controls() {
   char root[] = "/tmp/mmdoc-assets-test-XXXXXX";
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char page_path[PATH_MAX];
-  char toc_path[PATH_MAX];
-  char index_path[PATH_MAX];
-  snprintf(page_path, sizeof(page_path), "%s/page.md", root);
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
-  snprintf(index_path, sizeof(index_path), "%s/index.html", root);
-  if (write_text_file(page_path, "# Page {#page}\n\n```c\nint x;\n```\n") !=
+  char src_dir[PATH_MAX], out1_dir[PATH_MAX], out2_dir[PATH_MAX];
+  char page_path[PATH_MAX], toc_path[PATH_MAX];
+  char multi1[PATH_MAX], multi2[PATH_MAX], index1[PATH_MAX], index2[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out1_dir, sizeof(out1_dir), "%s/out1", root);
+  snprintf(out2_dir, sizeof(out2_dir), "%s/out2", root);
+  snprintf(page_path, sizeof(page_path), "%s/page.md", src_dir);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(multi1, sizeof(multi1), "%s/multi", out1_dir);
+  snprintf(multi2, sizeof(multi2), "%s/multi", out2_dir);
+  snprintf(index1, sizeof(index1), "%s/index.html", multi1);
+  snprintf(index2, sizeof(index2), "%s/index.html", multi2);
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(page_path, "# Page {#page}\n\n```c\nint x;\n```\n") !=
           0 ||
-      write_text_file(toc_path, "") != 0)
+      write_text_file(toc_path, "* [](#page)\n") != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  Inputs inputs = {
-      .project_name = "Project",
-      .toc_path = toc_path,
-      .out_multi = root,
-  };
-  AnchorLocation page = {
-      .file_path = page_path,
-      .multipage_output_file_path = index_path,
-      .multipage_output_directory_path = root,
-      .multipage_base_href = "",
-      .multipage_url = "./",
-      .anchor = "#page",
-      .title = "Page",
-  };
-  AnchorLocationArray toc_anchor_locations;
-  AnchorLocationArray anchor_locations;
-  init_anchor_location_array(&toc_anchor_locations, 1);
-  init_anchor_location_array(&anchor_locations, 0);
-  insert_anchor_location_array(&toc_anchor_locations, &page);
-
-  int render_result =
-      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
-  AssetFileNames generated_names;
-  asset_file_names(&generated_names);
+  int render_result = run_mmdoc_build("Project", src_dir, out1_dir);
   char search_index_name[ASSET_FILE_NAME_SIZE] = "";
   int search_index_found =
-      find_asset_name(root, "search_index.", ".js", search_index_name,
+      find_asset_name(multi1, "search_index.", ".js", search_index_name,
                       sizeof(search_index_name));
   char first_search_index_name[ASSET_FILE_NAME_SIZE];
   snprintf(first_search_index_name, sizeof(first_search_index_name), "%s",
            search_index_name);
-  const char *asset_names[] = {
-      generated_names.a11y_dark_css,     generated_names.a11y_light_css,
-      generated_names.mmdoc_css,         generated_names.mmdoc_js,
-      generated_names.mmdoc_search_js,   generated_names.fuse_basic_min_js,
-      generated_names.highlight_pack_js,
-  };
   int assets_found = search_index_found;
-  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
+  for (AssetId id = 0; id < ASSET_COUNT; id++) {
     char asset_path[PATH_MAX];
-    snprintf(asset_path, sizeof(asset_path), "%s/%s", root, asset_names[i]);
+    snprintf(asset_path, sizeof(asset_path), "%s/%s", multi1,
+             asset_file_name(id));
     assets_found &= file_exists_and_is_not_empty(asset_path);
   }
 
   int names_are_hashed =
-      asset_name_has_hash(generated_names.a11y_dark_css, "a11y-dark", "css") &&
-      asset_name_has_hash(generated_names.a11y_light_css, "a11y-light",
+      asset_name_has_hash(asset_file_name(ASSET_A11Y_DARK_CSS), "a11y-dark",
                           "css") &&
-      asset_name_has_hash(generated_names.mmdoc_css, "mmdoc", "css") &&
-      asset_name_has_hash(generated_names.mmdoc_js, "mmdoc", "js") &&
-      asset_name_has_hash(generated_names.mmdoc_search_js, "mmdoc_search",
-                          "js") &&
-      asset_name_has_hash(generated_names.fuse_basic_min_js, "fuse.basic.min",
-                          "js") &&
-      asset_name_has_hash(generated_names.highlight_pack_js, "highlight.pack",
-                          "js") &&
+      asset_name_has_hash(asset_file_name(ASSET_A11Y_LIGHT_CSS), "a11y-light",
+                          "css") &&
+      asset_name_has_hash(asset_file_name(ASSET_MMDOC_CSS), "mmdoc", "css") &&
+      asset_name_has_hash(asset_file_name(ASSET_MMDOC_JS), "mmdoc", "js") &&
+      asset_name_has_hash(asset_file_name(ASSET_MMDOC_SEARCH_JS),
+                          "mmdoc_search", "js") &&
+      asset_name_has_hash(asset_file_name(ASSET_FUSE_BASIC_MIN_JS),
+                          "fuse.basic.min", "js") &&
+      asset_name_has_hash(asset_file_name(ASSET_HIGHLIGHT_PACK_JS),
+                          "highlight.pack", "js") &&
       asset_name_has_hash(search_index_name, "search_index", "js");
   int page_is_external =
-      file_contains(index_path, generated_names.mmdoc_css) &&
-      file_contains(index_path, generated_names.mmdoc_js) &&
-      file_contains(index_path, generated_names.mmdoc_search_js) &&
-      file_contains(index_path, generated_names.highlight_pack_js) &&
-      file_contains(index_path, search_index_name) &&
-      file_contains(index_path, generated_names.fuse_basic_min_js) &&
-      !file_contains(index_path, "href='mmdoc.css'") &&
-      !file_contains(index_path, "src='mmdoc.js'") &&
-      !file_contains(index_path, "<style>") &&
-      !file_contains(index_path, "Highlight.js 10.7.1");
+      file_contains(index1, asset_file_name(ASSET_MMDOC_CSS)) &&
+      file_contains(index1, asset_file_name(ASSET_MMDOC_JS)) &&
+      file_contains(index1, asset_file_name(ASSET_MMDOC_SEARCH_JS)) &&
+      file_contains(index1, asset_file_name(ASSET_HIGHLIGHT_PACK_JS)) &&
+      file_contains(index1, search_index_name) &&
+      file_contains(index1, asset_file_name(ASSET_FUSE_BASIC_MIN_JS)) &&
+      !file_contains(index1, "href='mmdoc.css'") &&
+      !file_contains(index1, "src='mmdoc.js'") &&
+      !file_contains(index1, "<style>") &&
+      !file_contains(index1, "Highlight.js 10.7.1");
   char search_script_path[PATH_MAX];
-  snprintf(search_script_path, sizeof(search_script_path), "%s/%s", root,
-           generated_names.mmdoc_search_js);
+  snprintf(search_script_path, sizeof(search_script_path), "%s/%s", multi1,
+           asset_file_name(ASSET_MMDOC_SEARCH_JS));
   int search_is_lazy =
       file_contains(search_script_path,
                     "loadSearchScript(searchIndexSource)") &&
@@ -634,63 +640,47 @@ int test_multipage_shared_assets_and_accessible_controls() {
       file_contains(search_script_path, "window.mmdocSearchCorpus") &&
       file_contains(search_script_path, "limit: searchResultLimit");
   int page_is_accessible =
-      file_contains(index_path, "viewport-fit=cover") &&
-      file_contains(index_path, "mobile-top-nav") &&
-      file_contains(index_path, "<header class='nav-top-container'>") &&
-      file_contains(index_path, "class='skip-link' href='./#main-content'") &&
-      file_contains(index_path, "aria-controls='sidebar'") &&
-      file_contains(index_path, "aria-label='Open search'") &&
-      file_contains(index_path, "role='status' aria-live='polite'") &&
-      file_contains(index_path, "<main id='main-content' tabindex='-1'>");
+      file_contains(index1, "viewport-fit=cover") &&
+      file_contains(index1, "mobile-top-nav") &&
+      file_contains(index1, "<header class='nav-top-container'>") &&
+      file_contains(index1, "class='skip-link' href='./#main-content'") &&
+      file_contains(index1, "aria-controls='sidebar'") &&
+      file_contains(index1, "aria-label='Open search'") &&
+      file_contains(index1, "role='status' aria-live='polite'") &&
+      file_contains(index1, "<main id='main-content' tabindex='-1'>");
   int theme_is_initialized_before_css =
-      file_contains_before(index_path, "localStorage.getItem('theme')",
-                           generated_names.mmdoc_css) &&
-      file_contains(index_path,
-                    "document.documentElement.classList.add(theme + "
-                    "'-theme')");
+      file_contains_before(index1, "localStorage.getItem('theme')",
+                           asset_file_name(ASSET_MMDOC_CSS)) &&
+      file_contains(index1, "document.documentElement.classList.add(theme + "
+                            "'-theme')");
   char css_path[PATH_MAX];
-  snprintf(css_path, sizeof(css_path), "%s/%s", root,
-           generated_names.mmdoc_css);
+  snprintf(css_path, sizeof(css_path), "%s/%s", multi1,
+           asset_file_name(ASSET_MMDOC_CSS));
   int top_anchor_no_jump =
       file_contains(
           css_path,
           "scroll-margin-top: calc(var(--main-padding-top) + 1rem);") &&
       !file_contains(css_path, "scroll-behavior: smooth;");
 
-  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    unlink_asset(root, asset_names[i]);
-  }
-  unlink_asset(root, search_index_name);
   int no_code_render_result = 1;
   int highlighter_is_conditional = 0;
   int corpus_hash_changed = 0;
   if (write_text_file(page_path, "# Page {#page}\n") == 0) {
-    no_code_render_result =
-        mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+    no_code_render_result = run_mmdoc_build("Project", src_dir, out2_dir);
     char highlighter_path[PATH_MAX];
-    snprintf(highlighter_path, sizeof(highlighter_path), "%s/%s", root,
-             generated_names.highlight_pack_js);
+    snprintf(highlighter_path, sizeof(highlighter_path), "%s/%s", multi2,
+             asset_file_name(ASSET_HIGHLIGHT_PACK_JS));
     highlighter_is_conditional =
         !file_exists_and_is_not_empty(highlighter_path) &&
-        !file_contains(index_path, generated_names.highlight_pack_js);
-  }
-  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    unlink_asset(root, asset_names[i]);
-  }
-  if (find_asset_name(root, "search_index.", ".js", search_index_name,
-                      sizeof(search_index_name))) {
-    corpus_hash_changed =
-        strcmp(first_search_index_name, search_index_name) != 0;
-    unlink_asset(root, search_index_name);
+        !file_contains(index2, asset_file_name(ASSET_HIGHLIGHT_PACK_JS));
+    if (find_asset_name(multi2, "search_index.", ".js", search_index_name,
+                        sizeof(search_index_name))) {
+      corpus_hash_changed =
+          strcmp(first_search_index_name, search_index_name) != 0;
+    }
   }
 
-  free_anchor_location_array(&toc_anchor_locations);
-  free_anchor_location_array(&anchor_locations);
-  unlink(index_path);
-  unlink(page_path);
-  unlink(toc_path);
-  unlink_markdown(root);
-  rmdir(root);
+  rm_rf(root);
 
   if (render_result != 0 || no_code_render_result != 0 || !assets_found ||
       !names_are_hashed || !page_is_external || !page_is_accessible ||
@@ -709,23 +699,21 @@ int test_single_page_accessible_controls() {
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char toc_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char index_path[PATH_MAX];
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
-  snprintf(out_path, sizeof(out_path), "%s/single", root);
-  snprintf(index_path, sizeof(index_path), "%s/index.html", out_path);
-  if (write_text_file(toc_path, "") != 0)
+  char src_dir[PATH_MAX], out_dir[PATH_MAX], toc_path[PATH_MAX],
+      page_path[PATH_MAX], index_path[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/out", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(page_path, sizeof(page_path), "%s/page.md", src_dir);
+  snprintf(index_path, sizeof(index_path), "%s/single/index.html", out_dir);
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(toc_path, "* [](#page)\n") != 0 ||
+      write_text_file(page_path, "# Page {#page}\n") != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  Inputs inputs = {
-      .project_name = "Project",
-      .toc_path = toc_path,
-      .out_single = out_path,
-  };
-  AnchorLocationArray toc_anchor_locations;
-  init_anchor_location_array(&toc_anchor_locations, 0);
-  int render_result = mmdoc_single(inputs, toc_anchor_locations);
+  int render_result = run_mmdoc_build("Project", src_dir, out_dir);
   int controls_found = file_contains(index_path, "<html lang='en'>") &&
                        file_contains(index_path, "viewport-fit=cover") &&
                        file_contains(index_path, "aria-controls='sidebar'") &&
@@ -734,11 +722,7 @@ int test_single_page_accessible_controls() {
   int theme_is_initialized_before_css = file_contains_before(
       index_path, "localStorage.getItem('theme')", "<style>");
 
-  free_anchor_location_array(&toc_anchor_locations);
-  unlink(index_path);
-  unlink(toc_path);
-  rmdir(out_path);
-  rmdir(root);
+  rm_rf(root);
 
   if (render_result != 0 || !controls_found ||
       !theme_is_initialized_before_css) {
@@ -754,71 +738,42 @@ int test_multipage_navigation_anchor() {
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char page_path[PATH_MAX];
-  char toc_path[PATH_MAX];
-  snprintf(page_path, sizeof(page_path), "%s/index.html", root);
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
+  char src_dir[PATH_MAX], out_dir[PATH_MAX], toc_path[PATH_MAX];
+  char p1[PATH_MAX], p2[PATH_MAX], p3[PATH_MAX], mid_html[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/out", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(p1, sizeof(p1), "%s/preface.md", src_dir);
+  snprintf(p2, sizeof(p2), "%s/middle.md", src_dir);
+  snprintf(p3, sizeof(p3), "%s/overview.md", src_dir);
+  snprintf(mid_html, sizeof(mid_html), "%s/multi/middle/index.html", out_dir);
 
-  FILE *toc_file = fopen(toc_path, "w");
-  if (toc_file == nullptr)
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(toc_path, "* [](#preface)\n* [](#middle)\n* "
+                                "[](#overview-of-nixpkgs)\n") != 0 ||
+      write_text_file(p1, "# Preface {#preface}\n") != 0 ||
+      write_text_file(p2, "# Middle {#middle}\n") != 0 ||
+      write_text_file(p3, "# Overview of Nixpkgs {#overview-of-nixpkgs}\n") !=
+          0) {
+    rm_rf(root);
     return 1;
-  if (fclose(toc_file) != 0)
-    return 1;
+  }
 
-  FILE *search_index_file = tmpfile();
-  if (search_index_file == nullptr)
-    return 1;
-
-  Inputs inputs = {
-      .project_name = "Nixpkgs",
-      .toc_path = toc_path,
-  };
-  AnchorLocation current = {
-      .file_path = nullptr,
-      .multipage_output_file_path = page_path,
-      .multipage_base_href = "",
-      .multipage_url = "./",
-      .anchor = "#preface",
-      .title = "Preface",
-  };
-  AnchorLocation previous = {
-      .multipage_url = "./",
-      .anchor = "#preface",
-      .title = "Preface",
-  };
-  AnchorLocation next = {
-      .multipage_url = "preface/",
-      .anchor = "#overview-of-nixpkgs",
-      .title = "Overview of Nixpkgs",
-  };
-  AnchorLocationArray anchor_locations;
-  init_anchor_location_array(&anchor_locations, 0);
-  AssetFileNames generated_names;
-  asset_file_names(&generated_names);
-
-  int render_result =
-      mmdoc_multi_page(inputs, anchor_locations, "", 0, &generated_names,
-                       "search_index.0000000000000000.js", search_index_file,
-                       nullptr, &current, &previous, &next, nullptr);
+  int render_result = run_mmdoc_build("Nixpkgs", src_dir, out_dir);
   int found_previous =
-      file_contains(page_path,
+      file_contains(mid_html,
                     "id='chapter-previous-button' class='chapter-previous' "
                     "href='./#preface'") &&
-      file_contains(page_path,
-                    "class='chapter-pagination-link "
-                    "chapter-pagination-previous' href='./#preface'");
+      file_contains(mid_html, "class='chapter-pagination-link "
+                              "chapter-pagination-previous' href='./#preface'");
   int found_next =
-      file_contains(page_path, "id='chapter-next-button' class='chapter-next' "
-                               "href='preface/#overview-of-nixpkgs'") &&
-      file_contains(page_path, "class='chapter-pagination-link "
-                               "chapter-pagination-next' "
-                               "href='preface/#overview-of-nixpkgs'");
+      file_contains(mid_html, "id='chapter-next-button' class='chapter-next' "
+                              "href='overview/#overview-of-nixpkgs'") &&
+      file_contains(mid_html, "class='chapter-pagination-link "
+                              "chapter-pagination-next' "
+                              "href='overview/#overview-of-nixpkgs'");
 
-  free_anchor_location_array(&anchor_locations);
-  fclose(search_index_file);
-  unlink(page_path);
-  unlink(toc_path);
-  rmdir(root);
+  rm_rf(root);
 
   if (render_result != 0 || !found_previous || !found_next) {
     printf("multipage navigation anchor test failed\n");
@@ -833,96 +788,42 @@ int test_multipage_cached_toc_current_page_links() {
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char toc_path[PATH_MAX];
-  char first_source_path[PATH_MAX];
-  char second_source_path[PATH_MAX];
-  char first_output_path[PATH_MAX];
-  char second_output_path[PATH_MAX];
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
-  snprintf(first_source_path, sizeof(first_source_path), "%s/first.md", root);
-  snprintf(second_source_path, sizeof(second_source_path), "%s/second.md",
-           root);
-  snprintf(first_output_path, sizeof(first_output_path), "%s/first.html", root);
-  snprintf(second_output_path, sizeof(second_output_path), "%s/second.html",
-           root);
+  char src_dir[PATH_MAX], out_dir[PATH_MAX], toc_path[PATH_MAX];
+  char first_src[PATH_MAX], second_src[PATH_MAX];
+  char first_out[PATH_MAX], second_out[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/out", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(first_src, sizeof(first_src), "%s/first.md", src_dir);
+  snprintf(second_src, sizeof(second_src), "%s/second.md", src_dir);
+  snprintf(first_out, sizeof(first_out), "%s/multi/index.html", out_dir);
+  snprintf(second_out, sizeof(second_out), "%s/multi/second/index.html",
+           out_dir);
 
-  if (write_text_file(toc_path, "# Contents {#contents}\n\n* [](#first)\n* "
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(toc_path, "# Contents {#contents}\n\n* [](#first)\n* "
                                 "[](#second)\n") != 0 ||
-      write_text_file(first_source_path, "# First {#first}\n") != 0 ||
-      write_text_file(second_source_path, "# Second {#second}\n") != 0)
+      write_text_file(first_src, "# First {#first}\n") != 0 ||
+      write_text_file(second_src, "# Second {#second}\n") != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  Inputs inputs = {
-      .project_name = "Project",
-      .toc_path = toc_path,
-      .out_multi = root,
-  };
-  AnchorLocation first = {
-      .file_path = first_source_path,
-      .multipage_output_file_path = first_output_path,
-      .multipage_output_directory_path = root,
-      .multipage_base_href = "",
-      .multipage_url = "first/",
-      .anchor = "#first",
-      .title = "First",
-  };
-  AnchorLocation second = {
-      .file_path = second_source_path,
-      .multipage_output_file_path = second_output_path,
-      .multipage_output_directory_path = root,
-      .multipage_base_href = "",
-      .multipage_url = "second/",
-      .anchor = "#second",
-      .title = "Second",
-  };
-  AnchorLocationArray toc_anchor_locations;
-  AnchorLocationArray anchor_locations;
-  init_anchor_location_array(&toc_anchor_locations, 2);
-  init_anchor_location_array(&anchor_locations, 2);
-  insert_anchor_location_array(&toc_anchor_locations, &first);
-  insert_anchor_location_array(&toc_anchor_locations, &second);
-  insert_anchor_location_array(&anchor_locations, &first);
-  insert_anchor_location_array(&anchor_locations, &second);
-  int index_result = build_anchor_location_index(&anchor_locations);
-  int render_result =
-      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+  int render_result = run_mmdoc_build("Project", src_dir, out_dir);
 
   int links_are_page_specific =
-      file_contains(first_output_path,
-                    "<h1 id='contents'><a href='first/#contents'>") &&
-      file_contains(second_output_path,
+      file_contains(first_out, "<h1 id='contents'><a href='./#contents'>") &&
+      file_contains(second_out,
                     "<h1 id='contents'><a href='second/#contents'>");
   int toc_links_are_resolved =
-      file_contains(first_output_path, "href='first/#first'") &&
-      file_contains(first_output_path, "href='second/#second'") &&
-      file_contains(second_output_path, "href='first/#first'") &&
-      file_contains(second_output_path, "href='second/#second'");
+      file_contains(first_out, "href='./#first'") &&
+      file_contains(first_out, "href='second/#second'") &&
+      file_contains(second_out, "href='./#first'") &&
+      file_contains(second_out, "href='second/#second'");
 
-  AssetFileNames generated_names;
-  asset_file_names(&generated_names);
-  const char *asset_names[] = {
-      generated_names.a11y_dark_css,   generated_names.a11y_light_css,
-      generated_names.mmdoc_css,       generated_names.mmdoc_js,
-      generated_names.mmdoc_search_js, generated_names.fuse_basic_min_js,
-  };
-  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++) {
-    unlink_asset(root, asset_names[i]);
-  }
-  char search_index_name[ASSET_FILE_NAME_SIZE];
-  if (find_asset_name(root, "search_index.", ".js", search_index_name,
-                      sizeof(search_index_name)))
-    unlink_asset(root, search_index_name);
-  free_anchor_location_array(&toc_anchor_locations);
-  free_anchor_location_array(&anchor_locations);
-  unlink(first_output_path);
-  unlink(second_output_path);
-  unlink(first_source_path);
-  unlink(second_source_path);
-  unlink(toc_path);
-  unlink_markdown(root);
-  rmdir(root);
+  rm_rf(root);
 
-  if (index_result != 0 || render_result != 0 || !links_are_page_specific ||
+  if (render_result != 0 || !links_are_page_specific ||
       !toc_links_are_resolved) {
     printf("multipage cached TOC test failed\n");
     return 1;
@@ -936,57 +837,27 @@ int test_multipage_duplicate_output_paths() {
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char toc_path[PATH_MAX];
-  char source_path[PATH_MAX];
-  char output_path[PATH_MAX];
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
-  snprintf(source_path, sizeof(source_path), "%s/page.md", root);
-  snprintf(output_path, sizeof(output_path), "%s/index.html", root);
-  if (write_text_file(toc_path, "") != 0 ||
+  char src_dir[PATH_MAX], out_dir[PATH_MAX], toc_path[PATH_MAX],
+      source_path[PATH_MAX], multi_dir[PATH_MAX], output_path[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/out", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(source_path, sizeof(source_path), "%s/page.md", src_dir);
+  snprintf(multi_dir, sizeof(multi_dir), "%s/multi", out_dir);
+  snprintf(output_path, sizeof(output_path), "%s/index.html", multi_dir);
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(toc_path, "* [](#first)\n* [](#second)\n") != 0 ||
       write_text_file(source_path,
-                      "# First {#first}\n\n## Second {#second}\n") != 0)
+                      "# First {#first}\n\n## Second {#second}\n") != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  Inputs inputs = {
-      .project_name = "Project",
-      .toc_path = toc_path,
-      .out_multi = root,
-  };
-  AnchorLocation first = {
-      .file_path = source_path,
-      .multipage_output_file_path = output_path,
-      .multipage_output_directory_path = root,
-      .multipage_base_href = "",
-      .multipage_url = "./",
-      .anchor = "#first",
-      .title = "First",
-  };
-  AnchorLocation second = {
-      .file_path = source_path,
-      .multipage_output_file_path = output_path,
-      .multipage_output_directory_path = root,
-      .multipage_base_href = "",
-      .multipage_url = "./",
-      .anchor = "#second",
-      .title = "A much longer second title",
-  };
-  AnchorLocationArray toc_anchor_locations;
-  AnchorLocationArray anchor_locations;
-  init_anchor_location_array(&toc_anchor_locations, 2);
-  init_anchor_location_array(&anchor_locations, 2);
-  insert_anchor_location_array(&toc_anchor_locations, &first);
-  insert_anchor_location_array(&toc_anchor_locations, &second);
-  insert_anchor_location_array(&anchor_locations, &first);
-  insert_anchor_location_array(&anchor_locations, &second);
-  int index_result = build_anchor_location_index(&anchor_locations);
-  int render_result =
-      mmdoc_multi(inputs, toc_anchor_locations, anchor_locations);
+  int render_result = run_mmdoc_build("Project", src_dir, out_dir);
 
-  AssetFileNames generated_names;
-  asset_file_names(&generated_names);
   char search_index_name[ASSET_FILE_NAME_SIZE];
   int search_index_found =
-      find_asset_name(root, "search_index.", ".js", search_index_name,
+      find_asset_name(multi_dir, "search_index.", ".js", search_index_name,
                       sizeof(search_index_name));
   int search_index_replaced =
       search_index_found && file_contains(output_path, search_index_name) &&
@@ -995,24 +866,9 @@ int test_multipage_duplicate_output_paths() {
       !file_contains(output_path, "chapter-previous-button") &&
       !file_contains(output_path, "chapter-next-button");
 
-  const char *asset_names[] = {
-      generated_names.a11y_dark_css,   generated_names.a11y_light_css,
-      generated_names.mmdoc_css,       generated_names.mmdoc_js,
-      generated_names.mmdoc_search_js, generated_names.fuse_basic_min_js,
-  };
-  for (size_t i = 0; i < sizeof(asset_names) / sizeof(asset_names[0]); i++)
-    unlink_asset(root, asset_names[i]);
-  if (search_index_found)
-    unlink_asset(root, search_index_name);
-  free_anchor_location_array(&toc_anchor_locations);
-  free_anchor_location_array(&anchor_locations);
-  unlink(output_path);
-  unlink(source_path);
-  unlink(toc_path);
-  unlink_markdown(root);
-  rmdir(root);
+  rm_rf(root);
 
-  if (index_result != 0 || render_result != 0 || !search_index_replaced ||
+  if (render_result != 0 || !search_index_replaced ||
       !page_navigation_is_unique) {
     printf("multipage duplicate output paths test failed\n");
     return 1;
@@ -1054,11 +910,11 @@ int test_reject_overlong_ids() {
   if (write_overlong_id(anchor_path, "{#", "}") != 0)
     return 1;
 
-  Array anchors;
-  init_array(&anchors, 1);
-  int anchors_result = mmdoc_anchors(&anchors, anchor_path);
+  MdDoc doc;
+  int anchors_result = md_parse_file(&doc, anchor_path, true);
+  if (anchors_result == 0)
+    md_doc_free(&doc);
   unlink(anchor_path);
-  free_array(&anchors);
 
   if (refs_result == 0 || anchors_result == 0) {
     printf("overlong anchor rejection test failed\n");
@@ -1068,89 +924,53 @@ int test_reject_overlong_ids() {
   return 0;
 }
 
-static int test_render_io_and_man_cleanup(void) {
+static int test_render_io_cleanup(void) {
   AnchorLocationArray locations = {};
-  Array anchors = {};
   FILE *output = tmpfile();
   if (output == nullptr)
     return 1;
   char missing[] = "/dev/null/missing.md";
-  int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, nullptr,
-                                 locations, "", nullptr) != -1;
-  char *title = mmdoc_render_get_title_from_file(missing);
-  failed |= title != nullptr;
-  free(title);
-  failed |= mmdoc_render_collect_anchors(missing, &anchors) != -1;
-  free_array(&anchors);
-  failed |=
-      mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
-                        RENDER_TYPE_MAN, nullptr, locations, "", nullptr) < 0;
+  int failed = mmdoc_render_part(missing, output, RENDER_TYPE_SINGLE, locations,
+                                 "") != -1;
+  MdDoc doc;
+  if (md_parse_file(&doc, missing, true) == 0) {
+    md_doc_free(&doc);
+    failed = 1;
+  }
   fclose(output);
   output = fopen("/dev/full", "w");
   if (output != nullptr) {
     setvbuf(output, nullptr, _IONBF, 0);
     failed |= mmdoc_render_part(TEST_EXAMPLE_DIR "e001/input.md", output,
-                                RENDER_TYPE_SINGLE, nullptr, locations, "",
-                                nullptr) != -1;
+                                RENDER_TYPE_SINGLE, locations, "") != -1;
     fclose(output);
   }
   return failed;
 }
 
-static int test_parse_edge_cases(void) {
-  char id[64];
-  char span[64];
+static int assert_md_html_eq(const char *label, const char *md,
+                             const char *expected);
 
-  /* Heading attributes: multiple spaces, empty ID rejection, preceding braces
-   */
-  if (parse_heading_bracketed_span_id("Heading  {#two-spaces}", id) != 7 ||
-      strcmp(id, "two-spaces") != 0) {
-    printf("heading two-spaces parse test failed\n");
-    return 1;
-  }
-  if (parse_heading_bracketed_span_id("Heading {#}", id) != -1) {
-    printf("heading empty-id rejection test failed\n");
-    return 1;
-  }
-  if (parse_heading_bracketed_span_id("Heading {foo} {#valid}", id) != 13 ||
-      strcmp(id, "valid") != 0) {
-    printf("heading after-braces parse test failed\n");
-    return 1;
-  }
-
-  /* Link bracketed spans: consecutive brackets, nested [, empty ID */
-  if (parse_link_bracketed_span_id("[foo][bar]{#id}", span, id) != 5 ||
-      strcmp(span, "bar") != 0 || strcmp(id, "id") != 0) {
-    printf("consecutive bracket span parse test failed\n");
-    return 1;
-  }
-  if (parse_link_bracketed_span_id("[[nested]{#nid}", span, id) != 1 ||
-      strcmp(span, "nested") != 0 || strcmp(id, "nid") != 0) {
-    printf("nested bracket span parse test failed\n");
-    return 1;
-  }
-  if (parse_link_bracketed_span_id("[foo]{#}", span, id) != -1) {
-    printf("empty span id rejection test failed\n");
-    return 1;
-  }
-  if (parse_link_bracketed_span_id("[a]{b}[c]{#ok}", span, id) != 6 ||
-      strcmp(span, "c") != 0 || strcmp(id, "ok") != 0) {
-    printf("span after non-id brace test failed\n");
-    return 1;
-  }
-
-  /* Admonition end: only colons + optional trailing whitespace */
-  if (parse_admonition_end(":::") != 0 ||
-      parse_admonition_end("   :::   ") != 0 ||
-      parse_admonition_end("::::") != 0 ||
-      parse_admonition_end("::: foo bar") != -1 ||
-      parse_admonition_end(":::note") != -1) {
-    printf("admonition end parse test failed\n");
-    return 1;
-  }
-
-  printf("parse edge cases test passed\n");
-  return 0;
+static int test_md_anchor_and_admonition_edge_cases(void) {
+  int f = 0;
+  f += assert_md_html_eq(
+      "heading-two-spaces", "# Heading  {#two-spaces}\n",
+      "<h1 id='two-spaces'><a href='#two-spaces'>\nHeading\n</a></h1>\n");
+  f += assert_md_html_eq("heading-empty-id", "# Heading {#}\n",
+                         "<h1>Heading {#}</h1>\n");
+  f += assert_md_html_eq(
+      "heading-after-braces", "# Heading {foo} {#valid}\n",
+      "<h1 id='valid'><a href='#valid'>\nHeading {foo}\n</a></h1>\n");
+  f += assert_md_html_eq("consecutive-bracket-span", "[foo][bar]{#id}\n",
+                         "<p>[foo]<span id='id'>bar</span></p>\n");
+  f += assert_md_html_eq("nested-bracket-span", "[[nested]{#nid}\n",
+                         "<p>[<span id='nid'>nested</span></p>\n");
+  f += assert_md_html_eq("empty-span-id", "[foo]{#}\n", "<p>[foo]{#}</p>\n");
+  f += assert_md_html_eq("span-after-non-id-brace", "[a]{b}[c]{#ok}\n",
+                         "<p>[a]{b}<span id='ok'>c</span></p>\n");
+  if (f == 0)
+    printf("md anchor and admonition edge cases test passed\n");
+  return f ? 1 : 0;
 }
 
 static int test_admonition_blank_lines_and_safety(void) {
@@ -1174,9 +994,7 @@ static int test_admonition_blank_lines_and_safety(void) {
     return 1;
   AnchorLocationArray empty;
   init_anchor_location_array(&empty, 0);
-  AnchorLocation al = {.title = "Test"};
-  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, empty,
-                             "", nullptr);
+  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, empty, "");
   free_anchor_location_array(&empty);
   fclose(out);
 
@@ -1233,51 +1051,27 @@ static int test_single_dedup_and_link_titles(void) {
   if (mkdtemp(root) == nullptr)
     return 1;
 
-  char toc_path[PATH_MAX], p1_path[PATH_MAX], p2_path[PATH_MAX],
-      out_dir[PATH_MAX], index_path[PATH_MAX];
-  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", root);
-  snprintf(p1_path, sizeof(p1_path), "%s/p1.md", root);
-  snprintf(p2_path, sizeof(p2_path), "%s/p2.md", root);
-  snprintf(out_dir, sizeof(out_dir), "%s/single", root);
-  snprintf(index_path, sizeof(index_path), "%s/single/index.html", root);
+  char src_dir[PATH_MAX], out_dir[PATH_MAX], toc_path[PATH_MAX],
+      p1_path[PATH_MAX], p2_path[PATH_MAX], index_path[PATH_MAX];
+  snprintf(src_dir, sizeof(src_dir), "%s/src", root);
+  snprintf(out_dir, sizeof(out_dir), "%s/out", root);
+  snprintf(toc_path, sizeof(toc_path), "%s/toc.md", src_dir);
+  snprintf(p1_path, sizeof(p1_path), "%s/p1.md", src_dir);
+  snprintf(p2_path, sizeof(p2_path), "%s/p2.md", src_dir);
+  snprintf(index_path, sizeof(index_path), "%s/single/index.html", out_dir);
 
-  if (write_text_file(toc_path, "* [](#first)\n* [](#sub)\n* [](#second)\n") !=
+  if (mkdir_p(src_dir) != 0 ||
+      write_text_file(toc_path, "* [](#first)\n* [](#sub)\n* [](#second)\n") !=
           0 ||
-      write_text_file(p1_path, "# First & <One> {#first}\n\n## Sub {#sub}\n\n"
-                               "See [](#second).\n") != 0 ||
-      write_text_file(p2_path, "# Second's Page {#second}\n\nBody 2.\n") != 0)
+      write_text_file(p1_path,
+                      "# First & \\<One\\> {#first}\n\n## Sub {#sub}\n\n"
+                      "See [](#second).\n") != 0 ||
+      write_text_file(p2_path, "# Second's Page {#second}\n\nBody 2.\n") != 0) {
+    rm_rf(root);
     return 1;
+  }
 
-  Inputs inputs = {
-      .project_name = "Proj <1> & '2'",
-      .toc_path = toc_path,
-      .out_single = out_dir,
-  };
-  AnchorLocation l1 = {.file_path = p1_path,
-                       .multipage_output_file_path = "p1/index.html",
-                       .anchor = "#first",
-                       .title = "First & <One>"};
-  AnchorLocation l1b = {.file_path = p1_path,
-                        .multipage_output_file_path = "p1/index.html",
-                        .anchor = "#sub",
-                        .title = "First & <One>"};
-  AnchorLocation l2 = {.file_path = p2_path,
-                       .multipage_output_file_path = "p2/index.html",
-                       .anchor = "#second",
-                       .title = "Second's Page"};
-  AnchorLocationArray toc_locs, all_locs;
-  init_anchor_location_array(&toc_locs, 3);
-  init_anchor_location_array(&all_locs, 3);
-  insert_anchor_location_array(&toc_locs, &l1);
-  insert_anchor_location_array(&toc_locs, &l1b);
-  insert_anchor_location_array(&toc_locs, &l2);
-  insert_anchor_location_array(&all_locs, &l1);
-  insert_anchor_location_array(&all_locs, &l1b);
-  insert_anchor_location_array(&all_locs, &l2);
-  int index_rc = build_anchor_location_index(&all_locs);
-
-  int rc = index_rc == 0 ? mmdoc_single_with_anchors(inputs, toc_locs, all_locs)
-                         : -1;
+  int rc = run_mmdoc_build("Proj <1> & '2'", src_dir, out_dir);
 
   /* Count occurrences of id='first' to confirm p1 was rendered only once. */
   int first_count = 0;
@@ -1303,14 +1097,7 @@ static int test_single_dedup_and_link_titles(void) {
       file_contains(index_path, "<h1 id='first'><a href='#first'>") &&
       !file_contains(index_path, "href='/#first'");
 
-  free_anchor_location_array(&toc_locs);
-  free_anchor_location_array(&all_locs);
-  unlink(index_path);
-  unlink(toc_path);
-  unlink(p1_path);
-  unlink(p2_path);
-  rmdir(out_dir);
-  rmdir(root);
+  rm_rf(root);
 
   if (!passed) {
     printf("single dedup and link titles test failed\n");
@@ -1344,7 +1131,7 @@ static int test_mkdir_p_and_symlink_loop(void) {
   Array md_files;
   init_array(&md_files, 4);
   Inputs inputs = {.src = root, .out_multi = nullptr, .out_single = nullptr};
-  int walk_rc = mmdoc_md_files(&md_files, inputs);
+  int walk_rc = mmdoc_collect_source_files(&md_files, nullptr, inputs);
   int loop_safe = walk_rc == 0 && md_files.used == 1 &&
                   strcmp(md_files.array[0], md_path) == 0;
   free_array(&md_files);
@@ -1408,18 +1195,19 @@ static int test_definition_list_continuations(void) {
   if (write_text_file(input_path, md) != 0)
     return 1;
 
-  Array anchors;
-  init_array(&anchors, 8);
-  int anchor_rc = mmdoc_render_collect_anchors(input_path, &anchors);
+  MdDoc doc;
+  int anchor_rc = md_parse_file(&doc, input_path, true);
   int found_dd_span = 0;
   int found_dd_note = 0;
-  for (size_t i = 0; i < anchors.used; i++) {
-    if (strcmp(anchors.array[i], "#dd-span") == 0)
-      found_dd_span = 1;
-    if (strcmp(anchors.array[i], "#dd-note") == 0)
-      found_dd_note = 1;
+  if (anchor_rc == 0) {
+    for (size_t i = 0; i < doc.anchors.used; i++) {
+      if (strcmp(doc.anchors.array[i], "#dd-span") == 0)
+        found_dd_span = 1;
+      if (strcmp(doc.anchors.array[i], "#dd-note") == 0)
+        found_dd_note = 1;
+    }
+    md_doc_free(&doc);
   }
-  free_array(&anchors);
 
   FILE *out = fopen(out_path, "w");
   if (out == nullptr)
@@ -1432,10 +1220,9 @@ static int test_definition_list_continuations(void) {
                        .multipage_url = "config/"};
   insert_anchor_location_array(&locations, &al);
   int index_rc = build_anchor_location_index(&locations);
-  int rc = index_rc == 0
-               ? mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al,
-                                   locations, "", nullptr)
-               : -1;
+  int rc = index_rc == 0 ? mmdoc_render_part(input_path, out,
+                                             RENDER_TYPE_SINGLE, locations, "")
+                         : -1;
   free_anchor_location_array(&locations);
   fclose(out);
 
@@ -1520,17 +1307,18 @@ static int test_markdown_engine_commonmark_and_gfm(void) {
     return 1;
   }
 
-  Array anchors;
-  init_array(&anchors, 4);
-  int arc = mmdoc_render_collect_anchors(input_path, &anchors);
+  MdDoc doc;
+  int arc = md_parse_file(&doc, input_path, true);
   int has_unesc_opt = 0, has_ex4 = 0;
-  for (size_t i = 0; i < anchors.used; i++) {
-    if (strcmp(anchors.array[i], "#opt-a._name_.b") == 0)
-      has_unesc_opt = 1;
-    if (strcmp(anchors.array[i], "#ex-four") == 0)
-      has_ex4 = 1;
+  if (arc == 0) {
+    for (size_t i = 0; i < doc.anchors.used; i++) {
+      if (strcmp(doc.anchors.array[i], "#opt-a._name_.b") == 0)
+        has_unesc_opt = 1;
+      if (strcmp(doc.anchors.array[i], "#ex-four") == 0)
+        has_ex4 = 1;
+    }
+    md_doc_free(&doc);
   }
-  free_array(&anchors);
 
   FILE *out = fopen(out_path, "w");
   if (out == nullptr) {
@@ -1540,9 +1328,7 @@ static int test_markdown_engine_commonmark_and_gfm(void) {
   }
   AnchorLocationArray locs;
   init_anchor_location_array(&locs, 0);
-  AnchorLocation al = {};
-  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, &al, locs, "",
-                             nullptr);
+  int rc = mmdoc_render_part(input_path, out, RENDER_TYPE_SINGLE, locs, "");
   free_anchor_location_array(&locs);
   fclose(out);
 
@@ -1749,9 +1535,9 @@ static int test_markdown_engine_fuzz_spec_regressions(void) {
 int main(int argc, char *argv[]) {
   int num_failed = 0;
   int num_tests = 0;
-  num_failed += test_render_io_and_man_cleanup();
+  num_failed += test_render_io_cleanup();
   num_tests++;
-  num_failed += test_parse_edge_cases();
+  num_failed += test_md_anchor_and_admonition_edge_cases();
   num_tests++;
   num_failed += test_admonition_blank_lines_and_safety();
   num_tests++;

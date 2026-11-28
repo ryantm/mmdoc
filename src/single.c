@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "single.h"
+#include "files.h"
 #include "html.h"
 #include "mkdir_p.h"
 #include "render.h"
-#include "types.h"
 #include <stdlib.h>
-#include <string.h>
 
 static int write_single_header(FILE *index_file, Inputs inputs,
                                AnchorLocationArray anchor_locations,
@@ -46,10 +45,8 @@ static int write_single_header(FILE *index_file, Inputs inputs,
             index_file) == EOF)
     return -1;
 
-  AnchorLocation al = {};
-  int toc_code =
-      mmdoc_render_part(inputs.toc_path, index_file, RENDER_TYPE_SINGLE, &al,
-                        anchor_locations, "", nullptr);
+  int toc_code = mmdoc_render_part(inputs.toc_path, index_file,
+                                   RENDER_TYPE_SINGLE, anchor_locations, "");
   if (toc_code < 0)
     return -1;
   *has_code_block = toc_code != 0;
@@ -83,11 +80,10 @@ static FILE *open_single_index(const char *out) {
     printf("Error recursively making single directory %s\n", out);
     return nullptr;
   }
-  char *index_path = malloc(strlen(out) + sizeof("/index.html"));
+  char *index_path = mmdoc_file_path(out, "index.html");
   if (index_path == nullptr)
     return nullptr;
-  sprintf(index_path, "%s/index.html", out);
-  FILE *index_file = fopen(index_path, "w");
+  FILE *index_file = fopen(index_path, "wb");
   free(index_path);
   return index_file;
 }
@@ -123,58 +119,4 @@ int mmdoc_single_write_from_chapters(Inputs inputs,
   if (fclose(index_file) != 0)
     failed = true;
   return failed ? -1 : 0;
-}
-
-int mmdoc_single_with_anchors(Inputs inputs,
-                              AnchorLocationArray toc_anchor_locations,
-                              AnchorLocationArray anchor_locations) {
-  FILE *index_file = open_single_index(inputs.out_single);
-  if (index_file == nullptr)
-    return -1;
-  char io_buf[65536];
-  setvbuf(index_file, io_buf, _IOFBF, sizeof(io_buf));
-
-  AnchorLocationArray lookup =
-      anchor_locations.used > 0 ? anchor_locations : toc_anchor_locations;
-  bool has_code_block = false;
-  bool failed =
-      write_single_header(index_file, inputs, lookup, &has_code_block) != 0;
-
-  size_t *page_indices = nullptr;
-  size_t page_count = 0;
-  if (!failed && toc_anchor_locations.used > 0) {
-    page_indices = malloc(toc_anchor_locations.used * sizeof(*page_indices));
-    if (page_indices == nullptr) {
-      failed = true;
-    } else {
-      page_count =
-          mmdoc_collect_unique_page_indices(toc_anchor_locations, page_indices);
-    }
-  }
-
-  for (size_t i = 0; !failed && i < page_count; i++) {
-    AnchorLocation *loc = &toc_anchor_locations.array[page_indices[i]];
-    int rendered =
-        mmdoc_render_part(loc->file_path, index_file, RENDER_TYPE_SINGLE, loc,
-                          lookup, "", nullptr);
-    if (rendered < 0) {
-      failed = true;
-      break;
-    }
-    has_code_block = has_code_block || (rendered != 0);
-  }
-  free(page_indices);
-
-  if (!failed && write_single_footer(index_file, has_code_block) != 0)
-    failed = true;
-  if (ferror(index_file))
-    failed = true;
-  if (fclose(index_file) != 0)
-    failed = true;
-  return failed ? -1 : 0;
-}
-
-int mmdoc_single(Inputs inputs, AnchorLocationArray toc_anchor_locations) {
-  AnchorLocationArray empty = {};
-  return mmdoc_single_with_anchors(inputs, toc_anchor_locations, empty);
 }

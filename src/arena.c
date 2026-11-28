@@ -25,7 +25,6 @@ static MmdocArenaSlab *new_slab(size_t capacity) {
   slab->next = nullptr;
   slab->capacity = capacity;
   slab->used = 0;
-  slab->last_offset = SIZE_MAX;
   return slab;
 }
 
@@ -34,14 +33,6 @@ void mmdoc_arena_init(MmdocArena *arena, size_t initial_slab_size) {
   arena->current = nullptr;
   arena->default_slab_size =
       initial_slab_size >= 4096 ? initial_slab_size : 65536;
-}
-
-void mmdoc_arena_reset(MmdocArena *arena) {
-  for (MmdocArenaSlab *slab = arena->head; slab != nullptr; slab = slab->next) {
-    slab->used = 0;
-    slab->last_offset = SIZE_MAX;
-  }
-  arena->current = arena->head;
 }
 
 void mmdoc_arena_destroy(MmdocArena *arena) {

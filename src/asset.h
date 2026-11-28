@@ -6,15 +6,16 @@
 
 static constexpr size_t ASSET_FILE_NAME_SIZE = 96;
 
-typedef struct {
-  char fuse_basic_min_js[ASSET_FILE_NAME_SIZE];
-  char highlight_pack_js[ASSET_FILE_NAME_SIZE];
-  char a11y_dark_css[ASSET_FILE_NAME_SIZE];
-  char a11y_light_css[ASSET_FILE_NAME_SIZE];
-  char mmdoc_css[ASSET_FILE_NAME_SIZE];
-  char mmdoc_js[ASSET_FILE_NAME_SIZE];
-  char mmdoc_search_js[ASSET_FILE_NAME_SIZE];
-} AssetFileNames;
+typedef enum : uint8_t {
+  ASSET_FUSE_BASIC_MIN_JS = 0,
+  ASSET_HIGHLIGHT_PACK_JS,
+  ASSET_A11Y_DARK_CSS,
+  ASSET_A11Y_LIGHT_CSS,
+  ASSET_MMDOC_CSS,
+  ASSET_MMDOC_JS,
+  ASSET_MMDOC_SEARCH_JS,
+  ASSET_COUNT,
+} AssetId;
 
 typedef struct {
   uint64_t total_len;
@@ -26,39 +27,14 @@ typedef struct {
   size_t buf_len;
 } AssetHashState;
 
-void asset_file_names(AssetFileNames *names);
+const char *asset_file_name(AssetId id);
 void asset_hash_state_init(AssetHashState *state);
 void asset_hash_state_feed(AssetHashState *state, const unsigned char *bytes,
                            size_t length);
 uint64_t asset_hash_state_final(const AssetHashState *state);
-uint64_t asset_hash_init(void);
-uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
-                         size_t length);
 void asset_format_hashed_name(const char *stem, const char *extension,
                               uint64_t hash, char *file_name,
                               size_t file_name_size);
-[[nodiscard]] int asset_hashed_file_name_from_path(const char *path,
-                                                   const char *stem,
-                                                   const char *extension,
-                                                   char *file_name,
-                                                   size_t file_name_size);
 
-[[nodiscard]] int asset_write_to_dir_fuse_basic_min_js(char *dir,
-                                                       const char *file_name);
-[[nodiscard]] int asset_write_to_dir_highlight_pack_js(char *dir,
-                                                       const char *file_name);
-[[nodiscard]] int asset_write_to_dir_a11y_dark_css(char *dir,
-                                                   const char *file_name);
-[[nodiscard]] int asset_write_to_dir_a11y_light_css(char *dir,
-                                                    const char *file_name);
-[[nodiscard]] int asset_write_to_dir_mmdoc_css(char *dir,
-                                               const char *file_name);
-[[nodiscard]] int asset_write_to_dir_mmdoc_js(char *dir, const char *file_name);
-[[nodiscard]] int asset_write_to_dir_mmdoc_search_js(char *dir,
-                                                     const char *file_name);
-
-[[nodiscard]] int asset_write_to_file_a11y_dark_css(FILE *file);
-[[nodiscard]] int asset_write_to_file_a11y_light_css(FILE *file);
-[[nodiscard]] int asset_write_to_file_highlight_pack_js(FILE *file);
-[[nodiscard]] int asset_write_to_file_mmdoc_css(FILE *file);
-[[nodiscard]] int asset_write_to_file_mmdoc_js(FILE *file);
+[[nodiscard]] int asset_write_to_dir(const char *dir, AssetId id);
+[[nodiscard]] int asset_write_to_file(FILE *file, AssetId id);

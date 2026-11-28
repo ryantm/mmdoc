@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
+#include "files.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -8,8 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-extern int errno;
 
 static const unsigned char asset_highlight_pack_js[] = {
 #embed "asset/highlight.pack.js"
@@ -31,6 +30,31 @@ static const unsigned char asset_mmdoc_js[] = {
 };
 static const unsigned char asset_mmdoc_search_js[] = {
 #embed "asset/mmdoc_search.js"
+};
+
+typedef struct {
+  const char *stem;
+  const char *ext;
+  const unsigned char *data;
+  size_t len;
+} AssetDesc;
+
+static const AssetDesc asset_table[ASSET_COUNT] = {
+    [ASSET_FUSE_BASIC_MIN_JS] = {"fuse.basic.min", "js",
+                                 asset_fuse_basic_min_js,
+                                 sizeof(asset_fuse_basic_min_js)},
+    [ASSET_HIGHLIGHT_PACK_JS] = {"highlight.pack", "js",
+                                 asset_highlight_pack_js,
+                                 sizeof(asset_highlight_pack_js)},
+    [ASSET_A11Y_DARK_CSS] = {"a11y-dark", "css", asset_a11y_dark_css,
+                             sizeof(asset_a11y_dark_css)},
+    [ASSET_A11Y_LIGHT_CSS] = {"a11y-light", "css", asset_a11y_light_css,
+                              sizeof(asset_a11y_light_css)},
+    [ASSET_MMDOC_CSS] = {"mmdoc", "css", asset_mmdoc_css,
+                         sizeof(asset_mmdoc_css)},
+    [ASSET_MMDOC_JS] = {"mmdoc", "js", asset_mmdoc_js, sizeof(asset_mmdoc_js)},
+    [ASSET_MMDOC_SEARCH_JS] = {"mmdoc_search", "js", asset_mmdoc_search_js,
+                               sizeof(asset_mmdoc_search_js)},
 };
 
 /* Fast 64-bit XXH64 streaming hash (4-lane 32 bytes/iter). */
@@ -170,17 +194,6 @@ uint64_t asset_hash_state_final(const AssetHashState *state) {
   return h64;
 }
 
-uint64_t asset_hash_init(void) { return UINT64_C(14695981039346656037); }
-
-uint64_t asset_hash_feed(uint64_t hash, const unsigned char *bytes,
-                         size_t length) {
-  for (size_t i = 0; i < length; i++) {
-    hash ^= bytes[i];
-    hash *= UINT64_C(1099511628211);
-  }
-  return hash;
-}
-
 void asset_format_hashed_name(const char *stem, const char *extension,
                               uint64_t hash, char *file_name,
                               size_t file_name_size) {
@@ -188,168 +201,54 @@ void asset_format_hashed_name(const char *stem, const char *extension,
            extension);
 }
 
-static uint64_t asset_hash(const unsigned char *bytes, size_t length) {
-  AssetHashState state;
-  asset_hash_state_init(&state);
-  asset_hash_state_feed(&state, bytes, length);
-  return asset_hash_state_final(&state);
-}
-
-static void asset_hashed_file_name(const char *stem, const char *extension,
-                                   const unsigned char *bytes, size_t length,
-                                   char *file_name, size_t file_name_size) {
-  asset_format_hashed_name(stem, extension, asset_hash(bytes, length),
-                           file_name, file_name_size);
-}
-
 static pthread_once_t cached_asset_names_once = PTHREAD_ONCE_INIT;
-static AssetFileNames cached_asset_names;
+static char cached_asset_names[ASSET_COUNT][ASSET_FILE_NAME_SIZE];
 
 static void init_cached_asset_names(void) {
-  asset_hashed_file_name("fuse.basic.min", "js", asset_fuse_basic_min_js,
-                         sizeof(asset_fuse_basic_min_js),
-                         cached_asset_names.fuse_basic_min_js,
-                         sizeof(cached_asset_names.fuse_basic_min_js));
-  asset_hashed_file_name("highlight.pack", "js", asset_highlight_pack_js,
-                         sizeof(asset_highlight_pack_js),
-                         cached_asset_names.highlight_pack_js,
-                         sizeof(cached_asset_names.highlight_pack_js));
-  asset_hashed_file_name("a11y-dark", "css", asset_a11y_dark_css,
-                         sizeof(asset_a11y_dark_css),
-                         cached_asset_names.a11y_dark_css,
-                         sizeof(cached_asset_names.a11y_dark_css));
-  asset_hashed_file_name("a11y-light", "css", asset_a11y_light_css,
-                         sizeof(asset_a11y_light_css),
-                         cached_asset_names.a11y_light_css,
-                         sizeof(cached_asset_names.a11y_light_css));
-  asset_hashed_file_name("mmdoc", "css", asset_mmdoc_css,
-                         sizeof(asset_mmdoc_css), cached_asset_names.mmdoc_css,
-                         sizeof(cached_asset_names.mmdoc_css));
-  asset_hashed_file_name("mmdoc", "js", asset_mmdoc_js, sizeof(asset_mmdoc_js),
-                         cached_asset_names.mmdoc_js,
-                         sizeof(cached_asset_names.mmdoc_js));
-  asset_hashed_file_name("mmdoc_search", "js", asset_mmdoc_search_js,
-                         sizeof(asset_mmdoc_search_js),
-                         cached_asset_names.mmdoc_search_js,
-                         sizeof(cached_asset_names.mmdoc_search_js));
+  for (size_t i = 0; i < ASSET_COUNT; i++) {
+    AssetHashState state;
+    asset_hash_state_init(&state);
+    asset_hash_state_feed(&state, asset_table[i].data, asset_table[i].len);
+    asset_format_hashed_name(asset_table[i].stem, asset_table[i].ext,
+                             asset_hash_state_final(&state),
+                             cached_asset_names[i], ASSET_FILE_NAME_SIZE);
+  }
 }
 
-void asset_file_names(AssetFileNames *names) {
+const char *asset_file_name(AssetId id) {
   pthread_once(&cached_asset_names_once, init_cached_asset_names);
-  *names = cached_asset_names;
+  return cached_asset_names[id];
 }
 
-int asset_hashed_file_name_from_path(const char *path, const char *stem,
-                                     const char *extension, char *file_name,
-                                     size_t file_name_size) {
-  FILE *file = fopen(path, "rb");
-  if (file == nullptr)
-    return -1;
-
-  AssetHashState state;
-  asset_hash_state_init(&state);
-  unsigned char buffer[64 * 1024];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
-    asset_hash_state_feed(&state, buffer, bytes_read);
-  bool read_failed = ferror(file) != 0;
-  bool close_failed = fclose(file) != 0;
-  if (read_failed || close_failed)
-    return -1;
-
-  asset_format_hashed_name(stem, extension, asset_hash_state_final(&state),
-                           file_name, file_name_size);
-  return 0;
-}
-
-static int asset_write_to_file(FILE *file, const unsigned char *asset_array,
-                               size_t asset_array_length) {
-  if (fwrite(asset_array, 1, asset_array_length, file) != asset_array_length) {
+int asset_write_to_file(FILE *file, AssetId id) {
+  const AssetDesc *a = &asset_table[id];
+  if (fwrite(a->data, 1, a->len, file) != a->len) {
     printf("Failed to write to file: %s\n", strerror(errno));
     return -1;
   }
   return 0;
 }
 
-static int asset_write_to_dir(char *dir, const char *asset_file_name,
-                              const unsigned char *asset_array,
-                              size_t asset_array_length) {
-  char *asset_path = malloc(strlen(dir) + 1 + strlen(asset_file_name) + 1);
+int asset_write_to_dir(const char *dir, AssetId id) {
+  char *asset_path = mmdoc_file_path(dir, asset_file_name(id));
   if (asset_path == nullptr) {
     printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
     return -1;
   }
-  sprintf(asset_path, "%s/%s", dir, asset_file_name);
-  FILE *asset_file = fopen(asset_path, "w");
+  FILE *asset_file = fopen(asset_path, "wb");
   if (asset_file == nullptr) {
     printf("Failed to open file %s for writing: %s\n", asset_path,
            strerror(errno));
     free(asset_path);
     return -1;
   }
-  if (asset_write_to_file(asset_file, asset_array, asset_array_length) != 0) {
-    fclose(asset_file);
+  bool failed = asset_write_to_file(asset_file, id) != 0;
+  if (failed)
     printf("Failed to write to file %s: %s\n", asset_path, strerror(errno));
-    free(asset_path);
-    return -1;
-  }
   if (fclose(asset_file) != 0) {
     printf("Failed to close file %s: %s\n", asset_path, strerror(errno));
-    free(asset_path);
-    return -1;
-  };
+    failed = true;
+  }
   free(asset_path);
-  return 0;
-}
-
-int asset_write_to_file_highlight_pack_js(FILE *file) {
-  return asset_write_to_file(file, asset_highlight_pack_js,
-                             sizeof(asset_highlight_pack_js));
-}
-int asset_write_to_dir_highlight_pack_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_highlight_pack_js,
-                            sizeof(asset_highlight_pack_js));
-}
-
-int asset_write_to_dir_fuse_basic_min_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_fuse_basic_min_js,
-                            sizeof(asset_fuse_basic_min_js));
-}
-int asset_write_to_file_a11y_light_css(FILE *file) {
-  return asset_write_to_file(file, asset_a11y_light_css,
-                             sizeof(asset_a11y_light_css));
-}
-int asset_write_to_dir_a11y_light_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_a11y_light_css,
-                            sizeof(asset_a11y_light_css));
-}
-
-int asset_write_to_file_a11y_dark_css(FILE *file) {
-  return asset_write_to_file(file, asset_a11y_dark_css,
-                             sizeof(asset_a11y_dark_css));
-}
-int asset_write_to_dir_a11y_dark_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_a11y_dark_css,
-                            sizeof(asset_a11y_dark_css));
-}
-
-int asset_write_to_file_mmdoc_css(FILE *file) {
-  return asset_write_to_file(file, asset_mmdoc_css, sizeof(asset_mmdoc_css));
-}
-int asset_write_to_dir_mmdoc_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_mmdoc_css,
-                            sizeof(asset_mmdoc_css));
-}
-
-int asset_write_to_file_mmdoc_js(FILE *file) {
-  return asset_write_to_file(file, asset_mmdoc_js, sizeof(asset_mmdoc_js));
-}
-int asset_write_to_dir_mmdoc_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_mmdoc_js,
-                            sizeof(asset_mmdoc_js));
-}
-
-int asset_write_to_dir_mmdoc_search_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, asset_mmdoc_search_js,
-                            sizeof(asset_mmdoc_search_js));
+  return failed ? -1 : 0;
 }

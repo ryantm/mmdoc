@@ -8,8 +8,6 @@
 typedef enum : uint8_t {
   RENDER_TYPE_SINGLE,
   RENDER_TYPE_MULTIPAGE,
-  RENDER_TYPE_MAN,
-  RENDER_TYPE_EPUB
 } render_type;
 
 typedef struct {
@@ -20,9 +18,6 @@ typedef struct {
 
 void mmdoc_buf_init(MmdocBuf *buf, size_t initial_cap);
 void mmdoc_buf_free(MmdocBuf *buf);
-[[nodiscard]] int mmdoc_buf_append(MmdocBuf *buf, const char *data, size_t len);
-[[nodiscard]] int mmdoc_buf_append_str(MmdocBuf *buf, const char *str);
-[[nodiscard]] int mmdoc_buf_append_char(MmdocBuf *buf, char c);
 
 typedef struct {
   MmdocBuf single_html;
@@ -37,21 +32,16 @@ typedef struct {
 void chapter_outputs_free(ChapterOutputs *out);
 
 /* Returns code-block presence (0/1), or -1 on input/output failure. */
-[[nodiscard]] int mmdoc_render_part(char *file_path, FILE *output_file,
+[[nodiscard]] int mmdoc_render_to_buf(const char *file_path,
+                                      render_type render_type,
+                                      AnchorLocationArray anchor_locations,
+                                      const char *multipage_url,
+                                      MmdocBuf *out_html);
+
+[[nodiscard]] int mmdoc_render_part(const char *file_path, FILE *output_file,
                                     render_type render_type,
-                                    AnchorLocation *anchor_location,
                                     AnchorLocationArray anchor_locations,
-                                    char *multipage_url,
-                                    FILE *search_index_path);
-
-[[nodiscard]] char *mmdoc_render_get_title_from_file(char *file_path);
-
-[[nodiscard]] int mmdoc_render_collect_anchors(char *file_path, Array *anchors);
-
-/* Collect both from one parse. Either output may be nullptr; the caller owns
- * the returned title (an empty string when no anchored heading exists). */
-[[nodiscard]] int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
-                                                char **title);
+                                    const char *multipage_url);
 
 /* Render all outputs (Markdown, search JSON, single HTML, multi HTML) for one
  * chapter from a single already-parsed MdDoc. */
@@ -60,11 +50,3 @@ mmdoc_render_chapter_from_mddoc(const MdDoc *doc, const AnchorLocation *chapter,
                                 AnchorLocationArray *anchors,
                                 AnchorLocationArray *chapters_by_source,
                                 MmdocBuf *scratch_plain, ChapterOutputs *out);
-
-/* Render dual Markdown buffers (llms-full.txt & chapter/index.md) from MdDoc.
- */
-[[nodiscard]] int
-mmdoc_render_markdown_dual(const MdDoc *doc, const AnchorLocation *chapter,
-                           AnchorLocationArray *anchors,
-                           AnchorLocationArray *chapters_by_source,
-                           MmdocBuf *full_out, MmdocBuf *chap_out);

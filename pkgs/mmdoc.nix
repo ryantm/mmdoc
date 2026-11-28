@@ -8,7 +8,12 @@
     inherit system;
     root = ../.;
   };
-  version = "0.30.8";
+  versionLine =
+    lib.findFirst
+    (l: builtins.match ".*version[[:space:]]*:[[:space:]]*'([^']+)'.*" l != null)
+    (throw "version not found in meson.build")
+    (lib.splitString "\n" (builtins.readFile ../meson.build));
+  version = builtins.head (builtins.match ".*version[[:space:]]*:[[:space:]]*'([^']+)'.*" versionLine);
 in {
   package =
     drvc.lib.mkPackage project

@@ -79,18 +79,6 @@ static inline int buf_append_char(MmdocBuf *buf, char c) {
   return 0;
 }
 
-int mmdoc_buf_append(MmdocBuf *buf, const char *data, size_t len) {
-  return buf_append(buf, data, len);
-}
-
-int mmdoc_buf_append_str(MmdocBuf *buf, const char *str) {
-  return buf_append_str(buf, str);
-}
-
-int mmdoc_buf_append_char(MmdocBuf *buf, char c) {
-  return buf_append_char(buf, c);
-}
-
 void chapter_outputs_free(ChapterOutputs *out) {
   mmdoc_buf_free(&out->single_html);
   mmdoc_buf_free(&out->multi_html);
@@ -1515,10 +1503,10 @@ static void md_render_blocks(MdWriter *w, uint32_t parent, int tight) {
   }
 }
 
-int mmdoc_render_markdown_dual(const MdDoc *doc, const AnchorLocation *chapter,
-                               AnchorLocationArray *anchors,
-                               AnchorLocationArray *chapters_by_source,
-                               MmdocBuf *full_out, MmdocBuf *chap_out) {
+static int render_markdown_dual(const MdDoc *doc, const AnchorLocation *chapter,
+                                AnchorLocationArray *anchors,
+                                AnchorLocationArray *chapters_by_source,
+                                MmdocBuf *full_out, MmdocBuf *chap_out) {
   mmdoc_buf_init(full_out, doc->src_len + (doc->src_len >> 3) + 256);
   MdWriter mw = {
       .doc = doc,
@@ -1558,52 +1546,6 @@ int mmdoc_render_markdown_dual(const MdDoc *doc, const AnchorLocation *chapter,
   free(mw.patches);
   mmdoc_buf_free(&mw.prefix);
   return mw.failed ? -1 : 0;
-}
-
-/* ---- Minimal roff man renderer (for RENDER_TYPE_MAN) ---- */
-
-static void man_render_inlines(const MdDoc *doc, uint32_t parent, MmdocBuf *out,
-                               int *failed) {
-  for (uint32_t c = doc->nodes[parent].first_child; !*failed && c != 0;
-       c = doc->nodes[c].next_sibling) {
-    const MdNode *n = &doc->nodes[c];
-    if (n->type == MD_TEXT || n->type == MD_CODE) {
-      const char *p = md_text_ptr(doc, n);
-      for (size_t i = 0; i < n->text_len; i++) {
-        if (p[i] == '\\')
-          buf_append(out, "\\e", 2);
-        else
-          buf_append_char(out, p[i]);
-      }
-    } else if (n->type == MD_SOFTBREAK || n->type == MD_LINEBREAK) {
-      buf_append_char(out, '\n');
-    } else if (n->first_child != 0) {
-      man_render_inlines(doc, c, out, failed);
-    }
-  }
-}
-
-static void man_render_blocks(const MdDoc *doc, uint32_t parent, MmdocBuf *out,
-                              int *failed) {
-  for (uint32_t c = doc->nodes[parent].first_child; !*failed && c != 0;
-       c = doc->nodes[c].next_sibling) {
-    const MdNode *n = &doc->nodes[c];
-    if (n->type == MD_HEADING) {
-      buf_append(out, n->info <= 1 ? ".SH " : ".SS ", 4);
-      man_render_inlines(doc, c, out, failed);
-      buf_append_char(out, '\n');
-    } else if (n->type == MD_PARAGRAPH) {
-      buf_append(out, ".PP\n", 4);
-      man_render_inlines(doc, c, out, failed);
-      buf_append_char(out, '\n');
-    } else if (n->type == MD_CODE_BLOCK) {
-      buf_append(out, ".nf\n", 4);
-      buf_append(out, md_text_ptr(doc, n), n->text_len);
-      buf_append(out, "\n.fi\n", 5);
-    } else if (n->first_child != 0) {
-      man_render_blocks(doc, c, out, failed);
-    }
-  }
 }
 
 /* ---- Chapter renderer ---- */
@@ -1673,111 +1615,61 @@ int mmdoc_render_chapter_from_mddoc(const MdDoc *doc,
     return -1;
   }
 
-  if (mmdoc_render_markdown_dual(doc, chapter, anchors, chapters_by_source,
-                                 &out->full_md, &out->chapter_md) != 0) {
+  if (render_markdown_dual(doc, chapter, anchors, chapters_by_source,
+                           &out->full_md, &out->chapter_md) != 0) {
     chapter_outputs_free(out);
     return -1;
   }
   return 0;
 }
 
-/* ---- Standalone metadata & single-file render (used by unit tests & TOC) ----
- */
+/* ---- Single-file HTML render (used by TOC & unit tests) ---- */
 
-int mmdoc_render_collect_metadata(char *file_path, Array *anchors,
-                                  char **title) {
-  if (title != nullptr)
-    *title = nullptr;
-  MdDoc doc;
-  if (md_parse_file(&doc, file_path, true) != 0)
-    return -1;
-  if (anchors != nullptr) {
-    for (size_t i = 0; i < doc.anchors.used; i++)
-      insert_array(anchors, doc.anchors.array[i]);
-  }
-  if (title != nullptr) {
-    *title = doc.title;
-    doc.title = nullptr;
-  }
-  md_doc_free(&doc);
-  return 0;
-}
-
-int mmdoc_render_collect_anchors(char *file_path, Array *anchors) {
-  return mmdoc_render_collect_metadata(file_path, anchors, nullptr);
-}
-
-char *mmdoc_render_get_title_from_file(char *file_path) {
-  char *title = nullptr;
-  if (mmdoc_render_collect_metadata(file_path, nullptr, &title) != 0)
-    return nullptr;
-  return title;
-}
-
-int mmdoc_render_part(char *file_path, FILE *output_file,
-                      render_type render_type, AnchorLocation *anchor_location,
-                      AnchorLocationArray anchor_locations, char *multipage_url,
-                      FILE *search_index_path) {
+int mmdoc_render_to_buf(const char *file_path, render_type render_type,
+                        AnchorLocationArray anchor_locations,
+                        const char *multipage_url, MmdocBuf *out_html) {
+  *out_html = (MmdocBuf){};
   MdDoc doc;
   if (md_parse_file(&doc, file_path, false) != 0)
     return -1;
 
-  int failed = 0;
   bool has_code = doc.has_code_block;
-
-  if (render_type == RENDER_TYPE_MAN) {
-    MmdocBuf man;
-    mmdoc_buf_init(&man, doc.src_len + 256);
-    man_render_blocks(&doc, 1, &man, &failed);
-    if (!failed && man.len > 0 &&
-        fwrite(man.data, 1, man.len, output_file) != man.len)
-      failed = 1;
-    mmdoc_buf_free(&man);
-  } else {
-    MmdocBuf html;
-    MmdocBuf plain = {};
-    mmdoc_buf_init(&html, doc.src_len * 2 + 256);
-    if (search_index_path != nullptr)
-      mmdoc_buf_init(&plain, doc.src_len + 256);
-    HtmlWriter hw = {
-        .doc = &doc,
-        .html = &html,
-        .plain = search_index_path != nullptr ? &plain : nullptr,
-        .input_file_path = file_path,
-        .anchors = &anchor_locations,
-        .fixed_multi_prefix =
-            render_type == RENDER_TYPE_MULTIPAGE ? multipage_url : nullptr,
-        .heading_prefix = (multipage_url != nullptr && multipage_url[0] != '\0')
-                              ? multipage_url
-                              : nullptr,
-        .dual_mode = 0,
-        .print_warnings_stdout = 1,
-    };
-    html_render_blocks(&hw, 1, 0);
-    failed = hw.failed;
-
-    if (!failed && search_index_path != nullptr && anchor_location != nullptr) {
-      MmdocBuf json;
-      mmdoc_buf_init(&json, plain.len + 128);
-      if (append_search_json(&json, multipage_url, anchor_location->title,
-                             plain.data ? plain.data : "", plain.len) != 0 ||
-          fwrite(json.data, 1, json.len, search_index_path) != json.len ||
-          fputs("\n,", search_index_path) == EOF)
-        failed = 1;
-      mmdoc_buf_free(&json);
-    }
-
-    if (!failed && html.len > 0 &&
-        fwrite(html.data, 1, html.len, output_file) != html.len)
-      failed = 1;
-
-    mmdoc_buf_free(&plain);
-    mmdoc_buf_free(&html);
-  }
-
+  mmdoc_buf_init(out_html, doc.src_len * 2 + 256);
+  HtmlWriter hw = {
+      .doc = &doc,
+      .html = out_html,
+      .input_file_path = file_path,
+      .anchors = &anchor_locations,
+      .fixed_multi_prefix =
+          render_type == RENDER_TYPE_MULTIPAGE ? multipage_url : nullptr,
+      .heading_prefix = (multipage_url != nullptr && multipage_url[0] != '\0')
+                            ? multipage_url
+                            : nullptr,
+      .dual_mode = 0,
+      .print_warnings_stdout = 1,
+  };
+  html_render_blocks(&hw, 1, 0);
   md_doc_free(&doc);
-  if (failed || ferror(output_file) ||
-      (search_index_path != nullptr && ferror(search_index_path)))
+
+  if (hw.failed) {
+    mmdoc_buf_free(out_html);
     return -1;
+  }
   return has_code;
+}
+
+int mmdoc_render_part(const char *file_path, FILE *output_file,
+                      render_type render_type,
+                      AnchorLocationArray anchor_locations,
+                      const char *multipage_url) {
+  MmdocBuf html;
+  int has_code = mmdoc_render_to_buf(file_path, render_type, anchor_locations,
+                                     multipage_url, &html);
+  if (has_code < 0)
+    return -1;
+  bool write_failed = (html.len > 0 && fwrite(html.data, 1, html.len,
+                                              output_file) != html.len) ||
+                      ferror(output_file) != 0;
+  mmdoc_buf_free(&html);
+  return write_failed ? -1 : has_code;
 }

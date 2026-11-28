@@ -212,10 +212,6 @@ int mmdoc_collect_source_files(Array *md_files, Array *img_files,
   return result;
 }
 
-int mmdoc_md_files(Array *files, Inputs inputs) {
-  return mmdoc_collect_source_files(files, nullptr, inputs);
-}
-
 int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
   size_t src_len = strlen(inputs.src);
   size_t out_multi_len = strlen(inputs.out_multi);
@@ -342,16 +338,4 @@ int mmdoc_copy_img_files(const Array *img_files, Inputs inputs) {
   }
   free(last_dir);
   return 0;
-}
-
-int copy_imgs(Inputs inputs) {
-  Array img_files;
-  init_array(&img_files, 64);
-  if (mmdoc_collect_source_files(nullptr, &img_files, inputs) != 0) {
-    free_array(&img_files);
-    return -1;
-  }
-  int result = mmdoc_copy_img_files(&img_files, inputs);
-  free_array(&img_files);
-  return result;
 }
