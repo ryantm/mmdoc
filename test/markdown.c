@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 /* Exercise the published Markdown, HTML, and CLI behavior of mmdoc. */
-#define _XOPEN_SOURCE 700
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
