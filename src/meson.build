@@ -16,8 +16,6 @@ src = [
   'types.c',
 ]
 
-src += asset_headers
-
 shared_lib = static_library(
            'shared',
            src,

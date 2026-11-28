@@ -1,12 +1,5 @@
 /* SPDX-License-Identifier: CC0-1.0 */
 #include "asset.h"
-#include "a11y-dark.css.h"
-#include "a11y-light.css.h"
-#include "fuse.basic.min.js.h"
-#include "highlight.pack.js.h"
-#include "mmdoc.css.h"
-#include "mmdoc.js.h"
-#include "mmdoc_search.js.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -18,20 +11,27 @@
 
 extern int errno;
 
-extern unsigned char ___src_asset_highlight_pack_js[];
-extern unsigned int ___src_asset_highlight_pack_js_len;
-extern unsigned char ___src_asset_fuse_basic_min_js[];
-extern unsigned int ___src_asset_fuse_basic_min_js_len;
-extern unsigned char ___src_asset_a11y_light_css[];
-extern unsigned int ___src_asset_a11y_light_css_len;
-extern unsigned char ___src_asset_a11y_dark_css[];
-extern unsigned int ___src_asset_a11y_dark_css_len;
-extern unsigned char ___src_asset_mmdoc_css[];
-extern unsigned int ___src_asset_mmdoc_css_len;
-extern unsigned char ___src_asset_mmdoc_js[];
-extern unsigned int ___src_asset_mmdoc_js_len;
-extern unsigned char ___src_asset_mmdoc_search_js[];
-extern unsigned int ___src_asset_mmdoc_search_js_len;
+static const unsigned char asset_highlight_pack_js[] = {
+#embed "asset/highlight.pack.js"
+};
+static const unsigned char asset_fuse_basic_min_js[] = {
+#embed "asset/fuse.basic.min.js"
+};
+static const unsigned char asset_a11y_light_css[] = {
+#embed "asset/a11y-light.css"
+};
+static const unsigned char asset_a11y_dark_css[] = {
+#embed "asset/a11y-dark.css"
+};
+static const unsigned char asset_mmdoc_css[] = {
+#embed "asset/mmdoc.css"
+};
+static const unsigned char asset_mmdoc_js[] = {
+#embed "asset/mmdoc.js"
+};
+static const unsigned char asset_mmdoc_search_js[] = {
+#embed "asset/mmdoc_search.js"
+};
 
 /* Fast 64-bit XXH64 streaming hash (4-lane 32 bytes/iter). */
 #define XXH_PRIME1 UINT64_C(0x9E3779B185EBCA87)
@@ -206,30 +206,30 @@ static pthread_once_t cached_asset_names_once = PTHREAD_ONCE_INIT;
 static AssetFileNames cached_asset_names;
 
 static void init_cached_asset_names(void) {
-  asset_hashed_file_name("fuse.basic.min", "js", ___src_asset_fuse_basic_min_js,
-                         ___src_asset_fuse_basic_min_js_len,
+  asset_hashed_file_name("fuse.basic.min", "js", asset_fuse_basic_min_js,
+                         sizeof(asset_fuse_basic_min_js),
                          cached_asset_names.fuse_basic_min_js,
                          sizeof(cached_asset_names.fuse_basic_min_js));
-  asset_hashed_file_name("highlight.pack", "js", ___src_asset_highlight_pack_js,
-                         ___src_asset_highlight_pack_js_len,
+  asset_hashed_file_name("highlight.pack", "js", asset_highlight_pack_js,
+                         sizeof(asset_highlight_pack_js),
                          cached_asset_names.highlight_pack_js,
                          sizeof(cached_asset_names.highlight_pack_js));
-  asset_hashed_file_name("a11y-dark", "css", ___src_asset_a11y_dark_css,
-                         ___src_asset_a11y_dark_css_len,
+  asset_hashed_file_name("a11y-dark", "css", asset_a11y_dark_css,
+                         sizeof(asset_a11y_dark_css),
                          cached_asset_names.a11y_dark_css,
                          sizeof(cached_asset_names.a11y_dark_css));
-  asset_hashed_file_name("a11y-light", "css", ___src_asset_a11y_light_css,
-                         ___src_asset_a11y_light_css_len,
+  asset_hashed_file_name("a11y-light", "css", asset_a11y_light_css,
+                         sizeof(asset_a11y_light_css),
                          cached_asset_names.a11y_light_css,
                          sizeof(cached_asset_names.a11y_light_css));
-  asset_hashed_file_name(
-      "mmdoc", "css", ___src_asset_mmdoc_css, ___src_asset_mmdoc_css_len,
-      cached_asset_names.mmdoc_css, sizeof(cached_asset_names.mmdoc_css));
-  asset_hashed_file_name("mmdoc", "js", ___src_asset_mmdoc_js,
-                         ___src_asset_mmdoc_js_len, cached_asset_names.mmdoc_js,
+  asset_hashed_file_name("mmdoc", "css", asset_mmdoc_css,
+                         sizeof(asset_mmdoc_css), cached_asset_names.mmdoc_css,
+                         sizeof(cached_asset_names.mmdoc_css));
+  asset_hashed_file_name("mmdoc", "js", asset_mmdoc_js, sizeof(asset_mmdoc_js),
+                         cached_asset_names.mmdoc_js,
                          sizeof(cached_asset_names.mmdoc_js));
-  asset_hashed_file_name("mmdoc_search", "js", ___src_asset_mmdoc_search_js,
-                         ___src_asset_mmdoc_search_js_len,
+  asset_hashed_file_name("mmdoc_search", "js", asset_mmdoc_search_js,
+                         sizeof(asset_mmdoc_search_js),
                          cached_asset_names.mmdoc_search_js,
                          sizeof(cached_asset_names.mmdoc_search_js));
 }
@@ -263,8 +263,8 @@ int asset_hashed_file_name_from_path(const char *path, const char *stem,
   return 0;
 }
 
-static int asset_write_to_file(FILE *file, unsigned char *asset_array,
-                               unsigned int asset_array_length) {
+static int asset_write_to_file(FILE *file, const unsigned char *asset_array,
+                               size_t asset_array_length) {
   if (fwrite(asset_array, 1, asset_array_length, file) != asset_array_length) {
     printf("Failed to write to file: %s\n", strerror(errno));
     return -1;
@@ -273,8 +273,8 @@ static int asset_write_to_file(FILE *file, unsigned char *asset_array,
 }
 
 static int asset_write_to_dir(char *dir, const char *asset_file_name,
-                              unsigned char *asset_array,
-                              unsigned int asset_array_length) {
+                              const unsigned char *asset_array,
+                              size_t asset_array_length) {
   char *asset_path = malloc(strlen(dir) + 1 + strlen(asset_file_name) + 1);
   if (asset_path == NULL) {
     printf("Failed to allocate memory at %s line %d\n", __FILE__, __LINE__);
@@ -304,55 +304,53 @@ static int asset_write_to_dir(char *dir, const char *asset_file_name,
 }
 
 int asset_write_to_file_highlight_pack_js(FILE *file) {
-  return asset_write_to_file(file, ___src_asset_highlight_pack_js,
-                             ___src_asset_highlight_pack_js_len);
+  return asset_write_to_file(file, asset_highlight_pack_js,
+                             sizeof(asset_highlight_pack_js));
 }
 int asset_write_to_dir_highlight_pack_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_highlight_pack_js,
-                            ___src_asset_highlight_pack_js_len);
+  return asset_write_to_dir(dir, file_name, asset_highlight_pack_js,
+                            sizeof(asset_highlight_pack_js));
 }
 
 int asset_write_to_dir_fuse_basic_min_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_fuse_basic_min_js,
-                            ___src_asset_fuse_basic_min_js_len);
+  return asset_write_to_dir(dir, file_name, asset_fuse_basic_min_js,
+                            sizeof(asset_fuse_basic_min_js));
 }
 int asset_write_to_file_a11y_light_css(FILE *file) {
-  return asset_write_to_file(file, ___src_asset_a11y_light_css,
-                             ___src_asset_a11y_light_css_len);
+  return asset_write_to_file(file, asset_a11y_light_css,
+                             sizeof(asset_a11y_light_css));
 }
 int asset_write_to_dir_a11y_light_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_a11y_light_css,
-                            ___src_asset_a11y_light_css_len);
+  return asset_write_to_dir(dir, file_name, asset_a11y_light_css,
+                            sizeof(asset_a11y_light_css));
 }
 
 int asset_write_to_file_a11y_dark_css(FILE *file) {
-  return asset_write_to_file(file, ___src_asset_a11y_dark_css,
-                             ___src_asset_a11y_dark_css_len);
+  return asset_write_to_file(file, asset_a11y_dark_css,
+                             sizeof(asset_a11y_dark_css));
 }
 int asset_write_to_dir_a11y_dark_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_a11y_dark_css,
-                            ___src_asset_a11y_dark_css_len);
+  return asset_write_to_dir(dir, file_name, asset_a11y_dark_css,
+                            sizeof(asset_a11y_dark_css));
 }
 
 int asset_write_to_file_mmdoc_css(FILE *file) {
-  return asset_write_to_file(file, ___src_asset_mmdoc_css,
-                             ___src_asset_mmdoc_css_len);
+  return asset_write_to_file(file, asset_mmdoc_css, sizeof(asset_mmdoc_css));
 }
 int asset_write_to_dir_mmdoc_css(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_mmdoc_css,
-                            ___src_asset_mmdoc_css_len);
+  return asset_write_to_dir(dir, file_name, asset_mmdoc_css,
+                            sizeof(asset_mmdoc_css));
 }
 
 int asset_write_to_file_mmdoc_js(FILE *file) {
-  return asset_write_to_file(file, ___src_asset_mmdoc_js,
-                             ___src_asset_mmdoc_js_len);
+  return asset_write_to_file(file, asset_mmdoc_js, sizeof(asset_mmdoc_js));
 }
 int asset_write_to_dir_mmdoc_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_mmdoc_js,
-                            ___src_asset_mmdoc_js_len);
+  return asset_write_to_dir(dir, file_name, asset_mmdoc_js,
+                            sizeof(asset_mmdoc_js));
 }
 
 int asset_write_to_dir_mmdoc_search_js(char *dir, const char *file_name) {
-  return asset_write_to_dir(dir, file_name, ___src_asset_mmdoc_search_js,
-                            ___src_asset_mmdoc_search_js_len);
+  return asset_write_to_dir(dir, file_name, asset_mmdoc_search_js,
+                            sizeof(asset_mmdoc_search_js));
 }

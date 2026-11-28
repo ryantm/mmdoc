@@ -5,7 +5,6 @@
   mkShell,
   meson,
   ninja,
-  xxd,
   clang-tools,
   gdb,
   valgrind,
@@ -50,7 +49,6 @@ in
       [
         meson
         ninja
-        xxd
         clang-tools
         gdb
         cppcheck

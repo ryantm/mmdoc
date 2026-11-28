@@ -2,7 +2,7 @@
   "drvc": {
     "files": ["meson.build", "src", "test"],
     "libraries": [],
-    "tools": ["xxd"],
+    "tools": [],
     "program": "mmdoc"
   }
 }

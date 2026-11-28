@@ -1,6 +1,7 @@
 project('mmdoc', 'c',
   version : '0.30.6',
   license : 'CC0-1.0',
+  default_options : ['c_std=gnu23'],
 )
 
 possible_cc_flags = [
@@ -26,12 +27,5 @@ add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags),
 
 threads = dependency('threads', required: true)
 
-xxd_prog = find_program('xxd')
-
-embed_c = generator(xxd_prog,
-   output : '@PLAINNAME@.h',
-   arguments : [ '-i', '-n', '___src_asset_@PLAINNAME@', '@INPUT@', '@OUTPUT@'])
-
-subdir('src/asset')
 subdir('src')
 subdir('test')
