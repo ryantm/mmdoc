@@ -8,7 +8,7 @@
     inherit system;
     root = ../.;
   };
-  version = "0.30.5";
+  version = "0.30.6";
 in {
   package =
     drvc.lib.mkPackage project
