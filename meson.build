@@ -1,5 +1,5 @@
 project('mmdoc', 'c',
-  version : '0.30.6',
+  version : '0.30.7',
   license : 'CC0-1.0',
   default_options : ['c_std=gnu23'],
 )
